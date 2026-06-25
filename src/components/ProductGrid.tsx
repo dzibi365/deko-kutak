@@ -4,7 +4,11 @@ import { Heart, ShoppingCart } from "lucide-react";
 import { supabase, type Product, localName, localDesc } from "../lib/supabase";
 import { useLang } from "../context/LanguageContext";
 
-export function ProductGrid() {
+type ProductGridProps = {
+  category?: string | null;
+};
+
+export function ProductGrid({ category }: ProductGridProps) {
   const { tr, lang } = useLang();
   const navigate = useNavigate();
   const [products, setProducts] = useState<Product[]>([]);
@@ -12,13 +16,18 @@ export function ProductGrid() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    setLoading(true);
     async function fetchProducts() {
       try {
-        const { data, error } = await supabase
+        let query = supabase
           .from("products")
           .select("*")
           .eq("in_stock", true)
           .order("created_at", { ascending: false });
+
+        if (category) query = query.eq("category", category);
+
+        const { data, error } = await query;
 
         if (error) {
           setError(error.message);
@@ -35,7 +44,7 @@ export function ProductGrid() {
     }
 
     fetchProducts();
-  }, []);
+  }, [category]);
 
   return (
     <div>
