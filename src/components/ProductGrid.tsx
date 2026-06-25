@@ -9,18 +9,25 @@ export function ProductGrid() {
 
   useEffect(() => {
     async function fetchProducts() {
-      const { data, error } = await supabase
-        .from("products")
-        .select("*")
-        .eq("in_stock", true)
-        .order("created_at", { ascending: false });
+      try {
+        const { data, error } = await supabase
+          .from("products")
+          .select("*")
+          .eq("in_stock", true)
+          .order("created_at", { ascending: false });
 
-      if (error) {
-        setError(error.message);
-      } else {
-        setProducts(data ?? []);
+        if (error) {
+          setError(error.message);
+        } else if (!data || data.length === 0) {
+          setProducts([]);
+        } else {
+          setProducts(data);
+        }
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Could not reach the server.");
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
     }
 
     fetchProducts();
@@ -49,7 +56,10 @@ export function ProductGrid() {
       )}
 
       {error && (
-        <p className="text-red-500 text-sm">Failed to load products: {error}</p>
+        <div className="flex flex-col items-center justify-center py-16 gap-4 text-center">
+          <p className="text-lg font-semibold text-navy">Unable to load products</p>
+          <p className="text-sm text-navy/50 max-w-xs">Something went wrong connecting to the store. Please try refreshing the page.</p>
+        </div>
       )}
 
       {!loading && !error && (
