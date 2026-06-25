@@ -57,6 +57,11 @@ export default function Checkout() {
     setPlacing(false);
     if (err) { setError(err.message); return; }
 
+    // Fire invoice emails (non-blocking — don't wait or fail order if this errors)
+    supabase.functions.invoke("send-order-email", {
+      body: { orderNumber },
+    }).catch(() => {/* silent — order already placed */});
+
     clearCart();
     closeCart();
     navigate(`/order-confirmation/${orderNumber}?payment=${payment}`);
