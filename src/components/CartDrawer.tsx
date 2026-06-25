@@ -1,3 +1,4 @@
+import { useNavigate } from "react-router-dom";
 import { X, Minus, Plus, Trash2, ShoppingBag } from "lucide-react";
 import { useCart } from "../context/CartContext";
 import { useLang } from "../context/LanguageContext";
@@ -6,6 +7,7 @@ import { localName } from "../lib/supabase";
 export function CartDrawer() {
   const { items, count, total, isOpen, closeCart, removeItem, updateQty } = useCart();
   const { lang, tr } = useLang();
+  const navigate = useNavigate();
 
   return (
     <>
@@ -104,7 +106,10 @@ export function CartDrawer() {
                 <span className="text-sm text-gray-500">{tr("cart_subtotal")}</span>
                 <span className="text-xl font-semibold text-navy">{total.toFixed(2)} KM</span>
               </div>
-              <button className="w-full py-3.5 bg-navy text-white font-semibold rounded-xl hover:bg-navy/90 transition-colors">
+              <button
+                onClick={() => { closeCart(); navigate("/checkout"); }}
+                className="w-full py-3.5 bg-navy text-white font-semibold rounded-xl hover:bg-navy/90 transition-colors"
+              >
                 {tr("cart_checkout")}
               </button>
               <button onClick={closeCart} className="w-full py-2.5 text-sm font-medium text-gray-500 hover:text-navy transition-colors">

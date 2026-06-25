@@ -14,7 +14,11 @@ import AdminDashboard from "./pages/admin/Dashboard";
 import Products from "./pages/admin/Products";
 import Categories from "./pages/admin/Categories";
 import HeroConfig from "./pages/admin/HeroConfig";
+import Orders from "./pages/admin/Orders";
+import StoreSettings from "./pages/admin/StoreSettings";
 import ProductDetail from "./pages/ProductDetail";
+import Checkout from "./pages/Checkout";
+import OrderConfirmation from "./pages/OrderConfirmation";
 
 function StoreFront() {
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
@@ -53,6 +57,24 @@ function ProductPage() {
   );
 }
 
+function CheckoutPage() {
+  return (
+    <LanguageProvider>
+      <CartProvider>
+        <Checkout />
+      </CartProvider>
+    </LanguageProvider>
+  );
+}
+
+function ConfirmationPage() {
+  return (
+    <LanguageProvider>
+      <OrderConfirmation />
+    </LanguageProvider>
+  );
+}
+
 export default function App() {
   return (
     <AuthProvider>
@@ -61,6 +83,8 @@ export default function App() {
           <Route path="/" element={<StoreFront />} />
 
           <Route path="/products/:id" element={<ProductPage />} />
+          <Route path="/checkout" element={<CheckoutPage />} />
+          <Route path="/order-confirmation/:orderNumber" element={<ConfirmationPage />} />
 
           <Route path="/admin/login" element={<Login />} />
 
@@ -76,6 +100,8 @@ export default function App() {
             <Route path="products" element={<Products />} />
             <Route path="categories" element={<Categories />} />
             <Route path="homepage" element={<HeroConfig />} />
+            <Route path="orders" element={<Orders />} />
+            <Route path="settings" element={<StoreSettings />} />
           </Route>
 
           <Route path="*" element={<Navigate to="/" replace />} />
