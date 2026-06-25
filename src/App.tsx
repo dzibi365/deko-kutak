@@ -3,8 +3,10 @@ import { useState } from "react";
 import { Navbar, Footer } from "./components/Layout";
 import { Hero, CategoryStrip, PromoBanner, Testimonials } from "./components/HomeSections";
 import { ProductGrid } from "./components/ProductGrid";
+import { CartDrawer } from "./components/CartDrawer";
 import { AuthProvider } from "./context/AuthContext";
 import { LanguageProvider } from "./context/LanguageContext";
+import { CartProvider } from "./context/CartContext";
 import { AdminLayout } from "./components/admin/AdminLayout";
 import { RequireAuth } from "./components/admin/RequireAuth";
 import Login from "./pages/admin/Login";
@@ -19,21 +21,34 @@ function StoreFront() {
 
   return (
     <LanguageProvider>
-      <div className="min-h-screen bg-cream font-sans text-navy flex flex-col">
-        <Navbar />
-        <main className="flex-1 flex flex-col">
-          <Hero />
-          <div className="max-w-5xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-12 flex flex-col gap-10">
-            <CategoryStrip selected={selectedCategory} onSelect={setSelectedCategory} />
-            <ProductGrid category={selectedCategory} />
-          </div>
-          <PromoBanner />
-          <div className="max-w-5xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-16">
-            <Testimonials />
-          </div>
-        </main>
-        <Footer />
-      </div>
+      <CartProvider>
+        <div className="min-h-screen bg-cream font-sans text-navy flex flex-col">
+          <Navbar />
+          <CartDrawer />
+          <main className="flex-1 flex flex-col">
+            <Hero />
+            <div className="max-w-5xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-12 flex flex-col gap-10">
+              <CategoryStrip selected={selectedCategory} onSelect={setSelectedCategory} />
+              <ProductGrid category={selectedCategory} />
+            </div>
+            <PromoBanner />
+            <div className="max-w-5xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-16">
+              <Testimonials />
+            </div>
+          </main>
+          <Footer />
+        </div>
+      </CartProvider>
+    </LanguageProvider>
+  );
+}
+
+function ProductPage() {
+  return (
+    <LanguageProvider>
+      <CartProvider>
+        <ProductDetail />
+      </CartProvider>
     </LanguageProvider>
   );
 }
@@ -45,7 +60,7 @@ export default function App() {
         <Routes>
           <Route path="/" element={<StoreFront />} />
 
-          <Route path="/products/:id" element={<ProductDetail />} />
+          <Route path="/products/:id" element={<ProductPage />} />
 
           <Route path="/admin/login" element={<Login />} />
 

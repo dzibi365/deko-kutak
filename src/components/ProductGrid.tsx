@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { Heart, ShoppingCart } from "lucide-react";
 import { supabase, type Product, localName, localDesc } from "../lib/supabase";
 import { useLang } from "../context/LanguageContext";
+import { useCart } from "../context/CartContext";
 
 type ProductGridProps = {
   category?: string | null;
@@ -11,6 +12,7 @@ type ProductGridProps = {
 export function ProductGrid({ category }: ProductGridProps) {
   const { tr, lang } = useLang();
   const navigate = useNavigate();
+  const { addItem } = useCart();
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -114,7 +116,7 @@ export function ProductGrid({ category }: ProductGridProps) {
                 <div className="flex items-center justify-between mt-auto pt-4 border-t-[0.5px] border-navy/10">
                   <span className="text-lg font-semibold text-navy">{product.price.toFixed(2)} KM</span>
                   <button
-                    onClick={(e) => e.stopPropagation()}
+                    onClick={(e) => { e.stopPropagation(); addItem(product); }}
                     className="flex items-center gap-2 px-4 py-2 bg-navy text-white text-sm font-semibold rounded-lg hover:bg-navy/90 transition-colors"
                   >
                     <ShoppingCart className="w-4 h-4" strokeWidth={2} />

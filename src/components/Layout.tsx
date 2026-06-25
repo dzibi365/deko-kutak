@@ -1,8 +1,10 @@
 import { Search, User, ShoppingBag, Menu, Instagram, Facebook, Mail } from "lucide-react";
 import { useLang } from "../context/LanguageContext";
+import { useCart } from "../context/CartContext";
 
 export function Navbar() {
   const { lang, toggleLang, tr } = useLang();
+  const { count, openCart } = useCart();
 
   return (
     <header className="sticky top-0 z-50 bg-cream/95 backdrop-blur-sm border-b-[0.5px] border-navy/10">
@@ -34,11 +36,13 @@ export function Navbar() {
           <button className="hidden sm:block hover:text-copper transition-colors" aria-label="Account">
             <User className="w-5 h-5" strokeWidth={1.5} />
           </button>
-          <button className="relative hover:text-copper transition-colors" aria-label="Cart">
+          <button onClick={openCart} className="relative hover:text-copper transition-colors" aria-label="Cart">
             <ShoppingBag className="w-5 h-5" strokeWidth={1.5} />
-            <span className="absolute -top-1 -right-1 bg-copper text-white text-[10px] font-semibold w-4 h-4 flex items-center justify-center rounded-full">
-              2
-            </span>
+            {count > 0 && (
+              <span className="absolute -top-1 -right-1 bg-copper text-white text-[10px] font-semibold w-4 h-4 flex items-center justify-center rounded-full">
+                {count > 9 ? "9+" : count}
+              </span>
+            )}
           </button>
           <button className="md:hidden ml-2" aria-label="Menu">
             <Menu className="w-6 h-6" strokeWidth={1.5} />

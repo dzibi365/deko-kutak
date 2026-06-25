@@ -40,6 +40,15 @@ export const t = {
     test_heading: "Loved by our customers",
     test_sub: "Don't just take our word for it. Here is what people are saying about our handmade pieces.",
 
+    // Cart
+    cart_title: "Your Cart",
+    cart_empty: "Your cart is empty",
+    cart_empty_sub: "Add some handmade goods to get started.",
+    cart_subtotal: "Subtotal",
+    cart_checkout: "Proceed to Checkout",
+    cart_continue: "Continue Shopping",
+    cart_remove: "Remove",
+
     // Product detail
     product_back: "Back to Shop",
     product_in_stock: "In Stock",
@@ -103,6 +112,15 @@ export const t = {
     // Testimonials
     test_heading: "Omiljeni kod naših kupaca",
     test_sub: "Ne vjerujte samo nama. Evo šta kažu naši kupci o našim ručno rađenim predmetima.",
+
+    // Cart
+    cart_title: "Vaša korpa",
+    cart_empty: "Vaša korpa je prazna",
+    cart_empty_sub: "Dodajte neke ručno rađene proizvode za početak.",
+    cart_subtotal: "Ukupno",
+    cart_checkout: "Nastavite na plaćanje",
+    cart_continue: "Nastavite kupovinu",
+    cart_remove: "Ukloni",
 
     // Product detail
     product_back: "Nazad na prodavnicu",

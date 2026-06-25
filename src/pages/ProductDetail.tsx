@@ -3,13 +3,15 @@ import { useParams, useNavigate } from "react-router-dom";
 import { ShoppingCart, Heart, ArrowLeft, CheckCircle, XCircle, Share2 } from "lucide-react";
 import { supabase, type Product, localName, localDesc } from "../lib/supabase";
 import { Navbar, Footer } from "../components/Layout";
-import { LanguageProvider } from "../context/LanguageContext";
+import { CartDrawer } from "../components/CartDrawer";
 import { useLang } from "../context/LanguageContext";
+import { useCart } from "../context/CartContext";
 
 function ProductDetailContent() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { lang, tr } = useLang();
+  const { addItem } = useCart();
 
   const [product, setProduct] = useState<Product | null>(null);
   const [loading, setLoading] = useState(true);
@@ -167,6 +169,7 @@ function ProductDetailContent() {
           <div className="flex gap-3 mt-auto">
             <button
               disabled={!product.in_stock}
+              onClick={() => addItem(product)}
               className="flex-1 flex items-center justify-center gap-2 px-6 py-3.5 bg-navy text-white font-semibold rounded-xl hover:bg-navy/90 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
             >
               <ShoppingCart className="w-5 h-5" strokeWidth={2} />
@@ -192,14 +195,13 @@ function ProductDetailContent() {
 
 export default function ProductDetail() {
   return (
-    <LanguageProvider>
-      <div className="min-h-screen bg-cream font-sans text-navy flex flex-col">
-        <Navbar />
-        <main className="flex-1">
-          <ProductDetailContent />
-        </main>
-        <Footer />
-      </div>
-    </LanguageProvider>
+    <div className="min-h-screen bg-cream font-sans text-navy flex flex-col">
+      <Navbar />
+      <CartDrawer />
+      <main className="flex-1">
+        <ProductDetailContent />
+      </main>
+      <Footer />
+    </div>
   );
 }
