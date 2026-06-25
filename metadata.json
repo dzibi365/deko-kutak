@@ -1,0 +1,6 @@
+{
+  "name": "Deko Kutak",
+  "description": "A modern WooCommerce homepage for a Bosnian handmade gift webshop.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
