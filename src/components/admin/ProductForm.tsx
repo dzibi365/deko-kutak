@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
-import { X, Upload, Trash2, Plus } from "lucide-react";
+import { X, Upload, Trash2, Plus, ChevronDown, ChevronUp, CircleCheck, CircleAlert, CircleX } from "lucide-react";
 import { supabase, type Product, type Category } from "../../lib/supabase";
 
 type Props = {
@@ -28,6 +28,7 @@ export function ProductForm({ product, onClose, onSaved }: Props) {
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState<"main" | number | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [seoOpen, setSeoOpen] = useState(true);
 
   const mainFileRef = useRef<HTMLInputElement>(null);
   const galleryFileRef = useRef<HTMLInputElement>(null);
@@ -148,6 +149,9 @@ export function ProductForm({ product, onClose, onSaved }: Props) {
   }
 
   const gallerySlots = Array.from({ length: MAX_GALLERY });
+  const seoChecks = buildSeoChecks(form);
+  const seoScore = seoChecks.filter((c) => c.status === "pass").length;
+  const seoTotal = seoChecks.length;
 
   return (
     <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
@@ -178,10 +182,12 @@ export function ProductForm({ product, onClose, onSaved }: Props) {
               <Field label="Product Name (EN)">
                 <input value={form.name_en} onChange={(e) => set("name_en", e.target.value)}
                   placeholder="e.g. Handmade Candle Set" className={inputCls} />
+                <CharCount value={form.name_en} min={20} max={70} />
               </Field>
               <Field label="Description (EN)">
                 <textarea value={form.description_en} onChange={(e) => set("description_en", e.target.value)}
                   rows={3} placeholder="Short product description…" className={`${inputCls} resize-none`} />
+                <CharCount value={form.description_en} min={80} max={500} />
               </Field>
             </>
           ) : (
@@ -189,10 +195,12 @@ export function ProductForm({ product, onClose, onSaved }: Props) {
               <Field label="Naziv proizvoda (BS)">
                 <input value={form.name_bs} onChange={(e) => set("name_bs", e.target.value)}
                   placeholder="npr. Ručno rađeni set svijeća" className={inputCls} />
+                <CharCount value={form.name_bs} min={20} max={70} />
               </Field>
               <Field label="Opis (BS)">
                 <textarea value={form.description_bs} onChange={(e) => set("description_bs", e.target.value)}
                   rows={3} placeholder="Kratki opis proizvoda…" className={`${inputCls} resize-none`} />
+                <CharCount value={form.description_bs} min={80} max={500} />
               </Field>
             </>
           )}
@@ -281,6 +289,38 @@ export function ProductForm({ product, onClose, onSaved }: Props) {
             </div>
             <span className="text-sm font-medium text-navy">In Stock</span>
           </label>
+
+          {/* SEO Analysis */}
+          <div className="border border-gray-200 rounded-xl overflow-hidden">
+            <button
+              type="button"
+              onClick={() => setSeoOpen((o) => !o)}
+              className="w-full flex items-center justify-between px-4 py-3 hover:bg-gray-50 transition-colors"
+            >
+              <div className="flex items-center gap-3">
+                <span className="text-sm font-semibold text-navy">SEO Analysis</span>
+                <SeoScorePill score={seoScore} total={seoTotal} />
+              </div>
+              {seoOpen
+                ? <ChevronUp className="w-4 h-4 text-gray-400" strokeWidth={1.75} />
+                : <ChevronDown className="w-4 h-4 text-gray-400" strokeWidth={1.75} />
+              }
+            </button>
+
+            {seoOpen && (
+              <div className="px-4 pb-4 flex flex-col gap-2 border-t border-gray-100 pt-3">
+                <div className="w-full h-1.5 bg-gray-100 rounded-full overflow-hidden mb-1">
+                  <div
+                    className={`h-full rounded-full transition-all ${scoreColor(seoScore, seoTotal)}`}
+                    style={{ width: `${(seoScore / seoTotal) * 100}%` }}
+                  />
+                </div>
+                {seoChecks.map((check) => (
+                  <SeoRow key={check.label} check={check} />
+                ))}
+              </div>
+            )}
+          </div>
         </form>
 
         <div className="px-6 py-4 border-t border-gray-100 flex justify-end gap-3">
@@ -295,6 +335,127 @@ export function ProductForm({ product, onClose, onSaved }: Props) {
       </div>
     </div>
   );
+}
+
+// ─── SEO helpers ─────────────────────────────────────────────────────────────
+
+type SeoStatus = "pass" | "warn" | "fail";
+type SeoCheck = { label: string; status: SeoStatus; tip: string };
+
+function buildSeoChecks(form: typeof empty): SeoCheck[] {
+  const checks: SeoCheck[] = [];
+
+  // EN title
+  const enLen = form.name_en.trim().length;
+  checks.push(
+    enLen === 0
+      ? { label: "English title", status: "fail", tip: "Add an English product name" }
+      : enLen < 20
+      ? { label: "English title", status: "warn", tip: `Title is short (${enLen} chars) — aim for 20–70` }
+      : enLen > 70
+      ? { label: "English title", status: "warn", tip: `Title is long (${enLen} chars) — keep under 70` }
+      : { label: "English title", status: "pass", tip: `Good length (${enLen} chars)` }
+  );
+
+  // BS title
+  const bsLen = form.name_bs.trim().length;
+  checks.push(
+    bsLen === 0
+      ? { label: "Bosnian title", status: "fail", tip: "Add a Bosnian product name" }
+      : bsLen < 20
+      ? { label: "Bosnian title", status: "warn", tip: `Title is short (${bsLen} chars) — aim for 20–70` }
+      : bsLen > 70
+      ? { label: "Bosnian title", status: "warn", tip: `Title is long (${bsLen} chars) — keep under 70` }
+      : { label: "Bosnian title", status: "pass", tip: `Good length (${bsLen} chars)` }
+  );
+
+  // EN description
+  const enDesc = form.description_en.trim().length;
+  checks.push(
+    enDesc === 0
+      ? { label: "English description", status: "fail", tip: "Add an English description" }
+      : enDesc < 80
+      ? { label: "English description", status: "warn", tip: `Description is short (${enDesc} chars) — aim for 80+` }
+      : { label: "English description", status: "pass", tip: `Good description length (${enDesc} chars)` }
+  );
+
+  // BS description
+  const bsDesc = form.description_bs.trim().length;
+  checks.push(
+    bsDesc === 0
+      ? { label: "Bosnian description", status: "fail", tip: "Add a Bosnian description" }
+      : bsDesc < 80
+      ? { label: "Bosnian description", status: "warn", tip: `Description is short (${bsDesc} chars) — aim for 80+` }
+      : { label: "Bosnian description", status: "pass", tip: `Good description length (${bsDesc} chars)` }
+  );
+
+  // Main image
+  checks.push(
+    form.image_url
+      ? { label: "Main image", status: "pass", tip: "Main image is set" }
+      : { label: "Main image", status: "fail", tip: "Upload a main product image" }
+  );
+
+  // Gallery
+  const galleryCount = form.gallery_images.length;
+  checks.push(
+    galleryCount >= 2
+      ? { label: "Gallery photos", status: "pass", tip: `${galleryCount} gallery photo${galleryCount > 1 ? "s" : ""} — great` }
+      : galleryCount === 1
+      ? { label: "Gallery photos", status: "warn", tip: "Add at least one more gallery photo" }
+      : { label: "Gallery photos", status: "fail", tip: "Add gallery photos to show product details" }
+  );
+
+  // Category
+  checks.push(
+    form.category
+      ? { label: "Category", status: "pass", tip: "Category is set" }
+      : { label: "Category", status: "warn", tip: "Set a category so customers can filter this product" }
+  );
+
+  return checks;
+}
+
+function scoreColor(score: number, total: number) {
+  const pct = score / total;
+  if (pct >= 0.8) return "bg-green-500";
+  if (pct >= 0.5) return "bg-amber-400";
+  return "bg-red-400";
+}
+
+function SeoScorePill({ score, total }: { score: number; total: number }) {
+  const pct = score / total;
+  const color = pct >= 0.8 ? "bg-green-100 text-green-700" : pct >= 0.5 ? "bg-amber-100 text-amber-700" : "bg-red-100 text-red-600";
+  return (
+    <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${color}`}>
+      {score}/{total}
+    </span>
+  );
+}
+
+function SeoRow({ check }: { check: SeoCheck }) {
+  const Icon = check.status === "pass" ? CircleCheck : check.status === "warn" ? CircleAlert : CircleX;
+  const color = check.status === "pass" ? "text-green-500" : check.status === "warn" ? "text-amber-500" : "text-red-400";
+  const labelColor = check.status === "pass" ? "text-gray-700" : "text-gray-500";
+
+  return (
+    <div className="flex items-start gap-2.5">
+      <Icon className={`w-4 h-4 flex-shrink-0 mt-0.5 ${color}`} strokeWidth={1.75} />
+      <div>
+        <span className={`text-xs font-semibold ${labelColor}`}>{check.label}</span>
+        <span className="text-xs text-gray-400"> — {check.tip}</span>
+      </div>
+    </div>
+  );
+}
+
+// ─── Shared helpers ───────────────────────────────────────────────────────────
+
+function CharCount({ value, min, max }: { value: string; min: number; max: number }) {
+  const len = value.trim().length;
+  if (len === 0) return null;
+  const color = len < min ? "text-amber-500" : len > max ? "text-red-400" : "text-green-500";
+  return <p className={`text-xs text-right ${color}`}>{len} / {max}</p>;
 }
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {

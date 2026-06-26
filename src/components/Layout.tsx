@@ -14,7 +14,7 @@ export function Navbar() {
         <div className="flex-shrink-0">
           <a href="/" className="flex items-center gap-2.5">
             {logo_url ? (
-              <img src={logo_url} alt={store_name} className="h-9 w-auto object-contain" />
+              <img src={logo_url} alt={store_name} className="h-20 w-auto object-contain" />
             ) : (
               <span className="text-xl font-semibold tracking-tight text-navy">{store_name}.</span>
             )}
@@ -69,7 +69,7 @@ export function Footer() {
         <div className="grid grid-cols-1 md:grid-cols-4 gap-12 mb-16">
           <div className="md:col-span-2 flex flex-col gap-6">
             {logo_url ? (
-              <img src={logo_url} alt={store_name} className="h-10 w-auto object-contain brightness-0 invert" />
+              <img src={logo_url} alt={store_name} className="h-28 w-auto object-contain brightness-0 invert" />
             ) : (
               <span className="text-2xl font-semibold tracking-tight text-white">{store_name}.</span>
             )}

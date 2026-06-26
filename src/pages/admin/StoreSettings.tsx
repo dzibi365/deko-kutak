@@ -61,7 +61,7 @@ export default function StoreSettings() {
       .upload(path, file, { upsert: true, contentType: file.type });
     if (uploadErr) { setError(uploadErr.message); setUploadingLogo(false); return; }
     const { data: { publicUrl } } = supabase.storage.from("product-images").getPublicUrl(path);
-    set("logo_url", publicUrl);
+    set("logo_url", `${publicUrl}?t=${Date.now()}`);
     setUploadingLogo(false);
   }
 
@@ -180,7 +180,7 @@ export default function StoreSettings() {
           <p className="text-xs font-medium text-gray-400 uppercase tracking-wider">Navbar preview</p>
           <div className="bg-[#f5f5f0] rounded-lg px-4 py-3 border border-gray-100 flex items-center">
             {form.logo_url ? (
-              <img src={form.logo_url} alt={form.store_name} className="h-8 w-auto object-contain" />
+              <img src={form.logo_url} alt={form.store_name} className="h-20 w-auto object-contain" />
             ) : (
               <span className="text-base font-semibold tracking-tight text-navy">{form.store_name || "Deko Kutak"}.</span>
             )}
