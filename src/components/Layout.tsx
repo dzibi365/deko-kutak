@@ -1,17 +1,23 @@
 import { Search, User, ShoppingBag, Menu, Instagram, Facebook, Mail } from "lucide-react";
 import { useLang } from "../context/LanguageContext";
 import { useCart } from "../context/CartContext";
+import { useSiteSettings } from "../context/SiteSettingsContext";
 
 export function Navbar() {
   const { lang, toggleLang, tr } = useLang();
   const { count, openCart } = useCart();
+  const { store_name, logo_url } = useSiteSettings();
 
   return (
     <header className="sticky top-0 z-50 bg-cream/95 backdrop-blur-sm border-b-[0.5px] border-navy/10">
       <div className="max-w-5xl mx-auto w-full px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
         <div className="flex-shrink-0">
-          <a href="#" className="text-xl font-semibold tracking-tight text-navy">
-            Deko Kutak.
+          <a href="/" className="flex items-center gap-2.5">
+            {logo_url ? (
+              <img src={logo_url} alt={store_name} className="h-9 w-auto object-contain" />
+            ) : (
+              <span className="text-xl font-semibold tracking-tight text-navy">{store_name}.</span>
+            )}
           </a>
         </div>
 
@@ -55,13 +61,18 @@ export function Navbar() {
 
 export function Footer() {
   const { tr } = useLang();
+  const { store_name, logo_url } = useSiteSettings();
 
   return (
     <footer className="bg-navy text-cream pt-16 pb-8 border-t-[0.5px] border-navy/80">
       <div className="max-w-5xl mx-auto w-full px-4 sm:px-6 lg:px-8">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-12 mb-16">
           <div className="md:col-span-2 flex flex-col gap-6">
-            <span className="text-2xl font-semibold tracking-tight text-white">Deko Kutak.</span>
+            {logo_url ? (
+              <img src={logo_url} alt={store_name} className="h-10 w-auto object-contain brightness-0 invert" />
+            ) : (
+              <span className="text-2xl font-semibold tracking-tight text-white">{store_name}.</span>
+            )}
             <p className="text-cream/70 max-w-sm leading-relaxed">{tr("footer_desc")}</p>
             <div className="flex items-center gap-4 text-cream/70">
               <a href="#" className="hover:text-copper transition-colors" aria-label="Instagram">
@@ -94,7 +105,7 @@ export function Footer() {
         </div>
 
         <div className="flex flex-col md:flex-row items-center justify-between pt-8 border-t-[0.5px] border-cream/10 text-sm text-cream/50 gap-4">
-          <p>&copy; {new Date().getFullYear()} Deko Kutak. {tr("footer_rights")}</p>
+          <p>&copy; {new Date().getFullYear()} {store_name}. {tr("footer_rights")}</p>
           <div className="flex gap-6">
             <a href="#" className="hover:text-cream transition-colors">{tr("footer_privacy")}</a>
             <a href="#" className="hover:text-cream transition-colors">{tr("footer_terms")}</a>

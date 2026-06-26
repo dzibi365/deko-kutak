@@ -7,6 +7,7 @@ import { CartDrawer } from "./components/CartDrawer";
 import { AuthProvider } from "./context/AuthContext";
 import { LanguageProvider } from "./context/LanguageContext";
 import { CartProvider } from "./context/CartContext";
+import { SiteSettingsProvider } from "./context/SiteSettingsContext";
 import { AdminLayout } from "./components/admin/AdminLayout";
 import { RequireAuth } from "./components/admin/RequireAuth";
 import Login from "./pages/admin/Login";
@@ -78,6 +79,7 @@ function ConfirmationPage() {
 export default function App() {
   return (
     <AuthProvider>
+      <SiteSettingsProvider>
       <BrowserRouter>
         <Routes>
           <Route path="/" element={<StoreFront />} />
@@ -107,6 +109,7 @@ export default function App() {
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </BrowserRouter>
+      </SiteSettingsProvider>
     </AuthProvider>
   );
 }

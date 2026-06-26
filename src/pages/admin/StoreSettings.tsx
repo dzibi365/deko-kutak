@@ -1,20 +1,23 @@
-import { useEffect, useState } from "react";
-import { Save, Mail, Info } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { Save, Mail, Info, ImagePlus, X } from "lucide-react";
 import { supabase } from "../../lib/supabase";
 
 type Settings = {
+  store_name: string;
+  logo_url: string | null;
   bank_name: string;
   bank_account_holder: string;
   bank_iban: string;
   bank_note: string;
-  store_name: string;
   email_enabled: boolean;
   owner_email: string;
 };
 
 const empty: Settings = {
+  store_name: "Deko Kutak",
+  logo_url: null,
   bank_name: "", bank_account_holder: "", bank_iban: "", bank_note: "",
-  store_name: "Deko Kutak", email_enabled: false, owner_email: "",
+  email_enabled: false, owner_email: "",
 };
 
 export default function StoreSettings() {
@@ -23,16 +26,19 @@ export default function StoreSettings() {
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [uploadingLogo, setUploadingLogo] = useState(false);
+  const logoRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     supabase.from("store_settings").select("*").eq("id", 1).single().then(({ data }) => {
       if (data) {
         setForm({
+          store_name: data.store_name ?? "Deko Kutak",
+          logo_url: data.logo_url ?? null,
           bank_name: data.bank_name ?? "",
           bank_account_holder: data.bank_account_holder ?? "",
           bank_iban: data.bank_iban ?? "",
           bank_note: data.bank_note ?? "",
-          store_name: data.store_name ?? "Deko Kutak",
           email_enabled: data.email_enabled ?? false,
           owner_email: data.owner_email ?? "",
         });
@@ -41,8 +47,22 @@ export default function StoreSettings() {
     });
   }, []);
 
-  function set(key: keyof Settings, value: string | boolean) {
+  function set<K extends keyof Settings>(key: K, value: Settings[K]) {
     setForm((f) => ({ ...f, [key]: value }));
+  }
+
+  async function handleLogoUpload(file: File) {
+    setUploadingLogo(true);
+    setError(null);
+    const ext = file.name.split(".").pop();
+    const path = `brand/logo.${ext}`;
+    const { error: uploadErr } = await supabase.storage
+      .from("product-images")
+      .upload(path, file, { upsert: true, contentType: file.type });
+    if (uploadErr) { setError(uploadErr.message); setUploadingLogo(false); return; }
+    const { data: { publicUrl } } = supabase.storage.from("product-images").getPublicUrl(path);
+    set("logo_url", publicUrl);
+    setUploadingLogo(false);
   }
 
   async function handleSave() {
@@ -50,11 +70,12 @@ export default function StoreSettings() {
     setError(null);
     const { error: err } = await supabase.from("store_settings").upsert({
       id: 1,
+      store_name: form.store_name || "Deko Kutak",
+      logo_url: form.logo_url || null,
       bank_name: form.bank_name || null,
       bank_account_holder: form.bank_account_holder || null,
       bank_iban: form.bank_iban || null,
       bank_note: form.bank_note || null,
-      store_name: form.store_name || "Deko Kutak",
       email_enabled: form.email_enabled,
       owner_email: form.owner_email || null,
       updated_at: new Date().toISOString(),
@@ -72,7 +93,7 @@ export default function StoreSettings() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-semibold text-navy mb-1">Store Settings</h1>
-          <p className="text-sm text-gray-400">Bank details and email invoice configuration</p>
+          <p className="text-sm text-gray-400">Brand, bank details, and email configuration</p>
         </div>
         <button
           onClick={handleSave}
@@ -85,6 +106,87 @@ export default function StoreSettings() {
       </div>
 
       {error && <p className="text-sm text-red-500 px-4 py-3 bg-red-50 rounded-lg">{error}</p>}
+
+      {/* Brand Identity */}
+      <div className="bg-white border border-gray-200 rounded-xl p-6 flex flex-col gap-5">
+        <h2 className="font-semibold text-navy text-sm">Brand Identity</h2>
+
+        <Field label="Store Name">
+          <input
+            value={form.store_name}
+            onChange={(e) => set("store_name", e.target.value)}
+            placeholder="Deko Kutak"
+            className={inputCls}
+          />
+          <p className="text-xs text-gray-400">Shown in the navbar, footer, and emails.</p>
+        </Field>
+
+        <div className="flex flex-col gap-2">
+          <label className="text-sm font-medium text-navy">Logo</label>
+
+          {form.logo_url ? (
+            <div className="flex items-start gap-4">
+              <div className="w-32 h-16 rounded-lg border border-gray-200 bg-gray-50 flex items-center justify-center overflow-hidden p-2">
+                <img src={form.logo_url} alt="Logo" className="max-w-full max-h-full object-contain" />
+              </div>
+              <div className="flex flex-col gap-2">
+                <button
+                  type="button"
+                  onClick={() => logoRef.current?.click()}
+                  disabled={uploadingLogo}
+                  className="text-xs font-semibold text-navy border border-navy/30 px-3 py-1.5 rounded-lg hover:bg-navy/5 transition-colors disabled:opacity-50"
+                >
+                  {uploadingLogo ? "Uploading…" : "Replace"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => set("logo_url", null)}
+                  className="flex items-center gap-1 text-xs text-red-500 hover:text-red-700 transition-colors"
+                >
+                  <X className="w-3 h-3" /> Remove
+                </button>
+              </div>
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={() => logoRef.current?.click()}
+              disabled={uploadingLogo}
+              className="flex flex-col items-center gap-2 border-2 border-dashed border-gray-200 rounded-xl p-6 hover:border-navy/30 hover:bg-gray-50 transition-colors disabled:opacity-50"
+            >
+              <ImagePlus className="w-6 h-6 text-gray-300" strokeWidth={1.5} />
+              <span className="text-sm text-gray-400">
+                {uploadingLogo ? "Uploading…" : "Click to upload logo"}
+              </span>
+              <span className="text-xs text-gray-300">PNG or SVG recommended · max 2MB</span>
+            </button>
+          )}
+
+          <input
+            ref={logoRef}
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              if (file) handleLogoUpload(file);
+              e.target.value = "";
+            }}
+          />
+        </div>
+
+        {/* Live preview */}
+        <div className="flex flex-col gap-1.5">
+          <p className="text-xs font-medium text-gray-400 uppercase tracking-wider">Navbar preview</p>
+          <div className="bg-[#f5f5f0] rounded-lg px-4 py-3 border border-gray-100 flex items-center">
+            {form.logo_url ? (
+              <img src={form.logo_url} alt={form.store_name} className="h-8 w-auto object-contain" />
+            ) : (
+              <span className="text-base font-semibold tracking-tight text-navy">{form.store_name || "Deko Kutak"}.</span>
+            )}
+          </div>
+        </div>
+      </div>
 
       {/* Bank details */}
       <div className="bg-white border border-gray-200 rounded-xl p-6 flex flex-col gap-4">
@@ -116,7 +218,6 @@ export default function StoreSettings() {
             <Mail className="w-4 h-4 text-navy/50" strokeWidth={1.75} />
             <h2 className="font-semibold text-navy text-sm">Email Invoices</h2>
           </div>
-          {/* Toggle */}
           <button
             type="button"
             onClick={() => set("email_enabled", !form.email_enabled)}
@@ -127,20 +228,13 @@ export default function StoreSettings() {
         </div>
 
         {form.email_enabled && (
-          <>
-            <Field label="Store Name (shown in emails)">
-              <input value={form.store_name} onChange={(e) => set("store_name", e.target.value)}
-                placeholder="Deko Kutak" className={inputCls} />
-            </Field>
-            <Field label="Owner Notification Email">
-              <input type="email" value={form.owner_email} onChange={(e) => set("owner_email", e.target.value)}
-                placeholder="you@yourdomain.com" className={inputCls} />
-              <p className="text-xs text-gray-400">You will receive a copy of every new order at this address.</p>
-            </Field>
-          </>
+          <Field label="Owner Notification Email">
+            <input type="email" value={form.owner_email} onChange={(e) => set("owner_email", e.target.value)}
+              placeholder="you@yourdomain.com" className={inputCls} />
+            <p className="text-xs text-gray-400">You will receive a copy of every new order at this address.</p>
+          </Field>
         )}
 
-        {/* SMTP setup instructions */}
         <div className="bg-gray-50 border border-gray-100 rounded-xl p-4 flex gap-3">
           <Info className="w-4 h-4 text-gray-400 flex-shrink-0 mt-0.5" strokeWidth={1.75} />
           <div className="flex flex-col gap-2">
