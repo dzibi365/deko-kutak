@@ -11,6 +11,7 @@ type CustomerAuthCtx = {
   signIn: (email: string, password: string) => Promise<string | null>;
   signUp: (email: string, password: string, name: string) => Promise<string | null>;
   signOut: () => Promise<void>;
+  resetPassword: (email: string) => Promise<string | null>;
 };
 
 const Ctx = createContext<CustomerAuthCtx | null>(null);
@@ -49,12 +50,19 @@ export function CustomerAuthProvider({ children }: { children: ReactNode }) {
     await supabase.auth.signOut();
   }
 
+  async function resetPassword(email: string): Promise<string | null> {
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}/reset-password`,
+    });
+    return error?.message ?? null;
+  }
+
   return (
     <Ctx.Provider value={{
       user, loading, modalOpen,
       openModal: () => setModalOpen(true),
       closeModal: () => setModalOpen(false),
-      signIn, signUp, signOut,
+      signIn, signUp, signOut, resetPassword,
     }}>
       {children}
     </Ctx.Provider>

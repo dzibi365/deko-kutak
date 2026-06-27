@@ -23,6 +23,7 @@ import ProductDetail from "./pages/ProductDetail";
 import Checkout from "./pages/Checkout";
 import OrderConfirmation from "./pages/OrderConfirmation";
 import Account from "./pages/Account";
+import ResetPassword from "./pages/ResetPassword";
 
 function StoreFront() {
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
@@ -106,6 +107,7 @@ export default function App() {
 
           <Route path="/products/:id" element={<ProductPage />} />
           <Route path="/account" element={<AccountPage />} />
+          <Route path="/reset-password" element={<LanguageProvider><ResetPassword /></LanguageProvider>} />
           <Route path="/checkout" element={<CheckoutPage />} />
           <Route path="/order-confirmation/:orderNumber" element={<ConfirmationPage />} />
 
