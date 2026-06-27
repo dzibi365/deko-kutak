@@ -8,18 +8,24 @@ export default function ResetPassword() {
   const { tr } = useLang();
   const { store_name, logo_url } = useSiteSettings();
   const navigate = useNavigate();
-  const [ready, setReady] = useState(false);
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
+  const [sessionReady, setSessionReady] = useState(false);
 
-  // Supabase sends the recovery token in the URL hash; onAuthStateChange
-  // picks it up automatically and fires PASSWORD_RECOVERY.
   useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
-      if (event === "PASSWORD_RECOVERY") setReady(true);
+    // Check if session already exists (PKCE: code exchanged before component mounted)
+    supabase.auth.getSession().then(({ data }) => {
+      if (data.session) setSessionReady(true);
+    });
+
+    // Also listen for the event in case we arrive before exchange completes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if ((event === "PASSWORD_RECOVERY" || event === "SIGNED_IN") && session) {
+        setSessionReady(true);
+      }
     });
     return () => subscription.unsubscribe();
   }, []);
@@ -56,10 +62,13 @@ export default function ResetPassword() {
               {tr("auth_signin")}
             </button>
           </div>
-        ) : !ready ? (
-          <p className="text-sm text-navy/40 text-center py-4">
-            {tr("auth_reset_title")}…
-          </p>
+        ) : !sessionReady ? (
+          <div className="flex flex-col items-center gap-3 py-4">
+            <div className="w-6 h-6 border-2 border-navy/20 border-t-navy rounded-full animate-spin" />
+            <p className="text-sm text-navy/40">
+              {tr("auth_reset_title")}…
+            </p>
+          </div>
         ) : (
           <form onSubmit={handleSubmit} className="flex flex-col gap-3">
             {error && <p className="text-sm text-red-500 px-3 py-2.5 bg-red-50 rounded-lg">{error}</p>}
@@ -68,6 +77,7 @@ export default function ResetPassword() {
               value={password} onChange={(e) => setPassword(e.target.value)}
               placeholder={tr("auth_reset_new")}
               className={inputCls}
+              autoFocus
             />
             <input
               required type="password" minLength={6}
