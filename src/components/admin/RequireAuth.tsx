@@ -14,5 +14,10 @@ export function RequireAuth({ children }: { children: React.ReactNode }) {
 
   if (!session) return <Navigate to="/admin/login" replace />;
 
+  // Block customer accounts (created via product review signup) from accessing admin
+  if (session.user.user_metadata?.role === "customer") {
+    return <Navigate to="/" replace />;
+  }
+
   return <>{children}</>;
 }

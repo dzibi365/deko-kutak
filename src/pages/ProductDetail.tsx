@@ -4,6 +4,8 @@ import { ShoppingCart, Heart, ArrowLeft, CheckCircle, XCircle, Share2 } from "lu
 import { supabase, type Product, localName, localDesc } from "../lib/supabase";
 import { Navbar, Footer } from "../components/Layout";
 import { CartDrawer } from "../components/CartDrawer";
+import { AuthModal } from "../components/AuthModal";
+import { ReviewsSection } from "../components/ReviewsSection";
 import { useLang } from "../context/LanguageContext";
 import { useCart } from "../context/CartContext";
 
@@ -189,6 +191,9 @@ function ProductDetailContent() {
           </div>
         </div>
       </div>
+
+      {/* Reviews */}
+      <ReviewsSection productId={product.id} />
     </div>
   );
 }
@@ -198,6 +203,7 @@ export default function ProductDetail() {
     <div className="min-h-screen bg-cream font-sans text-navy flex flex-col">
       <Navbar />
       <CartDrawer />
+      <AuthModal />
       <main className="flex-1">
         <ProductDetailContent />
       </main>

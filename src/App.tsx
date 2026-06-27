@@ -8,6 +8,7 @@ import { AuthProvider } from "./context/AuthContext";
 import { LanguageProvider } from "./context/LanguageContext";
 import { CartProvider } from "./context/CartContext";
 import { SiteSettingsProvider } from "./context/SiteSettingsContext";
+import { CustomerAuthProvider } from "./context/CustomerAuthContext";
 import { AdminLayout } from "./components/admin/AdminLayout";
 import { RequireAuth } from "./components/admin/RequireAuth";
 import Login from "./pages/admin/Login";
@@ -52,7 +53,9 @@ function ProductPage() {
   return (
     <LanguageProvider>
       <CartProvider>
-        <ProductDetail />
+        <CustomerAuthProvider>
+          <ProductDetail />
+        </CustomerAuthProvider>
       </CartProvider>
     </LanguageProvider>
   );
