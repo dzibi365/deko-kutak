@@ -32,12 +32,12 @@ function StoreFront() {
           <CartDrawer />
           <main className="flex-1 flex flex-col">
             <Hero />
-            <div className="max-w-5xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-12 flex flex-col gap-10">
+            <div id="shop" className="max-w-5xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-12 flex flex-col gap-10">
               <CategoryStrip selected={selectedCategory} onSelect={setSelectedCategory} />
               <ProductGrid category={selectedCategory} />
             </div>
             <PromoBanner />
-            <div className="max-w-5xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-16">
+            <div id="testimonials" className="max-w-5xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-16">
               <Testimonials />
             </div>
           </main>

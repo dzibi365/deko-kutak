@@ -1,10 +1,15 @@
 import { useEffect, useRef, useState } from "react";
-import { Save, Mail, Info, ImagePlus, X } from "lucide-react";
+import { Save, Mail, Info, ImagePlus, X, Instagram, Facebook } from "lucide-react";
 import { supabase } from "../../lib/supabase";
 
 type Settings = {
   store_name: string;
   logo_url: string | null;
+  footer_desc_en: string;
+  footer_desc_bs: string;
+  social_facebook: string;
+  social_instagram: string;
+  social_email: string;
   bank_name: string;
   bank_account_holder: string;
   bank_iban: string;
@@ -16,6 +21,8 @@ type Settings = {
 const empty: Settings = {
   store_name: "Deko Kutak",
   logo_url: null,
+  footer_desc_en: "", footer_desc_bs: "",
+  social_facebook: "", social_instagram: "", social_email: "",
   bank_name: "", bank_account_holder: "", bank_iban: "", bank_note: "",
   email_enabled: false, owner_email: "",
 };
@@ -27,6 +34,7 @@ export default function StoreSettings() {
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [uploadingLogo, setUploadingLogo] = useState(false);
+  const [footerTab, setFooterTab] = useState<"en" | "bs">("en");
   const logoRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -35,6 +43,11 @@ export default function StoreSettings() {
         setForm({
           store_name: data.store_name ?? "Deko Kutak",
           logo_url: data.logo_url ?? null,
+          footer_desc_en: data.footer_desc_en ?? "",
+          footer_desc_bs: data.footer_desc_bs ?? "",
+          social_facebook: data.social_facebook ?? "",
+          social_instagram: data.social_instagram ?? "",
+          social_email: data.social_email ?? "",
           bank_name: data.bank_name ?? "",
           bank_account_holder: data.bank_account_holder ?? "",
           bank_iban: data.bank_iban ?? "",
@@ -72,6 +85,11 @@ export default function StoreSettings() {
       id: 1,
       store_name: form.store_name || "Deko Kutak",
       logo_url: form.logo_url || null,
+      footer_desc_en: form.footer_desc_en || null,
+      footer_desc_bs: form.footer_desc_bs || null,
+      social_facebook: form.social_facebook || null,
+      social_instagram: form.social_instagram || null,
+      social_email: form.social_email || null,
       bank_name: form.bank_name || null,
       bank_account_holder: form.bank_account_holder || null,
       bank_iban: form.bank_iban || null,
@@ -175,6 +193,31 @@ export default function StoreSettings() {
           />
         </div>
 
+        {/* Footer description */}
+        <div className="flex flex-col gap-2">
+          <div className="flex items-center justify-between">
+            <label className="text-sm font-medium text-navy">Footer description</label>
+            <div className="flex gap-1 p-0.5 bg-gray-100 rounded-md">
+              {(["en", "bs"] as const).map((l) => (
+                <button key={l} type="button" onClick={() => setFooterTab(l)}
+                  className={`px-2.5 py-0.5 rounded text-xs font-semibold transition-colors ${footerTab === l ? "bg-white text-navy shadow-sm" : "text-gray-500 hover:text-navy"}`}>
+                  {l.toUpperCase()}
+                </button>
+              ))}
+            </div>
+          </div>
+          <textarea
+            value={footerTab === "en" ? form.footer_desc_en : form.footer_desc_bs}
+            onChange={(e) => set(footerTab === "en" ? "footer_desc_en" : "footer_desc_bs", e.target.value)}
+            rows={3}
+            placeholder={footerTab === "en"
+              ? "Unique handmade gifts crafted with love…"
+              : "Jedinstveni ručno rađeni pokloni izrađeni s ljubavlju…"}
+            className={`${inputCls} resize-none`}
+          />
+          <p className="text-xs text-gray-400">Shown below the logo in the website footer.</p>
+        </div>
+
         {/* Live preview */}
         <div className="flex flex-col gap-1.5">
           <p className="text-xs font-medium text-gray-400 uppercase tracking-wider">Navbar preview</p>
@@ -186,6 +229,49 @@ export default function StoreSettings() {
             )}
           </div>
         </div>
+      </div>
+
+      {/* Social Links */}
+      <div className="bg-white border border-gray-200 rounded-xl p-6 flex flex-col gap-4">
+        <h2 className="font-semibold text-navy text-sm">Social Links</h2>
+        <p className="text-xs text-gray-400 -mt-2">Links appear as icons in the footer. Leave blank to hide an icon.</p>
+
+        <Field label="Instagram">
+          <div className="relative">
+            <Instagram className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" strokeWidth={1.75} />
+            <input
+              value={form.social_instagram}
+              onChange={(e) => set("social_instagram", e.target.value)}
+              placeholder="https://instagram.com/yourpage"
+              className={`${inputCls} pl-9`}
+            />
+          </div>
+        </Field>
+
+        <Field label="Facebook">
+          <div className="relative">
+            <Facebook className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" strokeWidth={1.75} />
+            <input
+              value={form.social_facebook}
+              onChange={(e) => set("social_facebook", e.target.value)}
+              placeholder="https://facebook.com/yourpage"
+              className={`${inputCls} pl-9`}
+            />
+          </div>
+        </Field>
+
+        <Field label="Contact Email">
+          <div className="relative">
+            <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" strokeWidth={1.75} />
+            <input
+              type="email"
+              value={form.social_email}
+              onChange={(e) => set("social_email", e.target.value)}
+              placeholder="info@dekokutak.ba"
+              className={`${inputCls} pl-9`}
+            />
+          </div>
+        </Field>
       </div>
 
       {/* Bank details */}

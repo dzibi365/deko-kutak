@@ -60,8 +60,9 @@ export function Navbar() {
 }
 
 export function Footer() {
-  const { tr } = useLang();
-  const { store_name, logo_url } = useSiteSettings();
+  const { tr, lang } = useLang();
+  const { store_name, logo_url, social_facebook, social_instagram, social_email, footer_desc_en, footer_desc_bs } = useSiteSettings();
+  const footerDesc = lang === "bs" ? (footer_desc_bs || footer_desc_en) : (footer_desc_en || footer_desc_bs);
 
   return (
     <footer className="bg-navy text-cream pt-16 pb-8 border-t-[0.5px] border-navy/80">
@@ -73,17 +74,23 @@ export function Footer() {
             ) : (
               <span className="text-2xl font-semibold tracking-tight text-white">{store_name}.</span>
             )}
-            <p className="text-cream/70 max-w-sm leading-relaxed">{tr("footer_desc")}</p>
+            <p className="text-cream/70 max-w-sm leading-relaxed">{footerDesc || tr("footer_desc")}</p>
             <div className="flex items-center gap-4 text-cream/70">
-              <a href="#" className="hover:text-copper transition-colors" aria-label="Instagram">
-                <Instagram className="w-5 h-5" />
-              </a>
-              <a href="#" className="hover:text-copper transition-colors" aria-label="Facebook">
-                <Facebook className="w-5 h-5" />
-              </a>
-              <a href="#" className="hover:text-copper transition-colors" aria-label="Email">
-                <Mail className="w-5 h-5" />
-              </a>
+              {social_instagram && (
+                <a href={social_instagram} target="_blank" rel="noopener noreferrer" className="hover:text-copper transition-colors" aria-label="Instagram">
+                  <Instagram className="w-5 h-5" />
+                </a>
+              )}
+              {social_facebook && (
+                <a href={social_facebook} target="_blank" rel="noopener noreferrer" className="hover:text-copper transition-colors" aria-label="Facebook">
+                  <Facebook className="w-5 h-5" />
+                </a>
+              )}
+              {social_email && (
+                <a href={`mailto:${social_email}`} className="hover:text-copper transition-colors" aria-label="Email">
+                  <Mail className="w-5 h-5" />
+                </a>
+              )}
             </div>
           </div>
 

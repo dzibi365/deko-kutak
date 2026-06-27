@@ -10,6 +10,8 @@ type HeroConfig = {
   subtext_en: string; subtext_bs: string;
   cta_primary_en: string; cta_primary_bs: string;
   cta_secondary_en: string; cta_secondary_bs: string;
+  show_cta_primary: boolean;
+  show_cta_secondary: boolean;
   image_url: string;
   stat1_value: string; stat1_label_en: string; stat1_label_bs: string;
   stat2_value: string; stat2_label_en: string; stat2_label_bs: string;
@@ -28,8 +30,10 @@ export function Hero() {
   const badge    = cfg ? (lang === "bs" ? cfg.badge_bs    : cfg.badge_en)    : tr("hero_badge");
   const heading  = cfg ? (lang === "bs" ? cfg.heading_bs  : cfg.heading_en)  : tr("hero_heading");
   const subtext  = cfg ? (lang === "bs" ? cfg.subtext_bs  : cfg.subtext_en)  : tr("hero_sub");
-  const ctaShop  = cfg ? (lang === "bs" ? cfg.cta_primary_bs   : cfg.cta_primary_en)   : tr("hero_cta_shop");
-  const ctaStory = cfg ? (lang === "bs" ? cfg.cta_secondary_bs : cfg.cta_secondary_en) : tr("hero_cta_story");
+  const ctaShop       = cfg ? (lang === "bs" ? cfg.cta_primary_bs   : cfg.cta_primary_en)   : tr("hero_cta_shop");
+  const ctaStory      = cfg ? (lang === "bs" ? cfg.cta_secondary_bs : cfg.cta_secondary_en) : tr("hero_cta_story");
+  const showPrimary   = cfg ? cfg.show_cta_primary   : true;
+  const showSecondary = cfg ? cfg.show_cta_secondary : true;
   const stat1Val = cfg?.stat1_value ?? "500+";
   const stat1Lbl = cfg ? (lang === "bs" ? cfg.stat1_label_bs : cfg.stat1_label_en) : tr("hero_stat_customers");
   const stat2Val = cfg?.stat2_value ?? "100%";
@@ -49,14 +53,26 @@ export function Hero() {
             <p className="text-lg text-cream/80 max-w-md leading-relaxed">
               {subtext}
             </p>
-            <div className="flex flex-wrap items-center gap-4 pt-4">
-              <button className="px-6 py-3 bg-copper text-white font-semibold rounded-lg hover:bg-copper/90 transition-colors">
-                {ctaShop}
-              </button>
-              <button className="px-6 py-3 bg-transparent border-[0.5px] border-cream/30 text-cream font-semibold rounded-lg hover:bg-cream/5 transition-colors">
-                {ctaStory}
-              </button>
-            </div>
+            {(showPrimary || showSecondary) && (
+              <div className="flex flex-wrap items-center gap-4 pt-4">
+                {showPrimary && (
+                  <button
+                    onClick={() => document.getElementById("shop")?.scrollIntoView({ behavior: "smooth" })}
+                    className="px-6 py-3 bg-copper text-white font-semibold rounded-lg hover:bg-copper/90 transition-colors"
+                  >
+                    {ctaShop}
+                  </button>
+                )}
+                {showSecondary && (
+                  <button
+                    onClick={() => document.getElementById("testimonials")?.scrollIntoView({ behavior: "smooth" })}
+                    className="px-6 py-3 bg-transparent border-[0.5px] border-cream/30 text-cream font-semibold rounded-lg hover:bg-cream/5 transition-colors"
+                  >
+                    {ctaStory}
+                  </button>
+                )}
+              </div>
+            )}
           </div>
 
           <div className="relative h-[400px] w-full hidden lg:block">
@@ -150,7 +166,10 @@ export function PromoBanner() {
           </h2>
           <p className="text-cream/70 text-lg">{tr("promo_sub")}</p>
         </div>
-        <button className="shrink-0 flex items-center gap-2 px-6 py-3 bg-copper text-white font-semibold rounded-lg hover:bg-copper/90 transition-colors">
+        <button
+          onClick={() => document.getElementById("shop")?.scrollIntoView({ behavior: "smooth" })}
+          className="shrink-0 flex items-center gap-2 px-6 py-3 bg-copper text-white font-semibold rounded-lg hover:bg-copper/90 transition-colors"
+        >
           {tr("promo_btn")}
           <ArrowRight className="w-4 h-4" strokeWidth={2} />
         </button>

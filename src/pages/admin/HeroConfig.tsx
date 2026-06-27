@@ -8,6 +8,8 @@ type HeroRow = {
   subtext_en: string; subtext_bs: string;
   cta_primary_en: string; cta_primary_bs: string;
   cta_secondary_en: string; cta_secondary_bs: string;
+  show_cta_primary: boolean;
+  show_cta_secondary: boolean;
   image_url: string;
   stat1_value: string; stat1_label_en: string; stat1_label_bs: string;
   stat2_value: string; stat2_label_en: string; stat2_label_bs: string;
@@ -20,6 +22,8 @@ const defaults: HeroRow = {
   subtext_bs: "Otkrijte jedinstvene, ručno rađene ukrase za dom i personalizirane poklone izrađene s ljubavlju od prirodnih materijala.",
   cta_primary_en: "Shop Collection", cta_primary_bs: "Pregledaj kolekciju",
   cta_secondary_en: "Our Story", cta_secondary_bs: "Naša priča",
+  show_cta_primary: true,
+  show_cta_secondary: true,
   image_url: "",
   stat1_value: "500+", stat1_label_en: "Happy Customers", stat1_label_bs: "Zadovoljnih kupaca",
   stat2_value: "100%", stat2_label_en: "Handmade Quality", stat2_label_bs: "Ručna izrada",
@@ -30,6 +34,7 @@ type Tab = "en" | "bs";
 export default function HeroConfig() {
   const [form, setForm] = useState<HeroRow>({ ...defaults });
   const [tab, setTab] = useState<Tab>("en");
+
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -51,6 +56,8 @@ export default function HeroConfig() {
           cta_primary_bs: data.cta_primary_bs ?? defaults.cta_primary_bs,
           cta_secondary_en: data.cta_secondary_en ?? defaults.cta_secondary_en,
           cta_secondary_bs: data.cta_secondary_bs ?? defaults.cta_secondary_bs,
+          show_cta_primary: data.show_cta_primary ?? true,
+          show_cta_secondary: data.show_cta_secondary ?? true,
           image_url: data.image_url ?? "",
           stat1_value: data.stat1_value ?? defaults.stat1_value,
           stat1_label_en: data.stat1_label_en ?? defaults.stat1_label_en,
@@ -64,7 +71,7 @@ export default function HeroConfig() {
     });
   }, []);
 
-  function set(key: keyof HeroRow, value: string) {
+  function set(key: keyof HeroRow, value: string | boolean) {
     setForm((f) => ({ ...f, [key]: value }));
   }
 
@@ -151,20 +158,46 @@ export default function HeroConfig() {
 
         {/* CTA buttons */}
         <Section title="Buttons">
-          <div className="grid grid-cols-2 gap-3">
-            <div className="flex flex-col gap-1">
-              <label className="text-xs text-gray-400">Primary button</label>
-              <input value={tab === "en" ? form.cta_primary_en : form.cta_primary_bs}
-                onChange={(e) => set(tab === "en" ? "cta_primary_en" : "cta_primary_bs", e.target.value)}
-                placeholder={tab === "en" ? "Shop Collection" : "Pregledaj kolekciju"}
-                className={inputCls} />
+          <div className="flex flex-col gap-3">
+            {/* Primary */}
+            <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl border border-gray-100">
+              <button
+                type="button"
+                onClick={() => set("show_cta_primary", !form.show_cta_primary)}
+                className={`w-9 h-5 rounded-full transition-colors flex items-center px-0.5 flex-shrink-0 ${form.show_cta_primary ? "bg-navy" : "bg-gray-300"}`}
+              >
+                <div className={`w-4 h-4 rounded-full bg-white shadow transition-transform ${form.show_cta_primary ? "translate-x-4" : "translate-x-0"}`} />
+              </button>
+              <div className="flex flex-col gap-1 flex-1">
+                <span className="text-xs font-semibold text-gray-500">Primary button {!form.show_cta_primary && <span className="text-gray-400 font-normal">(hidden)</span>}</span>
+                <input
+                  value={tab === "en" ? form.cta_primary_en : form.cta_primary_bs}
+                  onChange={(e) => set(tab === "en" ? "cta_primary_en" : "cta_primary_bs", e.target.value)}
+                  placeholder={tab === "en" ? "Shop Collection" : "Pregledaj kolekciju"}
+                  disabled={!form.show_cta_primary}
+                  className={`${inputCls} disabled:opacity-40`}
+                />
+              </div>
             </div>
-            <div className="flex flex-col gap-1">
-              <label className="text-xs text-gray-400">Secondary button</label>
-              <input value={tab === "en" ? form.cta_secondary_en : form.cta_secondary_bs}
-                onChange={(e) => set(tab === "en" ? "cta_secondary_en" : "cta_secondary_bs", e.target.value)}
-                placeholder={tab === "en" ? "Our Story" : "Naša priča"}
-                className={inputCls} />
+            {/* Secondary */}
+            <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl border border-gray-100">
+              <button
+                type="button"
+                onClick={() => set("show_cta_secondary", !form.show_cta_secondary)}
+                className={`w-9 h-5 rounded-full transition-colors flex items-center px-0.5 flex-shrink-0 ${form.show_cta_secondary ? "bg-navy" : "bg-gray-300"}`}
+              >
+                <div className={`w-4 h-4 rounded-full bg-white shadow transition-transform ${form.show_cta_secondary ? "translate-x-4" : "translate-x-0"}`} />
+              </button>
+              <div className="flex flex-col gap-1 flex-1">
+                <span className="text-xs font-semibold text-gray-500">Secondary button {!form.show_cta_secondary && <span className="text-gray-400 font-normal">(hidden)</span>}</span>
+                <input
+                  value={tab === "en" ? form.cta_secondary_en : form.cta_secondary_bs}
+                  onChange={(e) => set(tab === "en" ? "cta_secondary_en" : "cta_secondary_bs", e.target.value)}
+                  placeholder={tab === "en" ? "Our Story" : "Naša priča"}
+                  disabled={!form.show_cta_secondary}
+                  className={`${inputCls} disabled:opacity-40`}
+                />
+              </div>
             </div>
           </div>
         </Section>
