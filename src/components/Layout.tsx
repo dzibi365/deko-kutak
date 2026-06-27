@@ -1,12 +1,37 @@
-import { Search, User, ShoppingBag, Menu, Instagram, Facebook, Mail } from "lucide-react";
+import { useRef, useEffect, useState } from "react";
+import { Search, User, ShoppingBag, Menu, Instagram, Facebook, Mail, LayoutDashboard, LogOut } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import { useLang } from "../context/LanguageContext";
 import { useCart } from "../context/CartContext";
 import { useSiteSettings } from "../context/SiteSettingsContext";
+import { useCustomerAuth } from "../context/CustomerAuthContext";
 
 export function Navbar() {
   const { lang, toggleLang, tr } = useLang();
   const { count, openCart } = useCart();
   const { store_name, logo_url } = useSiteSettings();
+  const { user, openModal, signOut } = useCustomerAuth();
+  const navigate = useNavigate();
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function onOutsideClick(e: MouseEvent) {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+        setDropdownOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", onOutsideClick);
+    return () => document.removeEventListener("mousedown", onOutsideClick);
+  }, []);
+
+  const isCustomer = user?.user_metadata?.role === "customer";
+  const isAdmin = user && !isCustomer;
+
+  function handleUserClick() {
+    if (!user) { openModal(); return; }
+    setDropdownOpen((v) => !v);
+  }
 
   return (
     <header className="sticky top-0 z-50 bg-cream/95 backdrop-blur-sm border-b-[0.5px] border-navy/10">
@@ -39,9 +64,59 @@ export function Navbar() {
           <button className="hover:text-copper transition-colors" aria-label="Search">
             <Search className="w-5 h-5" strokeWidth={1.5} />
           </button>
-          <button className="hidden sm:block hover:text-copper transition-colors" aria-label="Account">
-            <User className="w-5 h-5" strokeWidth={1.5} />
-          </button>
+
+          {/* User icon + dropdown */}
+          <div className="relative hidden sm:block" ref={dropdownRef}>
+            <button
+              onClick={handleUserClick}
+              className={`hover:text-copper transition-colors ${user ? "text-navy" : ""}`}
+              aria-label="Account"
+            >
+              <User className="w-5 h-5" strokeWidth={1.5} />
+            </button>
+
+            {dropdownOpen && user && (
+              <div className="absolute right-0 top-8 bg-white border border-gray-100 rounded-xl shadow-lg py-2 min-w-[180px] z-50">
+                <div className="px-4 py-2.5 border-b border-gray-50">
+                  <p className="text-xs font-semibold text-navy truncate">
+                    {user.user_metadata?.full_name || user.email?.split("@")[0]}
+                  </p>
+                  <p className="text-xs text-gray-400 truncate">{user.email}</p>
+                </div>
+
+                {isCustomer && (
+                  <button
+                    onClick={() => { setDropdownOpen(false); navigate("/account"); }}
+                    className="w-full text-left px-4 py-2.5 text-sm text-navy hover:bg-gray-50 transition-colors flex items-center gap-2.5"
+                  >
+                    <User className="w-3.5 h-3.5 text-navy/40" strokeWidth={1.75} />
+                    {lang === "bs" ? "Moj račun" : "My Account"}
+                  </button>
+                )}
+
+                {isAdmin && (
+                  <button
+                    onClick={() => { setDropdownOpen(false); navigate("/admin"); }}
+                    className="w-full text-left px-4 py-2.5 text-sm text-navy hover:bg-gray-50 transition-colors flex items-center gap-2.5"
+                  >
+                    <LayoutDashboard className="w-3.5 h-3.5 text-navy/40" strokeWidth={1.75} />
+                    {lang === "bs" ? "Admin panel" : "Admin Panel"}
+                  </button>
+                )}
+
+                <div className="border-t border-gray-50 mt-1 pt-1">
+                  <button
+                    onClick={() => { setDropdownOpen(false); signOut(); }}
+                    className="w-full text-left px-4 py-2.5 text-sm text-red-500 hover:bg-red-50 transition-colors flex items-center gap-2.5"
+                  >
+                    <LogOut className="w-3.5 h-3.5" strokeWidth={1.75} />
+                    {lang === "bs" ? "Odjava" : "Sign out"}
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+
           <button onClick={openCart} className="relative hover:text-copper transition-colors" aria-label="Cart">
             <ShoppingBag className="w-5 h-5" strokeWidth={1.5} />
             {count > 0 && (

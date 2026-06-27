@@ -9,6 +9,7 @@ import { LanguageProvider } from "./context/LanguageContext";
 import { CartProvider } from "./context/CartContext";
 import { SiteSettingsProvider } from "./context/SiteSettingsContext";
 import { CustomerAuthProvider } from "./context/CustomerAuthContext";
+import { AuthModal } from "./components/AuthModal";
 import { AdminLayout } from "./components/admin/AdminLayout";
 import { RequireAuth } from "./components/admin/RequireAuth";
 import Login from "./pages/admin/Login";
@@ -21,6 +22,7 @@ import StoreSettings from "./pages/admin/StoreSettings";
 import ProductDetail from "./pages/ProductDetail";
 import Checkout from "./pages/Checkout";
 import OrderConfirmation from "./pages/OrderConfirmation";
+import Account from "./pages/Account";
 
 function StoreFront() {
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
@@ -28,22 +30,25 @@ function StoreFront() {
   return (
     <LanguageProvider>
       <CartProvider>
-        <div className="min-h-screen bg-cream font-sans text-navy flex flex-col">
-          <Navbar />
-          <CartDrawer />
-          <main className="flex-1 flex flex-col">
-            <Hero />
-            <div id="shop" className="max-w-5xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-12 flex flex-col gap-10">
-              <CategoryStrip selected={selectedCategory} onSelect={setSelectedCategory} />
-              <ProductGrid category={selectedCategory} />
-            </div>
-            <PromoBanner />
-            <div id="testimonials" className="max-w-5xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-16">
-              <Testimonials />
-            </div>
-          </main>
-          <Footer />
-        </div>
+        <CustomerAuthProvider>
+          <AuthModal />
+          <div className="min-h-screen bg-cream font-sans text-navy flex flex-col">
+            <Navbar />
+            <CartDrawer />
+            <main className="flex-1 flex flex-col">
+              <Hero />
+              <div id="shop" className="max-w-5xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-12 flex flex-col gap-10">
+                <CategoryStrip selected={selectedCategory} onSelect={setSelectedCategory} />
+                <ProductGrid category={selectedCategory} />
+              </div>
+              <PromoBanner />
+              <div id="testimonials" className="max-w-5xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-16">
+                <Testimonials />
+              </div>
+            </main>
+            <Footer />
+          </div>
+        </CustomerAuthProvider>
       </CartProvider>
     </LanguageProvider>
   );
@@ -55,6 +60,18 @@ function ProductPage() {
       <CartProvider>
         <CustomerAuthProvider>
           <ProductDetail />
+        </CustomerAuthProvider>
+      </CartProvider>
+    </LanguageProvider>
+  );
+}
+
+function AccountPage() {
+  return (
+    <LanguageProvider>
+      <CartProvider>
+        <CustomerAuthProvider>
+          <Account />
         </CustomerAuthProvider>
       </CartProvider>
     </LanguageProvider>
@@ -88,6 +105,7 @@ export default function App() {
           <Route path="/" element={<StoreFront />} />
 
           <Route path="/products/:id" element={<ProductPage />} />
+          <Route path="/account" element={<AccountPage />} />
           <Route path="/checkout" element={<CheckoutPage />} />
           <Route path="/order-confirmation/:orderNumber" element={<ConfirmationPage />} />
 
