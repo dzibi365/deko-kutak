@@ -39,9 +39,11 @@ export default function StoreSettings() {
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [uploadingLogo, setUploadingLogo] = useState(false);
+  const [uploadingOg, setUploadingOg] = useState(false);
   const [footerTab, setFooterTab] = useState<"en" | "bs">("en");
   const [seoDescTab, setSeoDescTab] = useState<"en" | "bs">("en");
   const logoRef = useRef<HTMLInputElement>(null);
+  const ogRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     supabase.from("store_settings").select("*").eq("id", 1).single().then(({ data }) => {
@@ -86,6 +88,20 @@ export default function StoreSettings() {
     const { data: { publicUrl } } = supabase.storage.from("product-images").getPublicUrl(path);
     set("logo_url", `${publicUrl}?t=${Date.now()}`);
     setUploadingLogo(false);
+  }
+
+  async function handleOgUpload(file: File) {
+    setUploadingOg(true);
+    setError(null);
+    const ext = file.name.split(".").pop();
+    const path = `brand/og-image.${ext}`;
+    const { error: uploadErr } = await supabase.storage
+      .from("product-images")
+      .upload(path, file, { upsert: true, contentType: file.type });
+    if (uploadErr) { setError(uploadErr.message); setUploadingOg(false); return; }
+    const { data: { publicUrl } } = supabase.storage.from("product-images").getPublicUrl(path);
+    set("og_image", `${publicUrl}?t=${Date.now()}`);
+    setUploadingOg(false);
   }
 
   async function handleSave() {
@@ -335,15 +351,60 @@ export default function StoreSettings() {
           )}
         </div>
 
-        <Field label="Social Share Image (OG Image)">
+        <div className="flex flex-col gap-2">
+          <label className="text-sm font-medium text-navy">Social Share Image (OG Image)</label>
+          <p className="text-xs text-gray-400">Shown when your site is shared on Facebook, WhatsApp, etc. Recommended: 1200×630px JPG or PNG.</p>
+
+          {form.og_image ? (
+            <div className="flex items-start gap-4">
+              <div className="w-40 h-[84px] rounded-lg border border-gray-200 bg-gray-50 overflow-hidden flex-shrink-0">
+                <img src={form.og_image} alt="OG" className="w-full h-full object-cover" />
+              </div>
+              <div className="flex flex-col gap-2">
+                <button
+                  type="button"
+                  onClick={() => ogRef.current?.click()}
+                  disabled={uploadingOg}
+                  className="text-xs font-semibold text-navy border border-navy/30 px-3 py-1.5 rounded-lg hover:bg-navy/5 transition-colors disabled:opacity-50"
+                >
+                  {uploadingOg ? "Uploading…" : "Replace"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => set("og_image", "")}
+                  className="flex items-center gap-1 text-xs text-red-500 hover:text-red-700 transition-colors"
+                >
+                  <X className="w-3 h-3" /> Remove
+                </button>
+              </div>
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={() => ogRef.current?.click()}
+              disabled={uploadingOg}
+              className="flex flex-col items-center gap-2 border-2 border-dashed border-gray-200 rounded-xl p-6 hover:border-navy/30 hover:bg-gray-50 transition-colors disabled:opacity-50"
+            >
+              <ImagePlus className="w-6 h-6 text-gray-300" strokeWidth={1.5} />
+              <span className="text-sm text-gray-400">
+                {uploadingOg ? "Uploading…" : "Click to upload OG image"}
+              </span>
+              <span className="text-xs text-gray-300">JPG or PNG · 1200×630px recommended</span>
+            </button>
+          )}
+
           <input
-            value={form.og_image}
-            onChange={(e) => set("og_image", e.target.value)}
-            placeholder="https://yourdomain.com/og-image.jpg"
-            className={inputCls}
+            ref={ogRef}
+            type="file"
+            accept="image/jpeg,image/png,image/webp"
+            className="hidden"
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              if (file) handleOgUpload(file);
+              e.target.value = "";
+            }}
           />
-          <p className="text-xs text-gray-400">Image shown when your site is shared on Facebook, WhatsApp, etc. Recommended size: 1200×630px.</p>
-        </Field>
+        </div>
 
         {/* Google preview */}
         {(form.seo_title || form.store_name) && (
