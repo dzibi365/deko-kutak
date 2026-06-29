@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
 import { ArrowRight, Star } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import { testimonials } from "../data";
 import { useLang } from "../context/LanguageContext";
-import { supabase, type Category, localName } from "../lib/supabase";
+import { supabase, type Category, type Product, localName } from "../lib/supabase";
 
 type HeroConfig = {
   badge_en: string; badge_bs: string;
@@ -175,6 +176,150 @@ export function PromoBanner() {
         </button>
       </div>
     </section>
+  );
+}
+
+const NEW_THRESHOLD_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
+
+export function CategoryShowcase() {
+  const { lang } = useLang();
+  const navigate = useNavigate();
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [products, setProducts] = useState<Product[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    Promise.all([
+      supabase.from("categories").select("*").order("name"),
+      supabase.from("products").select("*").eq("in_stock", true).order("created_at", { ascending: false }),
+    ]).then(([catsRes, prodsRes]) => {
+      setCategories(catsRes.data ?? []);
+      setProducts(prodsRes.data ?? []);
+      setLoading(false);
+    });
+  }, []);
+
+  const rows = categories
+    .map((cat) => {
+      const key = cat.name_en ?? cat.name;
+      return { cat, products: products.filter((p) => p.category === key) };
+    })
+    .filter((r) => r.products.length > 0);
+
+  if (loading || rows.length === 0) return null;
+
+  return (
+    <section className="flex flex-col gap-4">
+      <h2 className="text-2xl font-semibold tracking-tight text-navy">
+        {lang === "bs" ? "Kupuj po kategorijama" : "Shop by Category"}
+      </h2>
+      <div className="flex flex-col gap-4">
+        {rows.map(({ cat, products: catProducts }) => (
+          <CategoryRow
+            key={cat.id}
+            cat={cat}
+            products={catProducts.slice(0, 6)}
+            lang={lang}
+            onNavigate={(id) => navigate(`/products/${id}`)}
+          />
+        ))}
+      </div>
+    </section>
+  );
+}
+
+type RowProps = {
+  cat: Category;
+  products: Product[];
+  lang: string;
+  onNavigate: (id: number) => void;
+};
+
+function CategoryRow({ cat, products, lang, onNavigate }: RowProps) {
+  const catName = lang === "bs" ? (cat.name_bs || cat.name_en || cat.name) : (cat.name_en || cat.name);
+  const now = Date.now();
+
+  return (
+    <div className="flex rounded-2xl overflow-hidden border border-gray-100 shadow-sm min-h-[460px]">
+
+      {/* Left: fixed 220px category image panel */}
+      <div className="w-[220px] flex-shrink-0 relative bg-navy">
+        {cat.image_url ? (
+          <img
+            src={cat.image_url}
+            alt={catName}
+            className="absolute inset-0 w-full h-full object-cover"
+          />
+        ) : (
+          <div className="absolute inset-0 bg-gradient-to-br from-navy/90 to-navy/60 flex items-center justify-center">
+            <span className="text-cream/20 text-6xl font-bold select-none">{catName.charAt(0)}</span>
+          </div>
+        )}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/20 to-transparent" />
+        <div className="absolute bottom-0 left-0 right-0 p-5">
+          <p className="text-white font-semibold text-lg leading-snug">{catName}</p>
+          <p className="text-white/50 text-xs mt-1">
+            {products.length} {products.length === 1
+              ? (lang === "bs" ? "proizvod" : "product")
+              : (lang === "bs" ? "proizvoda" : "products")}
+          </p>
+        </div>
+      </div>
+
+      {/* Right: 3×2 product grid */}
+      <div className="flex-1 bg-white p-5">
+        <div className="grid grid-cols-3 grid-rows-2 gap-4 h-full">
+          {products.map((product) => {
+            const name = lang === "bs"
+              ? (product.name_bs || product.name_en || product.name)
+              : (product.name_en || product.name);
+            const isNew = (now - new Date(product.created_at).getTime()) < NEW_THRESHOLD_MS;
+            const hasDiscount = product.compare_price && product.compare_price > product.price;
+
+            return (
+              <div
+                key={product.id}
+                onClick={() => onNavigate(product.id)}
+                className="group cursor-pointer flex flex-col"
+              >
+                {/* Image */}
+                <div className="relative flex-1 rounded-xl overflow-hidden bg-cream/60 border-[0.5px] border-navy/8">
+                  {product.image_url ? (
+                    <img
+                      src={product.image_url}
+                      alt={name}
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center min-h-[100px]">
+                      <span className="text-navy/20 text-[10px] uppercase tracking-widest">No image</span>
+                    </div>
+                  )}
+                  {isNew && (
+                    <span className="absolute top-2 right-2 bg-copper text-white text-[9px] font-bold px-1.5 py-0.5 rounded tracking-widest uppercase">
+                      New
+                    </span>
+                  )}
+                </div>
+
+                {/* Name + price */}
+                <div className="mt-2 px-0.5 flex flex-col gap-0.5">
+                  <p className="text-xs font-medium text-navy line-clamp-2 leading-snug">{name}</p>
+                  {hasDiscount && (
+                    <p className="text-[11px] text-gray-400 line-through leading-none">
+                      {product.compare_price!.toFixed(2)} KM
+                    </p>
+                  )}
+                  <p className={`text-xs font-semibold leading-none ${hasDiscount ? "text-red-500" : "text-navy"}`}>
+                    {product.price.toFixed(2)} KM
+                  </p>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </div>
   );
 }
 

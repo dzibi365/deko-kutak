@@ -2,7 +2,7 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { useState } from "react";
 import { HelmetProvider } from "react-helmet-async";
 import { Navbar, Footer } from "./components/Layout";
-import { Hero, CategoryStrip, PromoBanner, Testimonials } from "./components/HomeSections";
+import { Hero, CategoryStrip, PromoBanner, Testimonials, CategoryShowcase } from "./components/HomeSections";
 import { ProductGrid } from "./components/ProductGrid";
 import { CartDrawer } from "./components/CartDrawer";
 import { AuthProvider } from "./context/AuthContext";
@@ -45,7 +45,10 @@ function StoreFront() {
                 <CategoryStrip selected={selectedCategory} onSelect={setSelectedCategory} />
                 <ProductGrid category={selectedCategory} />
               </div>
-              <PromoBanner />
+              <div className="max-w-5xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-12">
+              <CategoryShowcase />
+            </div>
+            <PromoBanner />
               <div id="testimonials" className="max-w-5xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-16">
                 <Testimonials />
               </div>

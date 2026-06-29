@@ -13,6 +13,7 @@ export type Product = {
   name_bs: string | null;
   category: string;
   price: number;
+  compare_price: number | null;
   description: string | null;
   description_en: string | null;
   description_bs: string | null;
@@ -27,6 +28,7 @@ export type Category = {
   name: string;
   name_en: string | null;
   name_bs: string | null;
+  image_url: string | null;
   created_at: string;
 };
 
