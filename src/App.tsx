@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { useState } from "react";
+import { HelmetProvider } from "react-helmet-async";
 import { Navbar, Footer } from "./components/Layout";
 import { Hero, CategoryStrip, PromoBanner, Testimonials } from "./components/HomeSections";
 import { ProductGrid } from "./components/ProductGrid";
@@ -10,6 +11,7 @@ import { CartProvider } from "./context/CartContext";
 import { SiteSettingsProvider } from "./context/SiteSettingsContext";
 import { CustomerAuthProvider } from "./context/CustomerAuthContext";
 import { AuthModal } from "./components/AuthModal";
+import { SiteMeta } from "./components/SiteMeta";
 import { AdminLayout } from "./components/admin/AdminLayout";
 import { RequireAuth } from "./components/admin/RequireAuth";
 import Login from "./pages/admin/Login";
@@ -32,6 +34,7 @@ function StoreFront() {
     <LanguageProvider>
       <CartProvider>
         <CustomerAuthProvider>
+          <SiteMeta />
           <AuthModal />
           <div className="min-h-screen bg-cream font-sans text-navy flex flex-col">
             <Navbar />
@@ -99,6 +102,7 @@ function ConfirmationPage() {
 
 export default function App() {
   return (
+    <HelmetProvider>
     <AuthProvider>
       <SiteSettingsProvider>
       <BrowserRouter>
@@ -134,5 +138,6 @@ export default function App() {
       </BrowserRouter>
       </SiteSettingsProvider>
     </AuthProvider>
+    </HelmetProvider>
   );
 }

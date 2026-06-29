@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Save, Mail, Info, ImagePlus, X, Instagram, Facebook } from "lucide-react";
+import { Save, Mail, Info, ImagePlus, X, Instagram, Facebook, Search } from "lucide-react";
 import { supabase } from "../../lib/supabase";
 
 type Settings = {
@@ -16,6 +16,10 @@ type Settings = {
   bank_note: string;
   email_enabled: boolean;
   owner_email: string;
+  seo_title: string;
+  seo_description_en: string;
+  seo_description_bs: string;
+  og_image: string;
 };
 
 const empty: Settings = {
@@ -25,6 +29,7 @@ const empty: Settings = {
   social_facebook: "", social_instagram: "", social_email: "",
   bank_name: "", bank_account_holder: "", bank_iban: "", bank_note: "",
   email_enabled: false, owner_email: "",
+  seo_title: "", seo_description_en: "", seo_description_bs: "", og_image: "",
 };
 
 export default function StoreSettings() {
@@ -35,6 +40,7 @@ export default function StoreSettings() {
   const [error, setError] = useState<string | null>(null);
   const [uploadingLogo, setUploadingLogo] = useState(false);
   const [footerTab, setFooterTab] = useState<"en" | "bs">("en");
+  const [seoDescTab, setSeoDescTab] = useState<"en" | "bs">("en");
   const logoRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -54,6 +60,10 @@ export default function StoreSettings() {
           bank_note: data.bank_note ?? "",
           email_enabled: data.email_enabled ?? false,
           owner_email: data.owner_email ?? "",
+          seo_title: data.seo_title ?? "",
+          seo_description_en: data.seo_description_en ?? "",
+          seo_description_bs: data.seo_description_bs ?? "",
+          og_image: data.og_image ?? "",
         });
       }
       setLoading(false);
@@ -96,6 +106,10 @@ export default function StoreSettings() {
       bank_note: form.bank_note || null,
       email_enabled: form.email_enabled,
       owner_email: form.owner_email || null,
+      seo_title: form.seo_title || null,
+      seo_description_en: form.seo_description_en || null,
+      seo_description_bs: form.seo_description_bs || null,
+      og_image: form.og_image || null,
       updated_at: new Date().toISOString(),
     });
     setSaving(false);
@@ -272,6 +286,82 @@ export default function StoreSettings() {
             />
           </div>
         </Field>
+      </div>
+
+      {/* SEO & Meta Tags */}
+      <div className="bg-white border border-gray-200 rounded-xl p-6 flex flex-col gap-4">
+        <div className="flex items-center gap-2">
+          <Search className="w-4 h-4 text-navy/50" strokeWidth={1.75} />
+          <h2 className="font-semibold text-navy text-sm">SEO & Meta Tags</h2>
+        </div>
+        <p className="text-xs text-gray-400 -mt-2">Controls what appears in browser tabs, Google search results, and social media previews.</p>
+
+        <Field label="Page Title">
+          <input
+            value={form.seo_title}
+            onChange={(e) => set("seo_title", e.target.value)}
+            placeholder={`${form.store_name || "Deko Kutak"} — Handmade Gifts from Bosnia`}
+            className={inputCls}
+          />
+          <p className="text-xs text-gray-400">Shown in the browser tab and as the headline in Google search results. Keep under 60 characters.</p>
+        </Field>
+
+        <div className="flex flex-col gap-2">
+          <div className="flex items-center justify-between">
+            <label className="text-sm font-medium text-navy">Meta Description</label>
+            <div className="flex gap-1 p-0.5 bg-gray-100 rounded-md">
+              {(["en", "bs"] as const).map((l) => (
+                <button key={l} type="button" onClick={() => setSeoDescTab(l)}
+                  className={`px-2.5 py-0.5 rounded text-xs font-semibold transition-colors ${seoDescTab === l ? "bg-white text-navy shadow-sm" : "text-gray-500 hover:text-navy"}`}>
+                  {l.toUpperCase()}
+                </button>
+              ))}
+            </div>
+          </div>
+          <textarea
+            value={seoDescTab === "en" ? form.seo_description_en : form.seo_description_bs}
+            onChange={(e) => set(seoDescTab === "en" ? "seo_description_en" : "seo_description_bs", e.target.value)}
+            rows={3}
+            placeholder={seoDescTab === "en"
+              ? "Discover unique handmade gifts and home decor crafted with love in Bosnia…"
+              : "Otkrijte jedinstvene ručno rađene poklone i dekoracije za dom izrađene s ljubavlju u Bosni…"}
+            className={`${inputCls} resize-none`}
+          />
+          <p className="text-xs text-gray-400">Shown below the title in search results. Keep under 160 characters.</p>
+          {(seoDescTab === "en" ? form.seo_description_en : form.seo_description_bs).length > 0 && (
+            <p className={`text-xs ${(seoDescTab === "en" ? form.seo_description_en : form.seo_description_bs).length > 160 ? "text-amber-500" : "text-gray-400"}`}>
+              {(seoDescTab === "en" ? form.seo_description_en : form.seo_description_bs).length} / 160
+            </p>
+          )}
+        </div>
+
+        <Field label="Social Share Image (OG Image)">
+          <input
+            value={form.og_image}
+            onChange={(e) => set("og_image", e.target.value)}
+            placeholder="https://yourdomain.com/og-image.jpg"
+            className={inputCls}
+          />
+          <p className="text-xs text-gray-400">Image shown when your site is shared on Facebook, WhatsApp, etc. Recommended size: 1200×630px.</p>
+        </Field>
+
+        {/* Google preview */}
+        {(form.seo_title || form.store_name) && (
+          <div className="flex flex-col gap-1.5">
+            <p className="text-xs font-medium text-gray-400 uppercase tracking-wider">Google preview</p>
+            <div className="border border-gray-200 rounded-xl p-4 flex flex-col gap-0.5 bg-gray-50">
+              <p className="text-xs text-gray-400">yourdomain.com</p>
+              <p className="text-base text-blue-700 font-medium leading-snug">
+                {form.seo_title || form.store_name}
+              </p>
+              {(form.seo_description_en || form.seo_description_bs) && (
+                <p className="text-sm text-gray-600 leading-snug line-clamp-2">
+                  {form.seo_description_en || form.seo_description_bs}
+                </p>
+              )}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Bank details */}

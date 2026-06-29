@@ -9,6 +9,10 @@ type SiteSettings = {
   social_email: string | null;
   footer_desc_en: string | null;
   footer_desc_bs: string | null;
+  seo_title: string | null;
+  seo_description_en: string | null;
+  seo_description_bs: string | null;
+  og_image: string | null;
 };
 
 const defaults: SiteSettings = {
@@ -19,6 +23,10 @@ const defaults: SiteSettings = {
   social_email: null,
   footer_desc_en: null,
   footer_desc_bs: null,
+  seo_title: null,
+  seo_description_en: null,
+  seo_description_bs: null,
+  og_image: null,
 };
 
 const SiteSettingsContext = createContext<SiteSettings>(defaults);
@@ -29,7 +37,7 @@ export function SiteSettingsProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     supabase
       .from("store_settings")
-      .select("store_name, logo_url, social_facebook, social_instagram, social_email, footer_desc_en, footer_desc_bs")
+      .select("store_name, logo_url, social_facebook, social_instagram, social_email, footer_desc_en, footer_desc_bs, seo_title, seo_description_en, seo_description_bs, og_image")
       .eq("id", 1)
       .single()
       .then(({ data }) => {
@@ -42,6 +50,10 @@ export function SiteSettingsProvider({ children }: { children: ReactNode }) {
             social_email: data.social_email ?? null,
             footer_desc_en: data.footer_desc_en ?? null,
             footer_desc_bs: data.footer_desc_bs ?? null,
+            seo_title: data.seo_title ?? null,
+            seo_description_en: data.seo_description_en ?? null,
+            seo_description_bs: data.seo_description_bs ?? null,
+            og_image: data.og_image ?? null,
           });
         }
       });

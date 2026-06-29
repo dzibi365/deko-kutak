@@ -8,6 +8,7 @@ import { AuthModal } from "../components/AuthModal";
 import { ReviewsSection } from "../components/ReviewsSection";
 import { useLang } from "../context/LanguageContext";
 import { useCart } from "../context/CartContext";
+import { SiteMeta } from "../components/SiteMeta";
 
 function ProductDetailContent() {
   const { id } = useParams<{ id: string }>();
@@ -80,6 +81,7 @@ function ProductDetailContent() {
 
   return (
     <div className="max-w-5xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-10">
+      <SiteMeta title={name} description={desc || undefined} />
       {/* Back link */}
       <button
         onClick={() => navigate(-1)}
