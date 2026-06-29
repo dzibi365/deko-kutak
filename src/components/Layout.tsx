@@ -1,10 +1,60 @@
 import { useRef, useEffect, useState } from "react";
-import { Search, User, ShoppingBag, Menu, Instagram, Facebook, Mail, LayoutDashboard, LogOut } from "lucide-react";
+import { Search, User, ShoppingBag, Menu, Instagram, Facebook, Mail, LayoutDashboard, LogOut, Phone } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useLang } from "../context/LanguageContext";
 import { useCart } from "../context/CartContext";
 import { useSiteSettings } from "../context/SiteSettingsContext";
 import { useCustomerAuth } from "../context/CustomerAuthContext";
+
+export function TopBar() {
+  const { topbar_enabled, topbar_left_text_en, topbar_left_text_bs, topbar_phone, topbar_email, topbar_hours_en, topbar_hours_bs, topbar_right_text_en, topbar_right_text_bs } = useSiteSettings();
+  const { lang } = useLang();
+
+  if (!topbar_enabled) return null;
+
+  const leftText   = lang === "bs" ? (topbar_left_text_bs  || topbar_left_text_en)  : (topbar_left_text_en  || topbar_left_text_bs);
+  const hours      = lang === "bs" ? (topbar_hours_bs      || topbar_hours_en)      : (topbar_hours_en      || topbar_hours_bs);
+  const rightText  = lang === "bs" ? (topbar_right_text_bs || topbar_right_text_en) : (topbar_right_text_en || topbar_right_text_bs);
+
+  const hasLeft  = leftText || topbar_phone || topbar_email;
+  const hasRight = hours || rightText;
+  if (!hasLeft && !hasRight) return null;
+
+  return (
+    <div className="bg-navy text-cream/80 text-xs">
+      <div className="max-w-5xl mx-auto w-full px-4 sm:px-6 lg:px-8 h-9 flex items-center justify-between gap-4">
+        {/* Left */}
+        <div className="flex items-center gap-4 min-w-0">
+          {leftText && (
+            <span className="truncate">{leftText}</span>
+          )}
+          {topbar_phone && (
+            <a href={`tel:${topbar_phone.replace(/\s/g, "")}`}
+              className="flex items-center gap-1.5 hover:text-white transition-colors flex-shrink-0">
+              <Phone className="w-3 h-3" strokeWidth={1.75} />
+              {topbar_phone}
+            </a>
+          )}
+          {topbar_email && (
+            <a href={`mailto:${topbar_email}`}
+              className="flex items-center gap-1.5 hover:text-white transition-colors flex-shrink-0 hidden sm:flex">
+              <Mail className="w-3 h-3" strokeWidth={1.75} />
+              {topbar_email}
+            </a>
+          )}
+        </div>
+
+        {/* Right */}
+        {hasRight && (
+          <div className="flex items-center gap-4 flex-shrink-0 text-cream/60">
+            {hours && <span className="hidden sm:block">{hours}</span>}
+            {rightText && <span>{rightText}</span>}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
 
 export function Navbar() {
   const { lang, toggleLang, tr } = useLang();
@@ -35,6 +85,7 @@ export function Navbar() {
 
   return (
     <header className="sticky top-0 z-50 bg-cream/95 backdrop-blur-sm border-b-[0.5px] border-navy/10">
+      <TopBar />
       <div className="max-w-5xl mx-auto w-full px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
         <div className="flex-shrink-0">
           <a href="/" className="flex items-center gap-2.5">

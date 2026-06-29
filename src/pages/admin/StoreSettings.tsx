@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Save, Mail, Info, ImagePlus, X, Instagram, Facebook, Search } from "lucide-react";
+import { Save, Mail, Info, ImagePlus, X, Instagram, Facebook, Search, Phone, Clock } from "lucide-react";
 import { supabase } from "../../lib/supabase";
 
 type Settings = {
@@ -20,6 +20,15 @@ type Settings = {
   seo_description_en: string;
   seo_description_bs: string;
   og_image: string;
+  topbar_enabled: boolean;
+  topbar_left_text_en: string;
+  topbar_left_text_bs: string;
+  topbar_phone: string;
+  topbar_email: string;
+  topbar_hours_en: string;
+  topbar_hours_bs: string;
+  topbar_right_text_en: string;
+  topbar_right_text_bs: string;
 };
 
 const empty: Settings = {
@@ -30,6 +39,11 @@ const empty: Settings = {
   bank_name: "", bank_account_holder: "", bank_iban: "", bank_note: "",
   email_enabled: false, owner_email: "",
   seo_title: "", seo_description_en: "", seo_description_bs: "", og_image: "",
+  topbar_enabled: false,
+  topbar_left_text_en: "", topbar_left_text_bs: "",
+  topbar_phone: "", topbar_email: "",
+  topbar_hours_en: "", topbar_hours_bs: "",
+  topbar_right_text_en: "", topbar_right_text_bs: "",
 };
 
 export default function StoreSettings() {
@@ -42,6 +56,7 @@ export default function StoreSettings() {
   const [uploadingOg, setUploadingOg] = useState(false);
   const [footerTab, setFooterTab] = useState<"en" | "bs">("en");
   const [seoDescTab, setSeoDescTab] = useState<"en" | "bs">("en");
+  const [topbarTab, setTopbarTab] = useState<"en" | "bs">("en");
   const logoRef = useRef<HTMLInputElement>(null);
   const ogRef = useRef<HTMLInputElement>(null);
 
@@ -66,6 +81,15 @@ export default function StoreSettings() {
           seo_description_en: data.seo_description_en ?? "",
           seo_description_bs: data.seo_description_bs ?? "",
           og_image: data.og_image ?? "",
+          topbar_enabled: data.topbar_enabled ?? false,
+          topbar_left_text_en: data.topbar_left_text_en ?? "",
+          topbar_left_text_bs: data.topbar_left_text_bs ?? "",
+          topbar_phone: data.topbar_phone ?? "",
+          topbar_email: data.topbar_email ?? "",
+          topbar_hours_en: data.topbar_hours_en ?? "",
+          topbar_hours_bs: data.topbar_hours_bs ?? "",
+          topbar_right_text_en: data.topbar_right_text_en ?? "",
+          topbar_right_text_bs: data.topbar_right_text_bs ?? "",
         });
       }
       setLoading(false);
@@ -126,6 +150,15 @@ export default function StoreSettings() {
       seo_description_en: form.seo_description_en || null,
       seo_description_bs: form.seo_description_bs || null,
       og_image: form.og_image || null,
+      topbar_enabled: form.topbar_enabled,
+      topbar_left_text_en: form.topbar_left_text_en || null,
+      topbar_left_text_bs: form.topbar_left_text_bs || null,
+      topbar_phone: form.topbar_phone || null,
+      topbar_email: form.topbar_email || null,
+      topbar_hours_en: form.topbar_hours_en || null,
+      topbar_hours_bs: form.topbar_hours_bs || null,
+      topbar_right_text_en: form.topbar_right_text_en || null,
+      topbar_right_text_bs: form.topbar_right_text_bs || null,
       updated_at: new Date().toISOString(),
     });
     setSaving(false);
@@ -259,6 +292,140 @@ export default function StoreSettings() {
             )}
           </div>
         </div>
+      </div>
+
+      {/* Top Bar */}
+      <div className="bg-white border border-gray-200 rounded-xl p-6 flex flex-col gap-5">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="font-semibold text-navy text-sm">Top Bar</h2>
+            <p className="text-xs text-gray-400 mt-0.5">Slim info bar above the navbar with contact details and hours.</p>
+          </div>
+          <button
+            type="button"
+            onClick={() => set("topbar_enabled", !form.topbar_enabled)}
+            className={`w-10 h-6 rounded-full transition-colors flex items-center px-1 ${form.topbar_enabled ? "bg-navy" : "bg-gray-200"}`}
+          >
+            <div className={`w-4 h-4 rounded-full bg-white shadow transition-transform ${form.topbar_enabled ? "translate-x-4" : "translate-x-0"}`} />
+          </button>
+        </div>
+
+        {form.topbar_enabled && (
+          <>
+            {/* Language tab switcher */}
+            <div className="flex gap-1 p-1 bg-gray-100 rounded-lg self-start">
+              {(["en", "bs"] as const).map((l) => (
+                <button key={l} type="button" onClick={() => setTopbarTab(l)}
+                  className={`px-3 py-1 rounded-md text-xs font-semibold transition-colors ${topbarTab === l ? "bg-white text-navy shadow-sm" : "text-gray-500 hover:text-navy"}`}>
+                  {l.toUpperCase()}
+                </button>
+              ))}
+            </div>
+
+            <div className="border-t border-gray-100 pt-4 flex flex-col gap-4">
+              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Left side</p>
+
+              <Field label={`Text (${topbarTab.toUpperCase()})`}>
+                <input
+                  value={topbarTab === "en" ? form.topbar_left_text_en : form.topbar_left_text_bs}
+                  onChange={(e) => set(topbarTab === "en" ? "topbar_left_text_en" : "topbar_left_text_bs", e.target.value)}
+                  placeholder={topbarTab === "en" ? "e.g. Free delivery on orders over 100 KM" : "npr. Besplatna dostava za narudžbe iznad 100 KM"}
+                  className={inputCls}
+                />
+              </Field>
+
+              <Field label="Phone number">
+                <div className="relative">
+                  <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" strokeWidth={1.75} />
+                  <input
+                    value={form.topbar_phone}
+                    onChange={(e) => set("topbar_phone", e.target.value)}
+                    placeholder="+387 61 123 456"
+                    className={`${inputCls} pl-9`}
+                  />
+                </div>
+                <p className="text-xs text-gray-400">Same in both languages.</p>
+              </Field>
+
+              <Field label="Email">
+                <div className="relative">
+                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" strokeWidth={1.75} />
+                  <input
+                    type="email"
+                    value={form.topbar_email}
+                    onChange={(e) => set("topbar_email", e.target.value)}
+                    placeholder="info@dekokutak.ba"
+                    className={`${inputCls} pl-9`}
+                  />
+                </div>
+                <p className="text-xs text-gray-400">Same in both languages.</p>
+              </Field>
+            </div>
+
+            <div className="border-t border-gray-100 pt-4 flex flex-col gap-4">
+              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Right side</p>
+
+              <Field label={`Working hours (${topbarTab.toUpperCase()})`}>
+                <div className="relative">
+                  <Clock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" strokeWidth={1.75} />
+                  <input
+                    value={topbarTab === "en" ? form.topbar_hours_en : form.topbar_hours_bs}
+                    onChange={(e) => set(topbarTab === "en" ? "topbar_hours_en" : "topbar_hours_bs", e.target.value)}
+                    placeholder={topbarTab === "en" ? "Mon–Fri: 09:00–17:00 · Sat: 10:00–14:00" : "Pon–Pet: 09:00–17:00 · Sub: 10:00–14:00"}
+                    className={`${inputCls} pl-9`}
+                  />
+                </div>
+              </Field>
+
+              <Field label={`Additional text (${topbarTab.toUpperCase()})`}>
+                <input
+                  value={topbarTab === "en" ? form.topbar_right_text_en : form.topbar_right_text_bs}
+                  onChange={(e) => set(topbarTab === "en" ? "topbar_right_text_en" : "topbar_right_text_bs", e.target.value)}
+                  placeholder={topbarTab === "en" ? "e.g. Orders ship within 24h" : "npr. Narudžbe šaljemo u roku 24h"}
+                  className={inputCls}
+                />
+              </Field>
+            </div>
+
+            {/* Live preview */}
+            <div className="flex flex-col gap-1.5">
+              <p className="text-xs font-medium text-gray-400 uppercase tracking-wider">Preview ({topbarTab.toUpperCase()})</p>
+              <div className="bg-navy rounded-lg px-4 h-9 flex items-center justify-between text-xs text-cream/80">
+                <div className="flex items-center gap-4">
+                  {(topbarTab === "en" ? form.topbar_left_text_en : form.topbar_left_text_bs) && (
+                    <span>{topbarTab === "en" ? form.topbar_left_text_en : form.topbar_left_text_bs}</span>
+                  )}
+                  {form.topbar_phone && (
+                    <span className="flex items-center gap-1.5">
+                      <Phone className="w-3 h-3" strokeWidth={1.75} />
+                      {form.topbar_phone}
+                    </span>
+                  )}
+                  {form.topbar_email && (
+                    <span className="flex items-center gap-1.5">
+                      <Mail className="w-3 h-3" strokeWidth={1.75} />
+                      {form.topbar_email}
+                    </span>
+                  )}
+                  {!form.topbar_left_text_en && !form.topbar_left_text_bs && !form.topbar_phone && !form.topbar_email && (
+                    <span className="text-cream/30 italic">Left side empty</span>
+                  )}
+                </div>
+                <div className="flex items-center gap-4 text-cream/50">
+                  {(topbarTab === "en" ? form.topbar_hours_en : form.topbar_hours_bs) && (
+                    <span>{topbarTab === "en" ? form.topbar_hours_en : form.topbar_hours_bs}</span>
+                  )}
+                  {(topbarTab === "en" ? form.topbar_right_text_en : form.topbar_right_text_bs) && (
+                    <span>{topbarTab === "en" ? form.topbar_right_text_en : form.topbar_right_text_bs}</span>
+                  )}
+                  {!form.topbar_hours_en && !form.topbar_hours_bs && !form.topbar_right_text_en && !form.topbar_right_text_bs && (
+                    <span className="text-cream/30 italic">Right side empty</span>
+                  )}
+                </div>
+              </div>
+            </div>
+          </>
+        )}
       </div>
 
       {/* Social Links */}
