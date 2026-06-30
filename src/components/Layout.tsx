@@ -222,8 +222,7 @@ export function Navbar() {
       </div>
 
       {/* Mobile menu */}
-      {menuOpen && (
-        <div className="md:hidden border-t border-navy/10 bg-cream/98 backdrop-blur-sm">
+      <div className={`md:hidden border-t border-navy/10 bg-cream/98 backdrop-blur-sm overflow-hidden transition-all duration-300 ease-in-out ${menuOpen ? "max-h-[500px] opacity-100" : "max-h-0 opacity-0"}`}>
           <nav className="max-w-5xl mx-auto px-4 py-4 flex flex-col gap-1">
             <a href="#" onClick={() => setMenuOpen(false)}
               className="px-3 py-3 text-sm font-semibold text-navy rounded-lg hover:bg-navy/5 transition-colors">{tr("nav_shop")}</a>
@@ -289,7 +288,6 @@ export function Navbar() {
             </div>
           </nav>
         </div>
-      )}
     </header>
   );
 }
