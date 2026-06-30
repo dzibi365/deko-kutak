@@ -70,7 +70,11 @@ export default function Categories() {
   return (
     <div className="p-8 max-w-3xl">
       <h1 className="text-2xl font-semibold text-navy mb-1">Categories</h1>
-      <p className="text-sm text-gray-400 mb-8">Group products into collections — add names and a cover image for each</p>
+      <p className="text-sm text-gray-400 mb-2">Group products into collections — add names and a cover image for each</p>
+      <p className="text-xs text-gray-400 mb-8 flex items-center gap-1.5">
+        <span className="inline-block w-1.5 h-1.5 rounded-full bg-gray-300 flex-shrink-0" />
+        Category images: <strong className="font-semibold text-gray-500">portrait orientation</strong>, recommended <strong className="font-semibold text-gray-500">600×800 px</strong> · JPG or PNG · max 2 MB
+      </p>
 
       <form onSubmit={handleAdd} className="flex flex-col gap-3 mb-6">
         <div className="flex gap-2">

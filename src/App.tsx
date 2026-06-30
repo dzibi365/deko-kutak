@@ -1,4 +1,5 @@
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
+import { useEffect } from "react";
 import { HelmetProvider } from "react-helmet-async";
 import { Navbar, Footer } from "./components/Layout";
 import { Hero, PromoBanner, Testimonials, CategoryShowcase } from "./components/HomeSections";
@@ -25,6 +26,12 @@ import OrderConfirmation from "./pages/OrderConfirmation";
 import Account from "./pages/Account";
 import ResetPassword from "./pages/ResetPassword";
 import Shop from "./pages/Shop";
+
+function ScrollToTop() {
+  const { pathname } = useLocation();
+  useEffect(() => { window.scrollTo(0, 0); }, [pathname]);
+  return null;
+}
 
 function StoreFront() {
   return (
@@ -102,6 +109,7 @@ export default function App() {
     <AuthProvider>
       <SiteSettingsProvider>
       <BrowserRouter>
+        <ScrollToTop />
         <Routes>
           <Route path="/" element={<StoreFront />} />
 

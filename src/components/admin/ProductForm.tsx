@@ -244,7 +244,7 @@ export function ProductForm({ product, onClose, onSaved }: Props) {
                   {uploading === "main" ? (
                     <><Spinner /><span className="text-sm">Uploading…</span></>
                   ) : (
-                    <><Upload className="w-6 h-6" strokeWidth={1.5} /><span className="text-sm font-medium">Click to upload main image</span><span className="text-xs">JPG, PNG, WEBP</span></>
+                    <><Upload className="w-6 h-6" strokeWidth={1.5} /><span className="text-sm font-medium">Click to upload main image</span><span className="text-xs text-center">Square · 800×800 px recommended · JPG, PNG or WEBP · max 2 MB</span></>
                   )}
                 </button>
               )}
@@ -282,6 +282,7 @@ export function ProductForm({ product, onClose, onSaved }: Props) {
                 })}
               </div>
               <input ref={galleryFileRef} type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={handleGalleryFile} />
+              <p className="text-xs text-gray-400">Same format as main image — square, 800×800 px, JPG/PNG/WEBP, max 2 MB each.</p>
             </Field>
 
             {/* In stock */}
