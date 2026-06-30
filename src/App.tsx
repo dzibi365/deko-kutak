@@ -1,9 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-import { useState } from "react";
 import { HelmetProvider } from "react-helmet-async";
 import { Navbar, Footer } from "./components/Layout";
-import { Hero, CategoryStrip, PromoBanner, Testimonials, CategoryShowcase } from "./components/HomeSections";
-import { ProductGrid } from "./components/ProductGrid";
+import { Hero, PromoBanner, Testimonials, CategoryShowcase } from "./components/HomeSections";
 import { CartDrawer } from "./components/CartDrawer";
 import { AuthProvider } from "./context/AuthContext";
 import { LanguageProvider } from "./context/LanguageContext";
@@ -26,10 +24,9 @@ import Checkout from "./pages/Checkout";
 import OrderConfirmation from "./pages/OrderConfirmation";
 import Account from "./pages/Account";
 import ResetPassword from "./pages/ResetPassword";
+import Shop from "./pages/Shop";
 
 function StoreFront() {
-  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
-
   return (
     <LanguageProvider>
       <CartProvider>
@@ -41,14 +38,10 @@ function StoreFront() {
             <CartDrawer />
             <main className="flex-1 flex flex-col">
               <Hero />
-              <div id="shop" className="max-w-5xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-12 flex flex-col gap-10">
-                <CategoryStrip selected={selectedCategory} onSelect={setSelectedCategory} />
-                <ProductGrid category={selectedCategory} />
+              <div id="shop" className="max-w-5xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-12">
+                <CategoryShowcase />
               </div>
-              <div className="max-w-5xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-12">
-              <CategoryShowcase />
-            </div>
-            <PromoBanner />
+              <PromoBanner />
               <div id="testimonials" className="max-w-5xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-16">
                 <Testimonials />
               </div>
@@ -112,6 +105,15 @@ export default function App() {
         <Routes>
           <Route path="/" element={<StoreFront />} />
 
+          <Route path="/shop" element={
+            <LanguageProvider>
+              <CartProvider>
+                <CustomerAuthProvider>
+                  <Shop />
+                </CustomerAuthProvider>
+              </CartProvider>
+            </LanguageProvider>
+          } />
           <Route path="/products/:id" element={<ProductPage />} />
           <Route path="/account" element={<AccountPage />} />
           <Route path="/reset-password" element={<LanguageProvider><ResetPassword /></LanguageProvider>} />

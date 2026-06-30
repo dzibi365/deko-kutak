@@ -210,9 +210,6 @@ export function CategoryShowcase() {
 
   return (
     <section className="flex flex-col gap-4">
-      <h2 className="text-2xl font-semibold tracking-tight text-navy">
-        {lang === "bs" ? "Kupuj po kategorijama" : "Shop by Category"}
-      </h2>
       <div className="flex flex-col gap-4">
         {rows.map(({ cat, products: catProducts }) => (
           <CategoryRow
@@ -221,6 +218,7 @@ export function CategoryShowcase() {
             products={catProducts.slice(0, 6)}
             lang={lang}
             onNavigate={(id) => navigate(`/products/${id}`)}
+            onCategoryClick={(catName) => navigate(`/shop?category=${encodeURIComponent(catName)}`)}
           />
         ))}
       </div>
@@ -233,22 +231,27 @@ type RowProps = {
   products: Product[];
   lang: string;
   onNavigate: (id: number) => void;
+  onCategoryClick: (catName: string) => void;
 };
 
-function CategoryRow({ cat, products, lang, onNavigate }: RowProps) {
+function CategoryRow({ cat, products, lang, onNavigate, onCategoryClick }: RowProps) {
   const catName = lang === "bs" ? (cat.name_bs || cat.name_en || cat.name) : (cat.name_en || cat.name);
+  const catKey = cat.name_en ?? cat.name;
   const now = Date.now();
 
   return (
     <div className="flex rounded-2xl overflow-hidden border border-gray-100 shadow-sm min-h-[460px]">
 
-      {/* Left: fixed 220px category image panel */}
-      <div className="w-[220px] flex-shrink-0 relative bg-navy">
+      {/* Left: fixed 220px category image panel — click navigates to /shop?category=X */}
+      <div
+        className="w-[220px] flex-shrink-0 relative bg-navy cursor-pointer group"
+        onClick={() => onCategoryClick(catKey)}
+      >
         {cat.image_url ? (
           <img
             src={cat.image_url}
             alt={catName}
-            className="absolute inset-0 w-full h-full object-cover"
+            className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
           />
         ) : (
           <div className="absolute inset-0 bg-gradient-to-br from-navy/90 to-navy/60 flex items-center justify-center">
