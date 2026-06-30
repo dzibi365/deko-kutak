@@ -212,82 +212,109 @@ export function Navbar() {
             )}
           </button>
           <button
-            className="md:hidden ml-2"
+            className="md:hidden ml-2 relative w-6 h-6 flex flex-col justify-center items-center gap-[5px]"
             aria-label="Menu"
             onClick={() => setMenuOpen((v) => !v)}
           >
-            <Menu className="w-6 h-6" strokeWidth={1.5} />
+            <span className={`block h-[1.5px] w-5 bg-navy rounded-full transition-all duration-300 origin-center ${menuOpen ? "rotate-45 translate-y-[6.5px]" : ""}`} />
+            <span className={`block h-[1.5px] w-5 bg-navy rounded-full transition-all duration-300 ${menuOpen ? "opacity-0 scale-x-0" : ""}`} />
+            <span className={`block h-[1.5px] w-5 bg-navy rounded-full transition-all duration-300 origin-center ${menuOpen ? "-rotate-45 -translate-y-[6.5px]" : ""}`} />
           </button>
         </div>
       </div>
 
-      {/* Mobile menu */}
-      <div className={`md:hidden border-t border-navy/10 bg-cream/98 backdrop-blur-sm overflow-hidden transition-all duration-300 ease-in-out ${menuOpen ? "max-h-[500px] opacity-100" : "max-h-0 opacity-0"}`}>
-          <nav className="max-w-5xl mx-auto px-4 py-4 flex flex-col gap-1">
-            <a href="#" onClick={() => setMenuOpen(false)}
-              className="px-3 py-3 text-sm font-semibold text-navy rounded-lg hover:bg-navy/5 transition-colors">{tr("nav_shop")}</a>
-            <a href="#" onClick={() => setMenuOpen(false)}
-              className="px-3 py-3 text-sm text-navy/70 rounded-lg hover:bg-navy/5 transition-colors">{tr("nav_story")}</a>
-            <a href="#" onClick={() => setMenuOpen(false)}
-              className="px-3 py-3 text-sm text-navy/70 rounded-lg hover:bg-navy/5 transition-colors">{tr("nav_journal")}</a>
-            <a href="#" onClick={() => setMenuOpen(false)}
-              className="px-3 py-3 text-sm text-navy/70 rounded-lg hover:bg-navy/5 transition-colors">{tr("nav_contact")}</a>
-
-            {/* Language selector */}
-            <div className="border-t border-navy/10 mt-2 pt-3 flex gap-2 px-3">
+      {/* Mobile menu — grid-rows trick for smooth natural-height animation */}
+      <div
+        className="md:hidden"
+        style={{
+          display: "grid",
+          gridTemplateRows: menuOpen ? "1fr" : "0fr",
+          transition: "grid-template-rows 0.28s cubic-bezier(0.4, 0, 0.2, 1)",
+        }}
+      >
+        <div className="overflow-hidden">
+          <div className="border-t border-navy/10 bg-cream/98 backdrop-blur-sm">
+            <nav className="max-w-5xl mx-auto px-4 py-4 flex flex-col gap-1">
               {[
-                { code: "en", flag: "🇬🇧", label: "English" },
-                { code: "bs", flag: "🇧🇦", label: "Bosanski" },
-              ].map(({ code, flag, label }) => (
-                <button
-                  key={code}
-                  onClick={() => { if (lang !== code) toggleLang(); }}
-                  className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-colors flex-1 justify-center ${
-                    lang === code ? "bg-navy text-white font-semibold" : "text-navy/60 hover:bg-navy/5"
-                  }`}
+                { label: tr("nav_shop"),    bold: true,  delay: 60  },
+                { label: tr("nav_story"),   bold: false, delay: 100 },
+                { label: tr("nav_journal"), bold: false, delay: 140 },
+                { label: tr("nav_contact"), bold: false, delay: 180 },
+              ].map(({ label, bold, delay }) => (
+                <a
+                  key={label}
+                  href="#"
+                  onClick={() => setMenuOpen(false)}
+                  className={`px-3 py-3 text-sm rounded-lg hover:bg-navy/5 transition-all duration-200 ${bold ? "font-semibold text-navy" : "text-navy/70"} ${menuOpen ? "opacity-100 translate-y-0" : "opacity-0 -translate-y-1"}`}
+                  style={{ transitionDelay: menuOpen ? `${delay}ms` : "0ms" }}
                 >
-                  <span className="text-base leading-none">{flag}</span>
                   {label}
-                </button>
+                </a>
               ))}
-            </div>
 
-            <div className="border-t border-navy/10 mt-2 pt-3 flex flex-col gap-1">
-              {!user && (
-                <button
-                  onClick={() => { setMenuOpen(false); openModal(); }}
-                  className="px-3 py-3 text-sm text-left text-navy/70 rounded-lg hover:bg-navy/5 transition-colors"
-                >
-                  {lang === "bs" ? "Prijava / Registracija" : "Sign in / Register"}
-                </button>
-              )}
-              {isCustomer && (
-                <button
-                  onClick={() => { setMenuOpen(false); navigate("/account"); }}
-                  className="px-3 py-3 text-sm text-left text-navy/70 rounded-lg hover:bg-navy/5 transition-colors"
-                >
-                  {lang === "bs" ? "Moj račun" : "My Account"}
-                </button>
-              )}
-              {isAdmin && (
-                <button
-                  onClick={() => { setMenuOpen(false); navigate("/admin"); }}
-                  className="px-3 py-3 text-sm text-left text-navy/70 rounded-lg hover:bg-navy/5 transition-colors"
-                >
-                  {lang === "bs" ? "Admin panel" : "Admin Panel"}
-                </button>
-              )}
-              {user && (
-                <button
-                  onClick={() => { setMenuOpen(false); signOut(); }}
-                  className="px-3 py-3 text-sm text-left text-red-500 rounded-lg hover:bg-red-50 transition-colors"
-                >
-                  {lang === "bs" ? "Odjava" : "Sign out"}
-                </button>
-              )}
-            </div>
-          </nav>
+              {/* Language selector */}
+              <div
+                className={`border-t border-navy/10 mt-2 pt-3 flex gap-2 px-3 transition-all duration-200 ${menuOpen ? "opacity-100 translate-y-0" : "opacity-0 -translate-y-1"}`}
+                style={{ transitionDelay: menuOpen ? "220ms" : "0ms" }}
+              >
+                {[
+                  { code: "en", flag: "🇬🇧", label: "English" },
+                  { code: "bs", flag: "🇧🇦", label: "Bosanski" },
+                ].map(({ code, flag, label }) => (
+                  <button
+                    key={code}
+                    onClick={() => { if (lang !== code) toggleLang(); }}
+                    className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-colors flex-1 justify-center ${
+                      lang === code ? "bg-navy text-white font-semibold" : "text-navy/60 hover:bg-navy/5"
+                    }`}
+                  >
+                    <span className="text-base leading-none">{flag}</span>
+                    {label}
+                  </button>
+                ))}
+              </div>
+
+              <div
+                className={`border-t border-navy/10 mt-2 pt-3 flex flex-col gap-1 transition-all duration-200 ${menuOpen ? "opacity-100 translate-y-0" : "opacity-0 -translate-y-1"}`}
+                style={{ transitionDelay: menuOpen ? "260ms" : "0ms" }}
+              >
+                {!user && (
+                  <button
+                    onClick={() => { setMenuOpen(false); openModal(); }}
+                    className="px-3 py-3 text-sm text-left text-navy/70 rounded-lg hover:bg-navy/5 transition-colors"
+                  >
+                    {lang === "bs" ? "Prijava / Registracija" : "Sign in / Register"}
+                  </button>
+                )}
+                {isCustomer && (
+                  <button
+                    onClick={() => { setMenuOpen(false); navigate("/account"); }}
+                    className="px-3 py-3 text-sm text-left text-navy/70 rounded-lg hover:bg-navy/5 transition-colors"
+                  >
+                    {lang === "bs" ? "Moj račun" : "My Account"}
+                  </button>
+                )}
+                {isAdmin && (
+                  <button
+                    onClick={() => { setMenuOpen(false); navigate("/admin"); }}
+                    className="px-3 py-3 text-sm text-left text-navy/70 rounded-lg hover:bg-navy/5 transition-colors"
+                  >
+                    {lang === "bs" ? "Admin panel" : "Admin Panel"}
+                  </button>
+                )}
+                {user && (
+                  <button
+                    onClick={() => { setMenuOpen(false); signOut(); }}
+                    className="px-3 py-3 text-sm text-left text-red-500 rounded-lg hover:bg-red-50 transition-colors"
+                  >
+                    {lang === "bs" ? "Odjava" : "Sign out"}
+                  </button>
+                )}
+              </div>
+            </nav>
+          </div>
         </div>
+      </div>
     </header>
   );
 }
