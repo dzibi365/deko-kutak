@@ -41,17 +41,17 @@ export function Hero() {
   const stat2Lbl = cfg ? (lang === "bs" ? cfg.stat2_label_bs : cfg.stat2_label_en) : tr("hero_stat_quality");
 
   return (
-    <section className="bg-navy text-cream py-20 lg:py-32 relative overflow-hidden">
+    <section className="bg-navy text-cream py-14 lg:py-32 relative overflow-hidden">
       <div className="max-w-5xl mx-auto w-full px-4 sm:px-6 lg:px-8 relative z-10">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-8 items-center">
-          <div className="flex flex-col items-start gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-8 items-center">
+          <div className="flex flex-col items-start gap-5 lg:gap-6">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border-[0.5px] border-copper/40 bg-copper/10 text-copper text-xs font-semibold tracking-wide uppercase">
               {badge}
             </div>
-            <h1 className="text-4xl md:text-5xl lg:text-6xl font-semibold leading-tight tracking-tight text-white">
+            <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-semibold leading-tight tracking-tight text-white">
               {heading}
             </h1>
-            <p className="text-lg text-cream/80 max-w-md leading-relaxed">
+            <p className="text-base lg:text-lg text-cream/80 max-w-md leading-relaxed">
               {subtext}
             </p>
             {(showPrimary || showSecondary) && (
@@ -159,13 +159,13 @@ export function PromoBanner() {
   const { tr } = useLang();
 
   return (
-    <section className="bg-navy text-cream py-16 border-y-[0.5px] border-copper/20">
-      <div className="max-w-5xl mx-auto w-full px-4 sm:px-6 lg:px-8 flex flex-col md:flex-row items-center justify-between gap-8">
+    <section className="bg-navy text-cream py-12 md:py-16 border-y-[0.5px] border-copper/20">
+      <div className="max-w-5xl mx-auto w-full px-4 sm:px-6 lg:px-8 flex flex-col md:flex-row items-center justify-between gap-6 md:gap-8 text-center md:text-left">
         <div className="flex flex-col gap-2">
-          <h2 className="text-2xl md:text-3xl font-semibold tracking-tight text-white">
+          <h2 className="text-xl md:text-3xl font-semibold tracking-tight text-white">
             {tr("promo_heading")}
           </h2>
-          <p className="text-cream/70 text-lg">{tr("promo_sub")}</p>
+          <p className="text-cream/70 text-base md:text-lg">{tr("promo_sub")}</p>
         </div>
         <button
           onClick={() => document.getElementById("shop")?.scrollIntoView({ behavior: "smooth" })}
@@ -240,11 +240,11 @@ function CategoryRow({ cat, products, lang, onNavigate, onCategoryClick }: RowPr
   const now = Date.now();
 
   return (
-    <div className="flex rounded-2xl overflow-hidden border border-gray-100 shadow-sm h-[760px]">
+    <div className="flex flex-col md:flex-row rounded-2xl overflow-hidden border border-gray-100 shadow-sm md:h-[760px]">
 
-      {/* Left: fixed 220px category image panel — click navigates to /shop?category=X */}
+      {/* Category image panel — full width on mobile, 220px on desktop */}
       <div
-        className="w-[220px] flex-shrink-0 relative bg-navy cursor-pointer group"
+        className="w-full h-[180px] md:w-[220px] md:h-auto flex-shrink-0 relative bg-navy cursor-pointer group"
         onClick={() => onCategoryClick(catKey)}
       >
         {cat.image_url ? (
@@ -259,7 +259,7 @@ function CategoryRow({ cat, products, lang, onNavigate, onCategoryClick }: RowPr
           </div>
         )}
         <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/20 to-transparent" />
-        <div className="absolute bottom-0 left-0 right-0 p-5">
+        <div className="absolute bottom-0 left-0 right-0 p-4 md:p-5">
           <p className="text-white font-semibold text-lg leading-snug">{catName}</p>
           <p className="text-white/50 text-xs mt-1">
             {products.length} {products.length === 1
@@ -269,9 +269,9 @@ function CategoryRow({ cat, products, lang, onNavigate, onCategoryClick }: RowPr
         </div>
       </div>
 
-      {/* Right: 3×2 product grid */}
-      <div className="flex-1 bg-white p-5 overflow-hidden">
-        <div className="grid grid-cols-3 grid-rows-2 gap-4 h-full">
+      {/* Product grid — 2 cols on mobile, 3×2 on desktop */}
+      <div className="flex-1 bg-white p-4 md:p-5 overflow-hidden">
+        <div className="grid grid-cols-2 md:grid-cols-3 md:grid-rows-2 gap-3 md:gap-4 md:h-full">
           {products.map((product) => {
             const name = lang === "bs"
               ? (product.name_bs || product.name_en || product.name)
@@ -286,7 +286,7 @@ function CategoryRow({ cat, products, lang, onNavigate, onCategoryClick }: RowPr
                 className="group cursor-pointer flex flex-col"
               >
                 {/* Image */}
-                <div className="relative flex-1 rounded-xl overflow-hidden bg-cream/60 border-[0.5px] border-navy/8">
+                <div className="relative aspect-square md:aspect-auto md:flex-1 rounded-xl overflow-hidden bg-cream/60 border-[0.5px] border-navy/8">
                   {product.image_url ? (
                     <img
                       src={product.image_url}
@@ -294,7 +294,7 @@ function CategoryRow({ cat, products, lang, onNavigate, onCategoryClick }: RowPr
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                     />
                   ) : (
-                    <div className="w-full h-full flex items-center justify-center min-h-[100px]">
+                    <div className="w-full h-full flex items-center justify-center min-h-[80px]">
                       <span className="text-navy/20 text-[10px] uppercase tracking-widest">No image</span>
                     </div>
                   )}

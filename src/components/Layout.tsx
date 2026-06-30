@@ -22,22 +22,22 @@ export function TopBar() {
 
   return (
     <div className="bg-navy text-cream/80 text-xs">
-      <div className="max-w-5xl mx-auto w-full px-4 sm:px-6 lg:px-8 h-9 flex items-center justify-between gap-4">
+      <div className="max-w-5xl mx-auto w-full px-4 sm:px-6 lg:px-8 h-9 flex items-center justify-between gap-4 overflow-hidden">
         {/* Left */}
-        <div className="flex items-center gap-4 min-w-0">
+        <div className="flex items-center gap-3 min-w-0">
           {leftText && (
-            <span className="truncate">{leftText}</span>
+            <span className="truncate hidden sm:block">{leftText}</span>
           )}
           {topbar_phone && (
             <a href={`tel:${topbar_phone.replace(/\s/g, "")}`}
               className="flex items-center gap-1.5 hover:text-white transition-colors flex-shrink-0">
               <Phone className="w-3 h-3" strokeWidth={1.75} />
-              {topbar_phone}
+              <span className="hidden sm:inline">{topbar_phone}</span>
             </a>
           )}
           {topbar_email && (
             <a href={`mailto:${topbar_email}`}
-              className="flex items-center gap-1.5 hover:text-white transition-colors flex-shrink-0 hidden sm:flex">
+              className="hidden sm:flex items-center gap-1.5 hover:text-white transition-colors flex-shrink-0">
               <Mail className="w-3 h-3" strokeWidth={1.75} />
               {topbar_email}
             </a>
@@ -46,9 +46,9 @@ export function TopBar() {
 
         {/* Right */}
         {hasRight && (
-          <div className="flex items-center gap-4 flex-shrink-0 text-cream/60">
-            {hours && <span className="hidden sm:block">{hours}</span>}
-            {rightText && <span>{rightText}</span>}
+          <div className="flex items-center gap-3 flex-shrink-0 text-cream/60">
+            {hours && <span className="hidden md:block">{hours}</span>}
+            {rightText && <span className="hidden sm:block">{rightText}</span>}
           </div>
         )}
       </div>
@@ -66,6 +66,10 @@ export function Navbar() {
   const dropdownRef = useRef<HTMLDivElement>(null);
   const [langOpen, setLangOpen] = useState(false);
   const langRef = useRef<HTMLDivElement>(null);
+  const [menuOpen, setMenuOpen] = useState(false);
+
+  const isCustomer = user?.user_metadata?.role === "customer";
+  const isAdmin = user && !isCustomer;
 
   useEffect(() => {
     function onOutsideClick(e: MouseEvent) {
@@ -79,9 +83,6 @@ export function Navbar() {
     document.addEventListener("mousedown", onOutsideClick);
     return () => document.removeEventListener("mousedown", onOutsideClick);
   }, []);
-
-  const isCustomer = user?.user_metadata?.role === "customer";
-  const isAdmin = user && !isCustomer;
 
   function handleUserClick() {
     if (!user) { openModal(); return; }
@@ -209,11 +210,66 @@ export function Navbar() {
               </span>
             )}
           </button>
-          <button className="md:hidden ml-2" aria-label="Menu">
+          <button
+            className="md:hidden ml-2"
+            aria-label="Menu"
+            onClick={() => setMenuOpen((v) => !v)}
+          >
             <Menu className="w-6 h-6" strokeWidth={1.5} />
           </button>
         </div>
       </div>
+
+      {/* Mobile menu */}
+      {menuOpen && (
+        <div className="md:hidden border-t border-navy/10 bg-cream/98 backdrop-blur-sm">
+          <nav className="max-w-5xl mx-auto px-4 py-4 flex flex-col gap-1">
+            <a href="#" onClick={() => setMenuOpen(false)}
+              className="px-3 py-3 text-sm font-semibold text-navy rounded-lg hover:bg-navy/5 transition-colors">{tr("nav_shop")}</a>
+            <a href="#" onClick={() => setMenuOpen(false)}
+              className="px-3 py-3 text-sm text-navy/70 rounded-lg hover:bg-navy/5 transition-colors">{tr("nav_story")}</a>
+            <a href="#" onClick={() => setMenuOpen(false)}
+              className="px-3 py-3 text-sm text-navy/70 rounded-lg hover:bg-navy/5 transition-colors">{tr("nav_journal")}</a>
+            <a href="#" onClick={() => setMenuOpen(false)}
+              className="px-3 py-3 text-sm text-navy/70 rounded-lg hover:bg-navy/5 transition-colors">{tr("nav_contact")}</a>
+
+            <div className="border-t border-navy/10 mt-2 pt-3 flex flex-col gap-1">
+              {!user && (
+                <button
+                  onClick={() => { setMenuOpen(false); openModal(); }}
+                  className="px-3 py-3 text-sm text-left text-navy/70 rounded-lg hover:bg-navy/5 transition-colors"
+                >
+                  {lang === "bs" ? "Prijava / Registracija" : "Sign in / Register"}
+                </button>
+              )}
+              {isCustomer && (
+                <button
+                  onClick={() => { setMenuOpen(false); navigate("/account"); }}
+                  className="px-3 py-3 text-sm text-left text-navy/70 rounded-lg hover:bg-navy/5 transition-colors"
+                >
+                  {lang === "bs" ? "Moj račun" : "My Account"}
+                </button>
+              )}
+              {isAdmin && (
+                <button
+                  onClick={() => { setMenuOpen(false); navigate("/admin"); }}
+                  className="px-3 py-3 text-sm text-left text-navy/70 rounded-lg hover:bg-navy/5 transition-colors"
+                >
+                  {lang === "bs" ? "Admin panel" : "Admin Panel"}
+                </button>
+              )}
+              {user && (
+                <button
+                  onClick={() => { setMenuOpen(false); signOut(); }}
+                  className="px-3 py-3 text-sm text-left text-red-500 rounded-lg hover:bg-red-50 transition-colors"
+                >
+                  {lang === "bs" ? "Odjava" : "Sign out"}
+                </button>
+              )}
+            </div>
+          </nav>
+        </div>
+      )}
     </header>
   );
 }
