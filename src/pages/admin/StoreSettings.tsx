@@ -5,6 +5,7 @@ import { supabase } from "../../lib/supabase";
 type Settings = {
   store_name: string;
   logo_url: string | null;
+  footer_logo_url: string | null;
   footer_desc_en: string;
   footer_desc_bs: string;
   social_facebook: string;
@@ -34,6 +35,7 @@ type Settings = {
 const empty: Settings = {
   store_name: "Deko Kutak",
   logo_url: null,
+  footer_logo_url: null,
   footer_desc_en: "", footer_desc_bs: "",
   social_facebook: "", social_instagram: "", social_email: "",
   bank_name: "", bank_account_holder: "", bank_iban: "", bank_note: "",
@@ -53,11 +55,13 @@ export default function StoreSettings() {
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [uploadingLogo, setUploadingLogo] = useState(false);
+  const [uploadingFooterLogo, setUploadingFooterLogo] = useState(false);
   const [uploadingOg, setUploadingOg] = useState(false);
   const [footerTab, setFooterTab] = useState<"en" | "bs">("en");
   const [seoDescTab, setSeoDescTab] = useState<"en" | "bs">("en");
   const [topbarTab, setTopbarTab] = useState<"en" | "bs">("en");
   const logoRef = useRef<HTMLInputElement>(null);
+  const footerLogoRef = useRef<HTMLInputElement>(null);
   const ogRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -66,6 +70,7 @@ export default function StoreSettings() {
         setForm({
           store_name: data.store_name ?? "Deko Kutak",
           logo_url: data.logo_url ?? null,
+          footer_logo_url: data.footer_logo_url ?? null,
           footer_desc_en: data.footer_desc_en ?? "",
           footer_desc_bs: data.footer_desc_bs ?? "",
           social_facebook: data.social_facebook ?? "",
@@ -114,6 +119,20 @@ export default function StoreSettings() {
     setUploadingLogo(false);
   }
 
+  async function handleFooterLogoUpload(file: File) {
+    setUploadingFooterLogo(true);
+    setError(null);
+    const ext = file.name.split(".").pop();
+    const path = `brand/footer-logo.${ext}`;
+    const { error: uploadErr } = await supabase.storage
+      .from("product-images")
+      .upload(path, file, { upsert: true, contentType: file.type });
+    if (uploadErr) { setError(uploadErr.message); setUploadingFooterLogo(false); return; }
+    const { data: { publicUrl } } = supabase.storage.from("product-images").getPublicUrl(path);
+    set("footer_logo_url", `${publicUrl}?t=${Date.now()}`);
+    setUploadingFooterLogo(false);
+  }
+
   async function handleOgUpload(file: File) {
     setUploadingOg(true);
     setError(null);
@@ -135,6 +154,7 @@ export default function StoreSettings() {
       id: 1,
       store_name: form.store_name || "Deko Kutak",
       logo_url: form.logo_url || null,
+      footer_logo_url: form.footer_logo_url || null,
       footer_desc_en: form.footer_desc_en || null,
       footer_desc_bs: form.footer_desc_bs || null,
       social_facebook: form.social_facebook || null,
@@ -251,6 +271,62 @@ export default function StoreSettings() {
             onChange={(e) => {
               const file = e.target.files?.[0];
               if (file) handleLogoUpload(file);
+              e.target.value = "";
+            }}
+          />
+        </div>
+
+        {/* Footer logo */}
+        <div className="flex flex-col gap-2">
+          <label className="text-sm font-medium text-navy">Footer Logo</label>
+          <p className="text-xs text-gray-400">White or light version of your logo shown on the dark footer background. If not set, the main logo above will be inverted automatically.</p>
+
+          {form.footer_logo_url ? (
+            <div className="flex items-start gap-4">
+              <div className="w-32 h-16 rounded-lg border border-gray-200 bg-navy flex items-center justify-center overflow-hidden p-2">
+                <img src={form.footer_logo_url} alt="Footer Logo" className="max-w-full max-h-full object-contain" />
+              </div>
+              <div className="flex flex-col gap-2">
+                <button
+                  type="button"
+                  onClick={() => footerLogoRef.current?.click()}
+                  disabled={uploadingFooterLogo}
+                  className="text-xs font-semibold text-navy border border-navy/30 px-3 py-1.5 rounded-lg hover:bg-navy/5 transition-colors disabled:opacity-50"
+                >
+                  {uploadingFooterLogo ? "Uploading…" : "Replace"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => set("footer_logo_url", null)}
+                  className="flex items-center gap-1 text-xs text-red-500 hover:text-red-700 transition-colors"
+                >
+                  <X className="w-3 h-3" /> Remove
+                </button>
+              </div>
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={() => footerLogoRef.current?.click()}
+              disabled={uploadingFooterLogo}
+              className="flex flex-col items-center gap-2 border-2 border-dashed border-gray-200 rounded-xl p-6 hover:border-navy/30 hover:bg-gray-50 transition-colors disabled:opacity-50"
+            >
+              <ImagePlus className="w-6 h-6 text-gray-300" strokeWidth={1.5} />
+              <span className="text-sm text-gray-400">
+                {uploadingFooterLogo ? "Uploading…" : "Click to upload footer logo"}
+              </span>
+              <span className="text-xs text-gray-300">White/light version · PNG or SVG recommended</span>
+            </button>
+          )}
+
+          <input
+            ref={footerLogoRef}
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              if (file) handleFooterLogoUpload(file);
               e.target.value = "";
             }}
           />

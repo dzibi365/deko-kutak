@@ -4,6 +4,7 @@ import { supabase } from "../lib/supabase";
 type SiteSettings = {
   store_name: string;
   logo_url: string | null;
+  footer_logo_url: string | null;
   social_facebook: string | null;
   social_instagram: string | null;
   social_email: string | null;
@@ -27,6 +28,7 @@ type SiteSettings = {
 const defaults: SiteSettings = {
   store_name: "Deko Kutak",
   logo_url: null,
+  footer_logo_url: null,
   social_facebook: null,
   social_instagram: null,
   social_email: null,
@@ -55,7 +57,7 @@ export function SiteSettingsProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     supabase
       .from("store_settings")
-      .select("store_name, logo_url, social_facebook, social_instagram, social_email, footer_desc_en, footer_desc_bs, seo_title, seo_description_en, seo_description_bs, og_image, topbar_enabled, topbar_left_text_en, topbar_left_text_bs, topbar_phone, topbar_email, topbar_hours_en, topbar_hours_bs, topbar_right_text_en, topbar_right_text_bs")
+      .select("store_name, logo_url, footer_logo_url, social_facebook, social_instagram, social_email, footer_desc_en, footer_desc_bs, seo_title, seo_description_en, seo_description_bs, og_image, topbar_enabled, topbar_left_text_en, topbar_left_text_bs, topbar_phone, topbar_email, topbar_hours_en, topbar_hours_bs, topbar_right_text_en, topbar_right_text_bs")
       .eq("id", 1)
       .single()
       .then(({ data }) => {
@@ -63,6 +65,7 @@ export function SiteSettingsProvider({ children }: { children: ReactNode }) {
           setSettings({
             store_name: data.store_name ?? "Deko Kutak",
             logo_url: data.logo_url ?? null,
+            footer_logo_url: data.footer_logo_url ?? null,
             social_facebook: data.social_facebook ?? null,
             social_instagram: data.social_instagram ?? null,
             social_email: data.social_email ?? null,

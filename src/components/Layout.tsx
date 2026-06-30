@@ -220,7 +220,7 @@ export function Navbar() {
 
 export function Footer() {
   const { tr, lang } = useLang();
-  const { store_name, logo_url, social_facebook, social_instagram, social_email, footer_desc_en, footer_desc_bs } = useSiteSettings();
+  const { store_name, logo_url, footer_logo_url, social_facebook, social_instagram, social_email, footer_desc_en, footer_desc_bs } = useSiteSettings();
   const footerDesc = lang === "bs" ? (footer_desc_bs || footer_desc_en) : (footer_desc_en || footer_desc_bs);
 
   return (
@@ -228,7 +228,9 @@ export function Footer() {
       <div className="max-w-5xl mx-auto w-full px-4 sm:px-6 lg:px-8">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-12 mb-16">
           <div className="md:col-span-2 flex flex-col gap-6">
-            {logo_url ? (
+            {footer_logo_url ? (
+              <img src={footer_logo_url} alt={store_name} className="h-28 w-auto object-contain" />
+            ) : logo_url ? (
               <img src={logo_url} alt={store_name} className="h-28 w-auto object-contain brightness-0 invert" />
             ) : (
               <span className="text-2xl font-semibold tracking-tight text-white">{store_name}.</span>
