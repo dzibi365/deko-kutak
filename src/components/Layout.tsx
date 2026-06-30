@@ -111,8 +111,8 @@ export function Navbar() {
         </nav>
 
         <div className="flex items-center gap-5 text-navy">
-          {/* Language dropdown */}
-          <div className="relative" ref={langRef}>
+          {/* Language dropdown — desktop only */}
+          <div className="relative hidden md:block" ref={langRef}>
             <button
               onClick={() => setLangOpen((v) => !v)}
               className="flex items-center gap-1 hover:opacity-80 transition-opacity"
@@ -146,7 +146,8 @@ export function Navbar() {
               </div>
             )}
           </div>
-          <button className="hover:text-copper transition-colors" aria-label="Search">
+          {/* Search — desktop only */}
+          <button className="hidden md:block hover:text-copper transition-colors" aria-label="Search">
             <Search className="w-5 h-5" strokeWidth={1.5} />
           </button>
 
@@ -232,6 +233,25 @@ export function Navbar() {
               className="px-3 py-3 text-sm text-navy/70 rounded-lg hover:bg-navy/5 transition-colors">{tr("nav_journal")}</a>
             <a href="#" onClick={() => setMenuOpen(false)}
               className="px-3 py-3 text-sm text-navy/70 rounded-lg hover:bg-navy/5 transition-colors">{tr("nav_contact")}</a>
+
+            {/* Language selector */}
+            <div className="border-t border-navy/10 mt-2 pt-3 flex gap-2 px-3">
+              {[
+                { code: "en", flag: "🇬🇧", label: "English" },
+                { code: "bs", flag: "🇧🇦", label: "Bosanski" },
+              ].map(({ code, flag, label }) => (
+                <button
+                  key={code}
+                  onClick={() => { if (lang !== code) toggleLang(); }}
+                  className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-colors flex-1 justify-center ${
+                    lang === code ? "bg-navy text-white font-semibold" : "text-navy/60 hover:bg-navy/5"
+                  }`}
+                >
+                  <span className="text-base leading-none">{flag}</span>
+                  {label}
+                </button>
+              ))}
+            </div>
 
             <div className="border-t border-navy/10 mt-2 pt-3 flex flex-col gap-1">
               {!user && (
