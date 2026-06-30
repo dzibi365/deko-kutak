@@ -240,7 +240,7 @@ function CategoryRow({ cat, products, lang, onNavigate, onCategoryClick }: RowPr
   const now = Date.now();
 
   return (
-    <div className="flex rounded-2xl overflow-hidden border border-gray-100 shadow-sm min-h-[460px]">
+    <div className="flex rounded-2xl overflow-hidden border border-gray-100 shadow-sm h-[760px]">
 
       {/* Left: fixed 220px category image panel — click navigates to /shop?category=X */}
       <div
@@ -270,7 +270,7 @@ function CategoryRow({ cat, products, lang, onNavigate, onCategoryClick }: RowPr
       </div>
 
       {/* Right: 3×2 product grid */}
-      <div className="flex-1 bg-white p-5">
+      <div className="flex-1 bg-white p-5 overflow-hidden">
         <div className="grid grid-cols-3 grid-rows-2 gap-4 h-full">
           {products.map((product) => {
             const name = lang === "bs"
