@@ -1,5 +1,5 @@
 import { useRef, useEffect, useState } from "react";
-import { Search, User, ShoppingBag, Menu, Instagram, Facebook, Mail, LayoutDashboard, LogOut, Phone, ChevronDown, Check } from "lucide-react";
+import { Search, User, ShoppingBag, Instagram, Facebook, Mail, LayoutDashboard, LogOut, Phone, ChevronDown, Check } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useLang } from "../context/LanguageContext";
 import { useCart } from "../context/CartContext";
@@ -22,35 +22,62 @@ export function TopBar() {
 
   return (
     <div className="bg-navy text-cream/80 text-xs">
-      <div className="max-w-5xl mx-auto w-full px-4 sm:px-6 lg:px-8 h-9 flex items-center justify-between gap-4 overflow-hidden">
-        {/* Left */}
-        <div className="flex items-center gap-3 min-w-0">
-          {leftText && (
-            <span className="truncate hidden sm:block">{leftText}</span>
-          )}
-          {topbar_phone && (
-            <a href={`tel:${topbar_phone.replace(/\s/g, "")}`}
-              className="flex items-center gap-1.5 hover:text-white transition-colors flex-shrink-0">
-              <Phone className="w-3 h-3" strokeWidth={1.75} />
-              <span className="hidden sm:inline">{topbar_phone}</span>
-            </a>
-          )}
-          {topbar_email && (
-            <a href={`mailto:${topbar_email}`}
-              className="hidden sm:flex items-center gap-1.5 hover:text-white transition-colors flex-shrink-0">
-              <Mail className="w-3 h-3" strokeWidth={1.75} />
-              {topbar_email}
-            </a>
+      <div className="max-w-5xl mx-auto w-full px-4 sm:px-6 lg:px-8">
+
+        {/* Mobile: stacked rows */}
+        <div className="sm:hidden py-2 flex flex-col gap-1.5">
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
+            {leftText && <span>{leftText}</span>}
+            {topbar_phone && (
+              <a href={`tel:${topbar_phone.replace(/\s/g, "")}`}
+                className="flex items-center gap-1 hover:text-white transition-colors">
+                <Phone className="w-3 h-3" strokeWidth={1.75} />
+                {topbar_phone}
+              </a>
+            )}
+            {topbar_email && (
+              <a href={`mailto:${topbar_email}`}
+                className="flex items-center gap-1 hover:text-white transition-colors">
+                <Mail className="w-3 h-3" strokeWidth={1.75} />
+                {topbar_email}
+              </a>
+            )}
+          </div>
+          {(hours || rightText) && (
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-cream/60">
+              {hours && <span>{hours}</span>}
+              {rightText && <span>{rightText}</span>}
+            </div>
           )}
         </div>
 
-        {/* Right */}
-        {hasRight && (
-          <div className="flex items-center gap-3 flex-shrink-0 text-cream/60">
-            {hours && <span className="hidden md:block">{hours}</span>}
-            {rightText && <span className="hidden sm:block">{rightText}</span>}
+        {/* Desktop: single row */}
+        <div className="hidden sm:flex items-center justify-between gap-4 h-9">
+          <div className="flex items-center gap-4 min-w-0">
+            {leftText && <span className="truncate">{leftText}</span>}
+            {topbar_phone && (
+              <a href={`tel:${topbar_phone.replace(/\s/g, "")}`}
+                className="flex items-center gap-1.5 hover:text-white transition-colors flex-shrink-0">
+                <Phone className="w-3 h-3" strokeWidth={1.75} />
+                {topbar_phone}
+              </a>
+            )}
+            {topbar_email && (
+              <a href={`mailto:${topbar_email}`}
+                className="flex items-center gap-1.5 hover:text-white transition-colors flex-shrink-0">
+                <Mail className="w-3 h-3" strokeWidth={1.75} />
+                {topbar_email}
+              </a>
+            )}
           </div>
-        )}
+          {hasRight && (
+            <div className="flex items-center gap-4 flex-shrink-0 text-cream/60">
+              {hours && <span>{hours}</span>}
+              {rightText && <span>{rightText}</span>}
+            </div>
+          )}
+        </div>
+
       </div>
     </div>
   );
