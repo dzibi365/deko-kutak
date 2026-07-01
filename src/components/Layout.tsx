@@ -24,31 +24,23 @@ export function TopBar() {
     <div className="bg-navy text-cream/80 text-xs">
       <div className="max-w-5xl mx-auto w-full px-4 sm:px-6 lg:px-8">
 
-        {/* Mobile: stacked rows */}
-        <div className="sm:hidden py-2 flex flex-col gap-1.5">
-          <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
-            {leftText && <span>{leftText}</span>}
-            {topbar_phone && (
-              <a href={`tel:${topbar_phone.replace(/\s/g, "")}`}
-                className="flex items-center gap-1 hover:text-white transition-colors">
-                <Phone className="w-3 h-3" strokeWidth={1.75} />
-                {topbar_phone}
-              </a>
-            )}
-            {topbar_email && (
-              <a href={`mailto:${topbar_email}`}
-                className="flex items-center gap-1 hover:text-white transition-colors">
-                <Mail className="w-3 h-3" strokeWidth={1.75} />
-                {topbar_email}
-              </a>
-            )}
-          </div>
-          {(hours || rightText) && (
-            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-cream/60">
-              {hours && <span>{hours}</span>}
-              {rightText && <span>{rightText}</span>}
-            </div>
+        {/* Mobile: phone, email, hours only — no promo text */}
+        <div className="sm:hidden py-2 flex flex-wrap items-center gap-x-4 gap-y-1">
+          {topbar_phone && (
+            <a href={`tel:${topbar_phone.replace(/\s/g, "")}`}
+              className="flex items-center gap-1 hover:text-white transition-colors">
+              <Phone className="w-3 h-3" strokeWidth={1.75} />
+              {topbar_phone}
+            </a>
           )}
+          {topbar_email && (
+            <a href={`mailto:${topbar_email}`}
+              className="flex items-center gap-1 hover:text-white transition-colors">
+              <Mail className="w-3 h-3" strokeWidth={1.75} />
+              {topbar_email}
+            </a>
+          )}
+          {hours && <span className="text-cream/60">{hours}</span>}
         </div>
 
         {/* Desktop: single row */}
