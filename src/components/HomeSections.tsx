@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { ArrowRight, Star } from "lucide-react";
+import { ArrowRight, Star, ChevronLeft, ChevronRight } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useLang } from "../context/LanguageContext";
 import { supabase, type Category, type Product, localName } from "../lib/supabase";
@@ -333,10 +333,15 @@ type HomeReview = {
   product_name: string;
 };
 
+const PER_PAGE = 2;
+
 export function Testimonials() {
   const { tr, lang } = useLang();
   const [reviews, setReviews] = useState<HomeReview[]>([]);
   const [loading, setLoading] = useState(true);
+  const [page, setPage] = useState(0);
+  const [animating, setAnimating] = useState(false);
+  const [direction, setDirection] = useState<"left" | "right">("right");
 
   useEffect(() => {
     async function load() {
@@ -346,7 +351,7 @@ export function Testimonials() {
           .select("id, user_name, rating, comment, product_id")
           .eq("approved", true)
           .order("created_at", { ascending: false })
-          .limit(6),
+          .limit(5),
         supabase.from("products").select("id, name, name_en, name_bs"),
       ]);
 
@@ -370,8 +375,30 @@ export function Testimonials() {
     load();
   }, [lang]);
 
+  const totalPages = Math.ceil(reviews.length / PER_PAGE);
+  const visible = reviews.slice(page * PER_PAGE, page * PER_PAGE + PER_PAGE);
+
+  function goTo(next: number, dir: "left" | "right") {
+    if (animating) return;
+    setDirection(dir);
+    setAnimating(true);
+    setTimeout(() => {
+      setPage(next);
+      setAnimating(false);
+    }, 220);
+  }
+
+  function prev() { if (page > 0) goTo(page - 1, "left"); }
+  function next() { if (page < totalPages - 1) goTo(page + 1, "right"); }
+
   if (loading) return null;
   if (reviews.length === 0) return null;
+
+  const slideClass = animating
+    ? direction === "right"
+      ? "opacity-0 translate-x-4"
+      : "opacity-0 -translate-x-4"
+    : "opacity-100 translate-x-0";
 
   return (
     <section id="testimonials">
@@ -380,8 +407,8 @@ export function Testimonials() {
         <p className="text-navy/70 max-w-xl mx-auto">{tr("test_sub")}</p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {reviews.map((r) => (
+      <div className={`grid grid-cols-1 md:grid-cols-2 gap-6 transition-all duration-200 ${slideClass}`}>
+        {visible.map((r) => (
           <div key={r.id} className="bg-white p-8 rounded-xl border-[0.5px] border-navy/20 flex flex-col gap-6">
             <div className="flex items-center gap-1">
               {Array.from({ length: 5 }).map((_, i) => (
@@ -403,6 +430,37 @@ export function Testimonials() {
           </div>
         ))}
       </div>
+
+      {/* Navigation */}
+      {totalPages > 1 && (
+        <div className="flex items-center justify-center gap-4 mt-8">
+          <button
+            onClick={prev}
+            disabled={page === 0}
+            className="p-2 rounded-full border border-navy/20 text-navy/50 hover:border-navy hover:text-navy transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+          >
+            <ChevronLeft className="w-5 h-5" strokeWidth={1.75} />
+          </button>
+
+          <div className="flex gap-2">
+            {Array.from({ length: totalPages }).map((_, i) => (
+              <button
+                key={i}
+                onClick={() => goTo(i, i > page ? "right" : "left")}
+                className={`rounded-full transition-all duration-200 ${i === page ? "w-6 h-2.5 bg-navy" : "w-2.5 h-2.5 bg-navy/20 hover:bg-navy/40"}`}
+              />
+            ))}
+          </div>
+
+          <button
+            onClick={next}
+            disabled={page === totalPages - 1}
+            className="p-2 rounded-full border border-navy/20 text-navy/50 hover:border-navy hover:text-navy transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+          >
+            <ChevronRight className="w-5 h-5" strokeWidth={1.75} />
+          </button>
+        </div>
+      )}
     </section>
   );
 }
