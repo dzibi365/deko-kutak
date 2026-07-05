@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { ShoppingCart, Heart, ArrowLeft, CheckCircle, XCircle, Share2 } from "lucide-react";
-import { supabase, type Product, localName, localDesc } from "../lib/supabase";
+import { supabase, type Product, type CustomField, localName, localDesc } from "../lib/supabase";
 import { Navbar, Footer } from "../components/Layout";
 import { CartDrawer } from "../components/CartDrawer";
 import { AuthModal } from "../components/AuthModal";
@@ -20,6 +20,8 @@ function ProductDetailContent() {
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
   const [activeImage, setActiveImage] = useState<string | null>(null);
+  const [fieldValues, setFieldValues] = useState<Record<string, string>>({});
+  const [fieldError, setFieldError] = useState<string | null>(null);
 
   useEffect(() => {
     async function load() {
@@ -169,11 +171,42 @@ function ProductDetailContent() {
             <p className="text-navy/70 leading-relaxed mb-8 text-base">{desc}</p>
           )}
 
+          {/* Custom fields */}
+          <ProductCustomFields
+            fields={product.custom_fields ?? []}
+            lang={lang}
+            values={fieldValues}
+            onChange={(id, val) => { setFieldValues((prev) => ({ ...prev, [id]: val })); setFieldError(null); }}
+          />
+
+          {fieldError && (
+            <p className="text-sm text-red-500 mb-4 px-3 py-2 bg-red-50 rounded-lg">{fieldError}</p>
+          )}
+
           {/* Actions */}
           <div className="flex gap-3 mt-auto">
             <button
               disabled={!product.in_stock}
-              onClick={() => addItem(product)}
+              onClick={() => {
+                const missing = (product.custom_fields ?? []).find(
+                  (f) => f.required && !fieldValues[f.id]?.trim()
+                );
+                if (missing) {
+                  const label = lang === "bs" ? (missing.label_bs || missing.label_en) : (missing.label_en || missing.label_bs);
+                  setFieldError(`Please fill in: ${label}`);
+                  return;
+                }
+                setFieldError(null);
+                const labeled: Record<string, string> = {};
+                (product.custom_fields ?? []).forEach((f) => {
+                  const val = fieldValues[f.id];
+                  if (val) {
+                    const label = lang === "bs" ? (f.label_bs || f.label_en) : (f.label_en || f.label_bs);
+                    if (label) labeled[label] = val;
+                  }
+                });
+                addItem(product, labeled);
+              }}
               className="flex-1 flex items-center justify-center gap-2 px-6 py-3.5 bg-navy text-white font-semibold rounded-xl hover:bg-navy/90 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
             >
               <ShoppingCart className="w-5 h-5" strokeWidth={2} />
@@ -196,6 +229,89 @@ function ProductDetailContent() {
 
       {/* Reviews */}
       <ReviewsSection productId={product.id} />
+    </div>
+  );
+}
+
+// ─── Customer-facing custom fields ───────────────────────────────────────────
+
+const fieldInputCls =
+  "w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-navy placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-navy/20 focus:border-navy transition";
+
+function ProductCustomFields({
+  fields, lang, values, onChange,
+}: {
+  fields: CustomField[];
+  lang: string;
+  values: Record<string, string>;
+  onChange: (id: string, value: string) => void;
+}) {
+  if (fields.length === 0) return null;
+
+  return (
+    <div className="flex flex-col gap-4 mb-6">
+      {fields.map((field) => {
+        const label = lang === "bs"
+          ? (field.label_bs || field.label_en)
+          : (field.label_en || field.label_bs);
+
+        const placeholder = lang === "bs"
+          ? (field.placeholder_bs || field.placeholder_en || label)
+          : (field.placeholder_en || field.placeholder_bs || label);
+
+        return (
+          <div key={field.id} className="flex flex-col gap-1.5">
+            <label className="text-sm font-medium text-navy">
+              {label}
+              {field.required && <span className="text-red-400 ml-1">*</span>}
+            </label>
+
+            {field.type === "text" && (
+              <input
+                value={values[field.id] ?? ""}
+                onChange={(e) => onChange(field.id, e.target.value)}
+                placeholder={placeholder}
+                className={fieldInputCls}
+              />
+            )}
+
+            {field.type === "textarea" && (
+              <textarea
+                value={values[field.id] ?? ""}
+                onChange={(e) => onChange(field.id, e.target.value)}
+                rows={3}
+                placeholder={placeholder}
+                className={`${fieldInputCls} resize-none`}
+              />
+            )}
+
+            {field.type === "select" && field.options.length > 0 && (
+              <select
+                value={values[field.id] ?? ""}
+                onChange={(e) => onChange(field.id, e.target.value)}
+                className={fieldInputCls}
+              >
+                <option value="">— {lang === "bs" ? "Odaberi" : "Select"} —</option>
+                {field.options.map((opt) => (
+                  <option key={opt} value={opt}>{opt}</option>
+                ))}
+              </select>
+            )}
+
+            {field.type === "checkbox" && (
+              <label className="flex items-center gap-3 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={values[field.id] === "yes"}
+                  onChange={(e) => onChange(field.id, e.target.checked ? "yes" : "")}
+                  className="w-4 h-4 accent-navy rounded"
+                />
+                <span className="text-sm text-navy/70">{label}</span>
+              </label>
+            )}
+          </div>
+        );
+      })}
     </div>
   );
 }

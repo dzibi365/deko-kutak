@@ -55,8 +55,11 @@ export function CartDrawer() {
                   { name: item.name, name_en: item.name_en, name_bs: item.name_bs },
                   lang
                 );
+                const customEntries = item.customizations
+                  ? Object.entries(item.customizations).filter(([, v]) => v)
+                  : [];
                 return (
-                  <li key={item.id} className="flex gap-4">
+                  <li key={item.cartKey} className="flex gap-4">
                     {/* Image */}
                     <div className="w-20 h-20 flex-shrink-0 rounded-xl overflow-hidden bg-cream/60 border border-gray-100">
                       {item.image_url ? (
@@ -71,24 +74,35 @@ export function CartDrawer() {
                       <p className="font-medium text-navy text-sm leading-snug line-clamp-2">{name}</p>
                       <p className="text-sm font-semibold text-copper">{item.price.toFixed(2)} KM</p>
 
+                      {/* Customizations */}
+                      {customEntries.length > 0 && (
+                        <ul className="flex flex-col gap-0.5 mt-0.5">
+                          {customEntries.map(([label, value]) => (
+                            <li key={label} className="text-xs text-gray-500 leading-snug">
+                              <span className="font-medium">{label}:</span> {value}
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+
                       {/* Qty controls */}
                       <div className="flex items-center gap-2 mt-1">
                         <button
-                          onClick={() => updateQty(item.id, item.quantity - 1)}
+                          onClick={() => updateQty(item.cartKey, item.quantity - 1)}
                           className="w-7 h-7 flex items-center justify-center border border-gray-200 rounded-lg text-navy hover:bg-gray-100 transition-colors"
                         >
                           <Minus className="w-3 h-3" strokeWidth={2} />
                         </button>
                         <span className="w-6 text-center text-sm font-semibold text-navy">{item.quantity}</span>
                         <button
-                          onClick={() => updateQty(item.id, item.quantity + 1)}
+                          onClick={() => updateQty(item.cartKey, item.quantity + 1)}
                           className="w-7 h-7 flex items-center justify-center border border-gray-200 rounded-lg text-navy hover:bg-gray-100 transition-colors"
                         >
                           <Plus className="w-3 h-3" strokeWidth={2} />
                         </button>
 
                         <button
-                          onClick={() => removeItem(item.id)}
+                          onClick={() => removeItem(item.cartKey)}
                           className="ml-auto p-1.5 text-gray-300 hover:text-red-500 transition-colors"
                         >
                           <Trash2 className="w-4 h-4" strokeWidth={1.75} />

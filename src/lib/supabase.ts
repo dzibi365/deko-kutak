@@ -6,6 +6,19 @@ const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
+export type CustomFieldType = 'text' | 'textarea' | 'select' | 'checkbox';
+
+export type CustomField = {
+  id: string;
+  label_en: string;
+  label_bs: string;
+  placeholder_en: string;
+  placeholder_bs: string;
+  type: CustomFieldType;
+  options: string[];
+  required: boolean;
+};
+
 export type Product = {
   id: number;
   name: string;
@@ -20,6 +33,7 @@ export type Product = {
   image_url: string | null;
   gallery_images: string[] | null;
   in_stock: boolean;
+  custom_fields: CustomField[] | null;
   created_at: string;
 };
 

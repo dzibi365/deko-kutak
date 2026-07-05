@@ -2,6 +2,7 @@ import { createContext, useContext, useEffect, useState, type ReactNode } from "
 import type { Product } from "../lib/supabase";
 
 export type CartItem = {
+  cartKey: string;
   id: number;
   name: string;
   name_en: string | null;
@@ -10,6 +11,7 @@ export type CartItem = {
   image_url: string | null;
   category: string;
   quantity: number;
+  customizations?: Record<string, string>;
 };
 
 type CartContextType = {
@@ -19,9 +21,9 @@ type CartContextType = {
   isOpen: boolean;
   openCart: () => void;
   closeCart: () => void;
-  addItem: (product: Product) => void;
-  removeItem: (id: number) => void;
-  updateQty: (id: number, qty: number) => void;
+  addItem: (product: Product, customizations?: Record<string, string>) => void;
+  removeItem: (cartKey: string) => void;
+  updateQty: (cartKey: string, qty: number) => void;
   clearCart: () => void;
 };
 
@@ -44,13 +46,22 @@ export function CartProvider({ children }: { children: ReactNode }) {
   const count = items.reduce((s, i) => s + i.quantity, 0);
   const total = items.reduce((s, i) => s + i.price * i.quantity, 0);
 
-  function addItem(product: Product) {
+  function addItem(product: Product, customizations?: Record<string, string>) {
     setItems((prev) => {
-      const existing = prev.find((i) => i.id === product.id);
-      if (existing) {
-        return prev.map((i) => i.id === product.id ? { ...i, quantity: i.quantity + 1 } : i);
+      const hasCustom = customizations && Object.keys(customizations).some((k) => customizations[k]);
+      const cartKey = hasCustom
+        ? `${product.id}-${Date.now()}-${Math.random().toString(36).slice(2)}`
+        : String(product.id);
+
+      if (!hasCustom) {
+        const existing = prev.find((i) => i.cartKey === cartKey);
+        if (existing) {
+          return prev.map((i) => i.cartKey === cartKey ? { ...i, quantity: i.quantity + 1 } : i);
+        }
       }
+
       return [...prev, {
+        cartKey,
         id: product.id,
         name: product.name,
         name_en: product.name_en,
@@ -59,18 +70,19 @@ export function CartProvider({ children }: { children: ReactNode }) {
         image_url: product.image_url,
         category: product.category,
         quantity: 1,
+        customizations: hasCustom ? customizations : undefined,
       }];
     });
     setIsOpen(true);
   }
 
-  function removeItem(id: number) {
-    setItems((prev) => prev.filter((i) => i.id !== id));
+  function removeItem(cartKey: string) {
+    setItems((prev) => prev.filter((i) => i.cartKey !== cartKey));
   }
 
-  function updateQty(id: number, qty: number) {
-    if (qty < 1) { removeItem(id); return; }
-    setItems((prev) => prev.map((i) => i.id === id ? { ...i, quantity: qty } : i));
+  function updateQty(cartKey: string, qty: number) {
+    if (qty < 1) { removeItem(cartKey); return; }
+    setItems((prev) => prev.map((i) => i.cartKey === cartKey ? { ...i, quantity: qty } : i));
   }
 
   function clearCart() { setItems([]); }
