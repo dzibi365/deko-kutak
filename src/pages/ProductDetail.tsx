@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
-import { useParams, useNavigate } from "react-router-dom";
-import { ShoppingCart, Heart, ArrowLeft, CheckCircle, XCircle, Share2, Upload, X as XIcon } from "lucide-react";
+import { useParams, useNavigate, Link } from "react-router-dom";
+import { ShoppingCart, Heart, ArrowLeft, CheckCircle, XCircle, Share2, Upload, X as XIcon, ChevronRight } from "lucide-react";
 import { supabase, type Product, type Category, type CustomField, localName, localDesc } from "../lib/supabase";
 import { Navbar, Footer } from "../components/Layout";
 import { CartDrawer } from "../components/CartDrawer";
@@ -23,6 +23,7 @@ function ProductDetailContent() {
   const [activeImage, setActiveImage] = useState<string | null>(null);
   const [fieldValues, setFieldValues] = useState<Record<string, string>>({});
   const [fieldError, setFieldError] = useState<string | null>(null);
+  const [similarProducts, setSimilarProducts] = useState<Product[]>([]);
 
   useEffect(() => {
     async function load() {
@@ -44,6 +45,15 @@ function ProductDetailContent() {
             .eq("name_en", data.category)
             .maybeSingle();
           setCategory(cat ?? null);
+        }
+        if (data.similar_products && data.similar_products.length > 0) {
+          const { data: simData } = await supabase
+            .from("products")
+            .select("*")
+            .in("id", data.similar_products);
+          setSimilarProducts(simData ?? []);
+        } else {
+          setSimilarProducts([]);
         }
       }
       setLoading(false);
@@ -238,6 +248,11 @@ function ProductDetailContent() {
 
       {/* Reviews */}
       <ReviewsSection productId={product.id} />
+
+      {/* Similar Products */}
+      {similarProducts.length > 0 && (
+        <SimilarProductsSection products={similarProducts} lang={lang} tr={tr} />
+      )}
     </div>
   );
 }
@@ -403,6 +418,56 @@ function ProductCustomFields({
           </div>
         );
       })}
+    </div>
+  );
+}
+
+// ─── Similar products section ─────────────────────────────────────────────────
+
+function SimilarProductsSection({
+  products,
+  lang,
+  tr,
+}: {
+  products: Product[];
+  lang: string;
+  tr: (key: string) => string;
+}) {
+  return (
+    <div className="mt-16">
+      <div className="flex items-center justify-between mb-6">
+        <h2 className="text-xl font-semibold text-navy">
+          {lang === "bs" ? "Slični proizvodi" : "Similar Products"}
+        </h2>
+      </div>
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+        {products.map((p) => {
+          const name = localName(p, lang as "en" | "bs");
+          return (
+            <Link
+              key={p.id}
+              to={`/products/${p.id}`}
+              className="group flex flex-col rounded-2xl overflow-hidden border border-navy/8 hover:border-navy/20 bg-white hover:shadow-md transition-all"
+            >
+              <div className="aspect-square bg-cream/60 overflow-hidden">
+                {p.image_url ? (
+                  <img
+                    src={p.image_url}
+                    alt={name}
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                  />
+                ) : (
+                  <div className="w-full h-full" />
+                )}
+              </div>
+              <div className="flex flex-col gap-1 p-3">
+                <p className="text-sm font-medium text-navy leading-snug line-clamp-2">{name}</p>
+                <p className="text-sm font-semibold text-copper">{p.price.toFixed(2)} KM</p>
+              </div>
+            </Link>
+          );
+        })}
+      </div>
     </div>
   );
 }

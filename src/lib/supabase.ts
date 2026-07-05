@@ -34,6 +34,7 @@ export type Product = {
   gallery_images: string[] | null;
   in_stock: boolean;
   custom_fields: CustomField[] | null;
+  similar_products: number[] | null;
   created_at: string;
 };
 

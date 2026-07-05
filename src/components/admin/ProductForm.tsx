@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
-import { X, Upload, Trash2, Plus } from "lucide-react";
-import { supabase, type Product, type Category, type CustomField, type FieldGroup } from "../../lib/supabase";
+import { X, Upload, Trash2, Plus, Search } from "lucide-react";
+import { supabase, type Product, type Category, type CustomField, type FieldGroup, localName } from "../../lib/supabase";
 import { CustomFieldsList, newField } from "./CustomFieldsEditor";
 
 type Props = {
@@ -31,6 +31,9 @@ export function ProductForm({ product, onClose, onSaved }: Props) {
   const [uploading, setUploading] = useState<"main" | number | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [customFields, setCustomFields] = useState<CustomField[]>([]);
+  const [allProducts, setAllProducts] = useState<Product[]>([]);
+  const [similarIds, setSimilarIds] = useState<number[]>([]);
+  const [productSearch, setProductSearch] = useState("");
 
   const mainFileRef = useRef<HTMLInputElement>(null);
   const galleryFileRef = useRef<HTMLInputElement>(null);
@@ -40,9 +43,11 @@ export function ProductForm({ product, onClose, onSaved }: Props) {
     Promise.all([
       supabase.from("categories").select("*").order("name"),
       supabase.from("field_groups").select("*").order("name"),
-    ]).then(([catsRes, groupsRes]) => {
+      supabase.from("products").select("id,name,name_en,name_bs,image_url,price,category,in_stock,description,description_en,description_bs,gallery_images,custom_fields,similar_products,compare_price,created_at").order("name"),
+    ]).then(([catsRes, groupsRes, prodsRes]) => {
       setCategories(catsRes.data ?? []);
       setGroups(groupsRes.data ?? []);
+      setAllProducts(prodsRes.data ?? []);
     });
   }, []);
 
@@ -60,9 +65,11 @@ export function ProductForm({ product, onClose, onSaved }: Props) {
         in_stock: product.in_stock,
       });
       setCustomFields(product.custom_fields ?? []);
+      setSimilarIds(product.similar_products ?? []);
     } else {
       setForm({ ...empty });
       setCustomFields([]);
+      setSimilarIds([]);
     }
   }, [product]);
 
@@ -152,6 +159,7 @@ export function ProductForm({ product, onClose, onSaved }: Props) {
       gallery_images: form.gallery_images.length > 0 ? form.gallery_images : [],
       in_stock: form.in_stock,
       custom_fields: customFields,
+      similar_products: similarIds,
     };
 
     setSaving(true);
@@ -334,6 +342,17 @@ export function ProductForm({ product, onClose, onSaved }: Props) {
 
               <CustomFieldsList fields={customFields} onChange={setCustomFields} />
             </div>
+
+            {/* Similar Products */}
+            <SimilarProductsPicker
+              allProducts={allProducts}
+              currentId={product?.id ?? null}
+              selectedIds={similarIds}
+              search={productSearch}
+              onSearchChange={setProductSearch}
+              onAdd={(id) => setSimilarIds((prev) => prev.includes(id) ? prev : [...prev, id])}
+              onRemove={(id) => setSimilarIds((prev) => prev.filter((x) => x !== id))}
+            />
           </form>
 
           {/* Right — SEO panel (always visible) */}
@@ -486,6 +505,99 @@ function CheckGroup({ label, color, checks }: { label: string; color: string; ch
           <p className="text-xs text-gray-600 leading-relaxed">{c.tip}</p>
         </div>
       ))}
+    </div>
+  );
+}
+
+// ─── Similar Products Picker ──────────────────────────────────────────────────
+
+function SimilarProductsPicker({
+  allProducts, currentId, selectedIds, search, onSearchChange, onAdd, onRemove,
+}: {
+  allProducts: Product[];
+  currentId: number | null;
+  selectedIds: number[];
+  search: string;
+  onSearchChange: (v: string) => void;
+  onAdd: (id: number) => void;
+  onRemove: (id: number) => void;
+}) {
+  const q = search.toLowerCase();
+  const candidates = allProducts.filter((p) =>
+    p.id !== currentId &&
+    !selectedIds.includes(p.id) &&
+    (
+      (p.name_en ?? p.name ?? "").toLowerCase().includes(q) ||
+      (p.name_bs ?? "").toLowerCase().includes(q)
+    )
+  );
+
+  const selected = allProducts.filter((p) => selectedIds.includes(p.id));
+
+  return (
+    <div className="flex flex-col gap-3">
+      <div>
+        <p className="text-sm font-medium text-navy">Similar Products</p>
+        <p className="text-xs text-gray-400 mt-0.5">Products shown as recommendations on this product's page.</p>
+      </div>
+
+      {/* Selected chips */}
+      {selected.length > 0 && (
+        <div className="flex flex-wrap gap-2">
+          {selected.map((p) => (
+            <span key={p.id} className="flex items-center gap-1.5 px-3 py-1 bg-navy/10 text-navy text-xs font-medium rounded-full">
+              {p.image_url && (
+                <img src={p.image_url} alt="" className="w-5 h-5 rounded-full object-cover" />
+              )}
+              {p.name_en ?? p.name_bs ?? p.name}
+              <button type="button" onClick={() => onRemove(p.id)}
+                className="p-0.5 hover:text-red-500 transition-colors">
+                <X className="w-3 h-3" strokeWidth={2} />
+              </button>
+            </span>
+          ))}
+        </div>
+      )}
+
+      {/* Search input */}
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400 pointer-events-none" strokeWidth={2} />
+        <input
+          value={search}
+          onChange={(e) => onSearchChange(e.target.value)}
+          placeholder="Search products to add…"
+          className={`${inputCls} pl-8`}
+        />
+      </div>
+
+      {/* Results */}
+      {search.trim() && (
+        <div className="border border-gray-200 rounded-xl overflow-hidden max-h-52 overflow-y-auto">
+          {candidates.length === 0 ? (
+            <p className="text-xs text-gray-400 text-center py-4">No matching products</p>
+          ) : (
+            candidates.slice(0, 20).map((p) => (
+              <button
+                key={p.id}
+                type="button"
+                onClick={() => { onAdd(p.id); onSearchChange(""); }}
+                className="flex items-center gap-3 w-full px-3 py-2.5 hover:bg-gray-50 transition-colors border-b border-gray-100 last:border-0 text-left"
+              >
+                {p.image_url ? (
+                  <img src={p.image_url} alt="" className="w-9 h-9 rounded-lg object-cover flex-shrink-0 border border-gray-100" />
+                ) : (
+                  <div className="w-9 h-9 rounded-lg bg-cream/80 flex-shrink-0" />
+                )}
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-navy truncate">{p.name_en ?? p.name_bs ?? p.name}</p>
+                  {p.name_bs && <p className="text-xs text-gray-400 truncate">{p.name_bs}</p>}
+                </div>
+                <span className="text-xs font-semibold text-copper flex-shrink-0">{p.price.toFixed(2)} KM</span>
+              </button>
+            ))
+          )}
+        </div>
+      )}
     </div>
   );
 }
