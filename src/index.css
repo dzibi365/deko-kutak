@@ -12,6 +12,11 @@ body {
   background-color: var(--color-cream);
   color: var(--color-navy);
   font-family: var(--font-sans);
+  overflow-x: hidden;
+}
+
+html {
+  overflow-x: hidden;
 }
 
 .scrollbar-hide::-webkit-scrollbar {

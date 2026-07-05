@@ -37,7 +37,7 @@ export default function OrderConfirmation() {
   }
 
   return (
-    <div className="min-h-screen bg-cream font-sans text-navy flex flex-col">
+    <div className="min-h-screen bg-cream font-sans text-navy flex flex-col overflow-x-hidden">
       <header className="bg-cream/95 border-b border-navy/10 px-4 py-5">
         <div className="max-w-5xl mx-auto">
           <a href="/" className="text-lg font-semibold tracking-tight text-navy">Deko Kutak.</a>

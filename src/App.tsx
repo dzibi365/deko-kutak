@@ -42,7 +42,7 @@ function StoreFront() {
         <CustomerAuthProvider>
           <SiteMeta />
           <AuthModal />
-          <div className="min-h-screen bg-cream font-sans text-navy flex flex-col">
+          <div className="min-h-screen bg-cream font-sans text-navy flex flex-col overflow-x-hidden">
             <Navbar />
             <CartDrawer />
             <main className="flex-1 flex flex-col">

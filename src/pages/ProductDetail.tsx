@@ -327,7 +327,7 @@ function ProductCustomFields({
 
 export default function ProductDetail() {
   return (
-    <div className="min-h-screen bg-cream font-sans text-navy flex flex-col">
+    <div className="min-h-screen bg-cream font-sans text-navy flex flex-col overflow-x-hidden">
       <Navbar />
       <CartDrawer />
       <AuthModal />
