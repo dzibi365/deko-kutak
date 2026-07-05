@@ -22,6 +22,7 @@ export default function Reviews() {
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState<Tab>("pending");
   const [actingId, setActingId] = useState<number | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   async function load() {
     const [reviewsRes, productsRes] = await Promise.all([
@@ -37,16 +38,20 @@ export default function Reviews() {
 
   async function approve(id: number) {
     setActingId(id);
-    await supabase.from("reviews").update({ approved: true }).eq("id", id);
+    setError(null);
+    const { error: err } = await supabase.from("reviews").update({ approved: true }).eq("id", id);
     setActingId(null);
+    if (err) { setError(`Approve failed: ${err.message}`); return; }
     load();
   }
 
   async function remove(id: number) {
     if (!confirm("Delete this review?")) return;
     setActingId(id);
-    await supabase.from("reviews").delete().eq("id", id);
+    setError(null);
+    const { error: err } = await supabase.from("reviews").delete().eq("id", id);
     setActingId(null);
+    if (err) { setError(`Delete failed: ${err.message}`); return; }
     load();
   }
 
@@ -70,6 +75,10 @@ export default function Reviews() {
         <h1 className="text-2xl font-semibold text-navy mb-1">Reviews</h1>
         <p className="text-sm text-gray-400">{pending.length} pending approval</p>
       </div>
+
+      {error && (
+        <div className="mb-4 px-4 py-3 bg-red-50 text-red-600 text-sm rounded-lg border border-red-100">{error}</div>
+      )}
 
       {/* Tabs */}
       <div className="flex gap-1 p-1 bg-gray-100 rounded-lg w-fit mb-6">
