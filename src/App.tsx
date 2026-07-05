@@ -20,6 +20,7 @@ import Categories from "./pages/admin/Categories";
 import HeroConfig from "./pages/admin/HeroConfig";
 import Orders from "./pages/admin/Orders";
 import StoreSettings from "./pages/admin/StoreSettings";
+import AdminReviews from "./pages/admin/Reviews";
 import ProductDetail from "./pages/ProductDetail";
 import Checkout from "./pages/Checkout";
 import OrderConfirmation from "./pages/OrderConfirmation";
@@ -143,6 +144,7 @@ export default function App() {
             <Route path="categories" element={<Categories />} />
             <Route path="homepage" element={<HeroConfig />} />
             <Route path="orders" element={<Orders />} />
+            <Route path="reviews" element={<AdminReviews />} />
             <Route path="settings" element={<StoreSettings />} />
           </Route>
 

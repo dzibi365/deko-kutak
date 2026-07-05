@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import { ArrowRight, Star } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { testimonials } from "../data";
 import { useLang } from "../context/LanguageContext";
 import { supabase, type Category, type Product, localName } from "../lib/supabase";
 
@@ -326,30 +325,80 @@ function CategoryRow({ cat, products, lang, onNavigate, onCategoryClick }: RowPr
   );
 }
 
+type HomeReview = {
+  id: number;
+  user_name: string;
+  rating: number;
+  comment: string | null;
+  product_name: string;
+};
+
 export function Testimonials() {
-  const { tr } = useLang();
+  const { tr, lang } = useLang();
+  const [reviews, setReviews] = useState<HomeReview[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function load() {
+      const [reviewsRes, productsRes] = await Promise.all([
+        supabase
+          .from("reviews")
+          .select("id, user_name, rating, comment, product_id")
+          .eq("approved", true)
+          .order("created_at", { ascending: false })
+          .limit(6),
+        supabase.from("products").select("id, name, name_en, name_bs"),
+      ]);
+
+      const productMap = new Map(
+        (productsRes.data ?? []).map((p) => [p.id, p])
+      );
+
+      const mapped: HomeReview[] = (reviewsRes.data ?? [])
+        .filter((r) => r.comment)
+        .map((r) => {
+          const p = productMap.get(r.product_id);
+          const productName = p
+            ? (lang === "bs" ? (p.name_bs || p.name_en || p.name) : (p.name_en || p.name))
+            : "";
+          return { id: r.id, user_name: r.user_name, rating: r.rating, comment: r.comment, product_name: productName };
+        });
+
+      setReviews(mapped);
+      setLoading(false);
+    }
+    load();
+  }, [lang]);
+
+  if (loading) return null;
+  if (reviews.length === 0) return null;
 
   return (
-    <section>
+    <section id="testimonials">
       <div className="mb-10 text-center">
         <h2 className="text-3xl font-semibold tracking-tight mb-4">{tr("test_heading")}</h2>
         <p className="text-navy/70 max-w-xl mx-auto">{tr("test_sub")}</p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {testimonials.map((t) => (
-          <div key={t.id} className="bg-white p-8 rounded-xl border-[0.5px] border-navy/20 flex flex-col gap-6">
-            <div className="flex items-center gap-1 text-copper">
+        {reviews.map((r) => (
+          <div key={r.id} className="bg-white p-8 rounded-xl border-[0.5px] border-navy/20 flex flex-col gap-6">
+            <div className="flex items-center gap-1">
               {Array.from({ length: 5 }).map((_, i) => (
-                <Star key={i} className="w-5 h-5 fill-current" strokeWidth={1} />
+                <Star key={i} className={`w-5 h-5 ${i < r.rating ? "fill-amber-400 text-amber-400" : "fill-gray-200 text-gray-200"}`} strokeWidth={1} />
               ))}
             </div>
-            <p className="text-lg text-navy leading-relaxed flex-1">"{t.text}"</p>
+            <p className="text-lg text-navy leading-relaxed flex-1">"{r.comment}"</p>
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-full bg-cream border-[0.5px] border-navy/20 flex items-center justify-center font-semibold text-navy/50">
-                {t.name.charAt(0)}
+                {r.user_name.charAt(0).toUpperCase()}
               </div>
-              <span className="font-semibold">{t.name}</span>
+              <div className="flex flex-col">
+                <span className="font-semibold text-navy">{r.user_name}</span>
+                {r.product_name && (
+                  <span className="text-xs text-gray-400">{r.product_name}</span>
+                )}
+              </div>
             </div>
           </div>
         ))}

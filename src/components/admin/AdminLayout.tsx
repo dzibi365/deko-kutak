@@ -1,12 +1,15 @@
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
-import { LayoutDashboard, Package, Tag, LogOut, Store, ImagePlay, ShoppingBag, Settings } from "lucide-react";
+import { useEffect, useState } from "react";
+import { LayoutDashboard, Package, Tag, LogOut, Store, ImagePlay, ShoppingBag, Settings, MessageSquare } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
+import { supabase } from "../../lib/supabase";
 
 const navItems = [
   { to: "/admin", label: "Dashboard", icon: LayoutDashboard, end: true },
   { to: "/admin/orders", label: "Orders", icon: ShoppingBag, end: false },
   { to: "/admin/products", label: "Products", icon: Package, end: false },
   { to: "/admin/categories", label: "Categories", icon: Tag, end: false },
+  { to: "/admin/reviews", label: "Reviews", icon: MessageSquare, end: false },
   { to: "/admin/homepage", label: "Homepage", icon: ImagePlay, end: false },
   { to: "/admin/settings", label: "Settings", icon: Settings, end: false },
 ];
@@ -14,6 +17,15 @@ const navItems = [
 export function AdminLayout() {
   const { signOut, user } = useAuth();
   const navigate = useNavigate();
+  const [pendingReviews, setPendingReviews] = useState(0);
+
+  useEffect(() => {
+    supabase
+      .from("reviews")
+      .select("id", { count: "exact", head: true })
+      .eq("approved", false)
+      .then(({ count }) => setPendingReviews(count ?? 0));
+  }, []);
 
   async function handleSignOut() {
     await signOut();
@@ -47,6 +59,11 @@ export function AdminLayout() {
             >
               <Icon className="w-4 h-4" strokeWidth={1.75} />
               {label}
+              {label === "Reviews" && pendingReviews > 0 && (
+                <span className="ml-auto text-xs bg-amber-400 text-white font-bold px-1.5 py-0.5 rounded-full leading-none">
+                  {pendingReviews}
+                </span>
+              )}
             </NavLink>
           ))}
         </nav>

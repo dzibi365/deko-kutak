@@ -32,6 +32,7 @@ export function ReviewsSection({ productId }: { productId: number }) {
       .from("reviews")
       .select("*")
       .eq("product_id", productId)
+      .eq("approved", true)
       .order("created_at", { ascending: false });
     setReviews(data ?? []);
     setLoading(false);
