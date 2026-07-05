@@ -37,6 +37,13 @@ export type Product = {
   created_at: string;
 };
 
+export type FieldGroup = {
+  id: number;
+  name: string;
+  fields: CustomField[];
+  created_at: string;
+};
+
 export type Category = {
   id: number;
   name: string;

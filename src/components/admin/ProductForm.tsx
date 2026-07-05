@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
-import { X, Upload, Trash2, Plus, GripVertical } from "lucide-react";
-import { supabase, type Product, type Category, type CustomField, type CustomFieldType } from "../../lib/supabase";
+import { X, Upload, Trash2, Plus } from "lucide-react";
+import { supabase, type Product, type Category, type CustomField, type FieldGroup } from "../../lib/supabase";
+import { CustomFieldsList, newField } from "./CustomFieldsEditor";
 
 type Props = {
   product?: Product | null;
@@ -25,6 +26,7 @@ export function ProductForm({ product, onClose, onSaved }: Props) {
   const [form, setForm] = useState({ ...empty });
   const [tab, setTab] = useState<LangTab>("en");
   const [categories, setCategories] = useState<Category[]>([]);
+  const [groups, setGroups] = useState<FieldGroup[]>([]);
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState<"main" | number | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -35,8 +37,12 @@ export function ProductForm({ product, onClose, onSaved }: Props) {
   const gallerySlotRef = useRef<number>(-1);
 
   useEffect(() => {
-    supabase.from("categories").select("*").order("name").then(({ data }) => {
-      setCategories(data ?? []);
+    Promise.all([
+      supabase.from("categories").select("*").order("name"),
+      supabase.from("field_groups").select("*").order("name"),
+    ]).then(([catsRes, groupsRes]) => {
+      setCategories(catsRes.data ?? []);
+      setGroups(groupsRes.data ?? []);
     });
   }, []);
 
@@ -64,25 +70,11 @@ export function ProductForm({ product, onClose, onSaved }: Props) {
     setForm((f) => ({ ...f, [key]: value }));
   }
 
-  function addCustomField() {
-    setCustomFields((prev) => [...prev, {
-      id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
-      label_en: "",
-      label_bs: "",
-      placeholder_en: "",
-      placeholder_bs: "",
-      type: "text",
-      options: [],
-      required: false,
-    }]);
-  }
-
-  function updateCustomField(id: string, patch: Partial<CustomField>) {
-    setCustomFields((prev) => prev.map((f) => f.id === id ? { ...f, ...patch } : f));
-  }
-
-  function removeCustomField(id: string) {
-    setCustomFields((prev) => prev.filter((f) => f.id !== id));
+  function applyGroup(groupId: string) {
+    const group = groups.find((g) => String(g.id) === groupId);
+    if (!group) return;
+    const copied = group.fields.map((f) => ({ ...f, id: `${Date.now()}-${Math.random().toString(36).slice(2)}` }));
+    setCustomFields(copied);
   }
 
   async function uploadFile(file: File): Promise<string | null> {
@@ -321,33 +313,26 @@ export function ProductForm({ product, onClose, onSaved }: Props) {
 
             {/* Custom Fields */}
             <div className="flex flex-col gap-3">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-navy">Customer Input Fields</p>
-                  <p className="text-xs text-gray-400 mt-0.5">Fields customers fill in when adding to cart (e.g. personalization, size, color).</p>
-                </div>
-                <button type="button" onClick={addCustomField}
-                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-navy border border-navy/20 rounded-lg hover:bg-navy hover:text-white hover:border-navy transition-colors">
-                  <Plus className="w-3.5 h-3.5" strokeWidth={2} />
-                  Add Field
-                </button>
+              <div>
+                <p className="text-sm font-medium text-navy">Customer Input Fields</p>
+                <p className="text-xs text-gray-400 mt-0.5">Fields customers fill in when adding to cart (e.g. personalization, size, color).</p>
               </div>
 
-              {customFields.length === 0 && (
-                <p className="text-xs text-gray-300 text-center py-4 border border-dashed border-gray-200 rounded-xl">
-                  No custom fields. Click "Add Field" to create one.
-                </p>
+              {/* Load from group */}
+              {groups.length > 0 && (
+                <select
+                  defaultValue=""
+                  onChange={(e) => { if (e.target.value) applyGroup(e.target.value); e.target.value = ""; }}
+                  className={inputCls}
+                >
+                  <option value="">— Load from a field group —</option>
+                  {groups.map((g) => (
+                    <option key={g.id} value={g.id}>{g.name} ({g.fields.length} field{g.fields.length !== 1 ? "s" : ""})</option>
+                  ))}
+                </select>
               )}
 
-              {customFields.map((cf, idx) => (
-                <CustomFieldEditor
-                  key={cf.id}
-                  field={cf}
-                  index={idx}
-                  onChange={(patch) => updateCustomField(cf.id, patch)}
-                  onRemove={() => removeCustomField(cf.id)}
-                />
-              ))}
+              <CustomFieldsList fields={customFields} onChange={setCustomFields} />
             </div>
           </form>
 
@@ -368,117 +353,6 @@ export function ProductForm({ product, onClose, onSaved }: Props) {
           </button>
         </div>
       </div>
-    </div>
-  );
-}
-
-// ─── Custom field editor ──────────────────────────────────────────────────────
-
-const FIELD_TYPES: { value: CustomFieldType; label: string }[] = [
-  { value: "text", label: "Text" },
-  { value: "textarea", label: "Textarea" },
-  { value: "select", label: "Dropdown" },
-  { value: "checkbox", label: "Checkbox" },
-];
-
-function CustomFieldEditor({
-  field, index, onChange, onRemove,
-}: {
-  field: CustomField;
-  index: number;
-  onChange: (patch: Partial<CustomField>) => void;
-  onRemove: () => void;
-}) {
-  const optionsText = field.options.join(", ");
-
-  return (
-    <div className="border border-gray-200 rounded-xl p-4 flex flex-col gap-3 bg-gray-50/50">
-      {/* Header row */}
-      <div className="flex items-center gap-2">
-        <GripVertical className="w-4 h-4 text-gray-300 flex-shrink-0" strokeWidth={1.75} />
-        <span className="text-xs font-semibold text-gray-400 uppercase tracking-wide flex-1">Field {index + 1}</span>
-
-        {/* Required toggle */}
-        <label className="flex items-center gap-1.5 cursor-pointer select-none">
-          <div
-            onClick={() => onChange({ required: !field.required })}
-            className={`w-8 h-4.5 rounded-full transition-colors flex items-center px-0.5 ${field.required ? "bg-navy" : "bg-gray-200"}`}
-            style={{ height: "18px" }}
-          >
-            <div className={`w-3.5 h-3.5 rounded-full bg-white shadow transition-transform ${field.required ? "translate-x-3.5" : "translate-x-0"}`} />
-          </div>
-          <span className="text-xs text-gray-500">Required</span>
-        </label>
-
-        <button type="button" onClick={onRemove}
-          className="p-1.5 text-gray-300 hover:text-red-400 transition-colors rounded-lg hover:bg-red-50">
-          <Trash2 className="w-3.5 h-3.5" strokeWidth={1.75} />
-        </button>
-      </div>
-
-      {/* Type selector */}
-      <div className="grid grid-cols-4 gap-1">
-        {FIELD_TYPES.map((t) => (
-          <button key={t.value} type="button"
-            onClick={() => onChange({ type: t.value })}
-            className={`py-1.5 text-xs font-medium rounded-lg border transition-colors ${field.type === t.value ? "bg-navy text-white border-navy" : "border-gray-200 text-gray-500 hover:border-navy/30 hover:text-navy bg-white"}`}>
-            {t.label}
-          </button>
-        ))}
-      </div>
-
-      {/* Labels */}
-      <div className="grid grid-cols-2 gap-2">
-        <input
-          value={field.label_en}
-          onChange={(e) => onChange({ label_en: e.target.value })}
-          placeholder="Label (EN)"
-          className={inputCls}
-        />
-        <input
-          value={field.label_bs}
-          onChange={(e) => onChange({ label_bs: e.target.value })}
-          placeholder="Oznaka (BS)"
-          className={inputCls}
-        />
-      </div>
-
-      {/* Placeholders — only for text/textarea */}
-      {(field.type === "text" || field.type === "textarea") && (
-        <div className="grid grid-cols-2 gap-2">
-          <input
-            value={field.placeholder_en}
-            onChange={(e) => onChange({ placeholder_en: e.target.value })}
-            placeholder="Placeholder (EN)"
-            className={inputCls}
-          />
-          <input
-            value={field.placeholder_bs}
-            onChange={(e) => onChange({ placeholder_bs: e.target.value })}
-            placeholder="Placeholder (BS)"
-            className={inputCls}
-          />
-        </div>
-      )}
-
-      {/* Options — only for select/dropdown */}
-      {field.type === "select" && (
-        <div className="flex flex-col gap-1">
-          <input
-            value={optionsText}
-            onChange={(e) => onChange({ options: e.target.value.split(",").map((s) => s.trim()).filter(Boolean) })}
-            placeholder="Options, comma-separated (e.g. Red, Blue, Green)"
-            className={inputCls}
-          />
-          {field.options.length > 0 && (
-            <div className="flex flex-wrap gap-1 mt-1">
-              {field.options.map((opt) => (
-                <span key={opt} className="px-2 py-0.5 bg-navy/10 text-navy text-xs rounded-full">{opt}</span>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
     </div>
   );
 }
