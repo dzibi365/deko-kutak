@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { ShoppingCart, Heart, ArrowLeft, CheckCircle, XCircle, Share2 } from "lucide-react";
-import { supabase, type Product, type CustomField, localName, localDesc } from "../lib/supabase";
+import { supabase, type Product, type Category, type CustomField, localName, localDesc } from "../lib/supabase";
 import { Navbar, Footer } from "../components/Layout";
 import { CartDrawer } from "../components/CartDrawer";
 import { AuthModal } from "../components/AuthModal";
@@ -17,6 +17,7 @@ function ProductDetailContent() {
   const { addItem } = useCart();
 
   const [product, setProduct] = useState<Product | null>(null);
+  const [category, setCategory] = useState<Category | null>(null);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
   const [activeImage, setActiveImage] = useState<string | null>(null);
@@ -36,6 +37,14 @@ function ProductDetailContent() {
       } else {
         setProduct(data);
         setActiveImage(data.image_url ?? data.gallery_images?.[0] ?? null);
+        if (data.category) {
+          const { data: cat } = await supabase
+            .from("categories")
+            .select("*")
+            .eq("name_en", data.category)
+            .maybeSingle();
+          setCategory(cat ?? null);
+        }
       }
       setLoading(false);
     }
@@ -134,7 +143,7 @@ function ProductDetailContent() {
           {/* Category */}
           {product.category && (
             <span className="text-xs font-semibold text-copper uppercase tracking-widest mb-3">
-              {product.category}
+              {category ? localName(category, lang) : product.category}
             </span>
           )}
 
