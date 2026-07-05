@@ -76,12 +76,22 @@ export function CartDrawer() {
 
                       {/* Customizations */}
                       {customEntries.length > 0 && (
-                        <ul className="flex flex-col gap-0.5 mt-0.5">
-                          {customEntries.map(([label, value]) => (
-                            <li key={label} className="text-xs text-gray-500 leading-snug">
-                              <span className="font-medium">{label}:</span> {value}
-                            </li>
-                          ))}
+                        <ul className="flex flex-col gap-1 mt-0.5">
+                          {customEntries.map(([label, value]) => {
+                            const isImage = value.startsWith("http") && /\.(jpg|jpeg|png|webp)(\?|$)/i.test(value);
+                            return (
+                              <li key={label} className="text-xs text-gray-500 leading-snug">
+                                {isImage ? (
+                                  <div className="flex flex-col gap-1">
+                                    <span className="font-medium">{label}:</span>
+                                    <img src={value} alt={label} className="w-20 h-20 object-cover rounded-lg border border-gray-200" />
+                                  </div>
+                                ) : (
+                                  <><span className="font-medium">{label}:</span> {value}</>
+                                )}
+                              </li>
+                            );
+                          })}
                         </ul>
                       )}
 

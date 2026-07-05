@@ -1,6 +1,6 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { ShoppingCart, Heart, ArrowLeft, CheckCircle, XCircle, Share2 } from "lucide-react";
+import { ShoppingCart, Heart, ArrowLeft, CheckCircle, XCircle, Share2, Upload, X as XIcon } from "lucide-react";
 import { supabase, type Product, type Category, type CustomField, localName, localDesc } from "../lib/supabase";
 import { Navbar, Footer } from "../components/Layout";
 import { CartDrawer } from "../components/CartDrawer";
@@ -247,6 +247,77 @@ function ProductDetailContent() {
 const fieldInputCls =
   "w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-navy placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-navy/20 focus:border-navy transition";
 
+function ImageUploadField({
+  fieldId, value, required, label, lang, onChange,
+}: {
+  fieldId: string;
+  value: string;
+  required: boolean;
+  label: string;
+  lang: string;
+  onChange: (id: string, value: string) => void;
+}) {
+  const fileRef = useRef<HTMLInputElement>(null);
+  const [uploading, setUploading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploading(true);
+    setError(null);
+    const ext = file.name.split(".").pop();
+    const path = `${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+    const { error: uploadErr } = await supabase.storage
+      .from("customer-uploads")
+      .upload(path, file, { upsert: false });
+    if (uploadErr) { setError(uploadErr.message); setUploading(false); return; }
+    const url = supabase.storage.from("customer-uploads").getPublicUrl(path).data.publicUrl;
+    onChange(fieldId, url);
+    setUploading(false);
+    if (fileRef.current) fileRef.current.value = "";
+  }
+
+  return (
+    <div className="flex flex-col gap-2">
+      {value ? (
+        <div className="relative w-full">
+          <img src={value} alt={label} className="w-full max-h-56 object-contain rounded-xl border border-gray-200 bg-gray-50" />
+          <button
+            type="button"
+            onClick={() => onChange(fieldId, "")}
+            className="absolute top-2 right-2 p-1.5 bg-white/90 border border-gray-200 rounded-lg text-gray-500 hover:text-red-500 hover:border-red-200 transition-colors shadow-sm"
+          >
+            <XIcon className="w-4 h-4" strokeWidth={1.75} />
+          </button>
+        </div>
+      ) : (
+        <button
+          type="button"
+          onClick={() => fileRef.current?.click()}
+          disabled={uploading}
+          className="flex flex-col items-center justify-center gap-2 w-full h-36 border-2 border-dashed border-gray-200 rounded-xl text-gray-400 hover:border-navy/40 hover:text-navy transition-colors disabled:opacity-60"
+        >
+          {uploading ? (
+            <>
+              <div className="w-5 h-5 border-2 border-current border-t-transparent rounded-full animate-spin opacity-50" />
+              <span className="text-sm">{lang === "bs" ? "Učitavanje…" : "Uploading…"}</span>
+            </>
+          ) : (
+            <>
+              <Upload className="w-6 h-6" strokeWidth={1.5} />
+              <span className="text-sm font-medium">{lang === "bs" ? "Kliknite za upload fotografije" : "Click to upload photo"}</span>
+              <span className="text-xs">JPG, PNG or WEBP · max 5 MB</span>
+            </>
+          )}
+        </button>
+      )}
+      {error && <p className="text-xs text-red-500">{error}</p>}
+      <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={handleFile} />
+    </div>
+  );
+}
+
 function ProductCustomFields({
   fields, lang, values, onChange,
 }: {
@@ -317,6 +388,17 @@ function ProductCustomFields({
                 />
                 <span className="text-sm text-navy/70">{label}</span>
               </label>
+            )}
+
+            {field.type === "image" && (
+              <ImageUploadField
+                fieldId={field.id}
+                value={values[field.id] ?? ""}
+                required={field.required}
+                label={label ?? ""}
+                lang={lang}
+                onChange={onChange}
+              />
             )}
           </div>
         );

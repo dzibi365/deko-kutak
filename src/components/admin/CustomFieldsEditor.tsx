@@ -8,6 +8,7 @@ export const FIELD_TYPES: { value: CustomFieldType; label: string }[] = [
   { value: "textarea", label: "Textarea" },
   { value: "select", label: "Dropdown" },
   { value: "checkbox", label: "Checkbox" },
+  { value: "image", label: "Photo" },
 ];
 
 export function newField(): CustomField {

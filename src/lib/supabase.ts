@@ -6,7 +6,7 @@ const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
-export type CustomFieldType = 'text' | 'textarea' | 'select' | 'checkbox';
+export type CustomFieldType = 'text' | 'textarea' | 'select' | 'checkbox' | 'image';
 
 export type CustomField = {
   id: string;
