@@ -1,6 +1,15 @@
 import { useEffect, useState } from "react";
 import { supabase } from "../../lib/supabase";
 
+type OrderItem = {
+  name: string;
+  name_en: string | null;
+  price: number;
+  quantity: number;
+  image_url: string | null;
+  customizations?: Record<string, string>;
+};
+
 type Order = {
   id: number;
   order_number: string;
@@ -11,7 +20,7 @@ type Order = {
   customer_city: string;
   customer_postal: string | null;
   payment_method: string;
-  items: Array<{ name: string; name_en: string | null; price: number; quantity: number; image_url: string | null }>;
+  items: OrderItem[];
   subtotal: number;
   status: string;
   note: string | null;
@@ -133,17 +142,43 @@ export default function Orders() {
                   {/* Items */}
                   <div>
                     <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">Items</p>
-                    <div className="flex flex-col gap-2">
-                      {order.items.map((item, idx) => (
-                        <div key={idx} className="flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-lg overflow-hidden bg-gray-100 flex-shrink-0">
-                            {item.image_url && <img src={item.image_url} alt={item.name_en ?? item.name} className="w-full h-full object-cover" />}
+                    <div className="flex flex-col gap-3">
+                      {order.items.map((item, idx) => {
+                        const customEntries = item.customizations
+                          ? Object.entries(item.customizations).filter(([, v]) => v)
+                          : [];
+                        return (
+                          <div key={idx} className="flex flex-col gap-2">
+                            <div className="flex items-center gap-3">
+                              <div className="w-10 h-10 rounded-lg overflow-hidden bg-gray-100 flex-shrink-0">
+                                {item.image_url && <img src={item.image_url} alt={item.name_en ?? item.name} className="w-full h-full object-cover" />}
+                              </div>
+                              <span className="text-sm text-navy flex-1">{item.name_en ?? item.name}</span>
+                              <span className="text-xs text-gray-400">× {item.quantity}</span>
+                              <span className="text-sm font-semibold text-navy">{(item.price * item.quantity).toFixed(2)} KM</span>
+                            </div>
+                            {customEntries.length > 0 && (
+                              <div className="ml-13 pl-13 flex flex-col gap-1.5 ml-[52px] border-l-2 border-gray-100 pl-3">
+                                {customEntries.map(([label, value]) => {
+                                  const isImage = value.startsWith("http") && /\.(jpg|jpeg|png|webp)(\?|$)/i.test(value);
+                                  return (
+                                    <div key={label} className="flex items-start gap-2">
+                                      <span className="text-xs font-medium text-gray-400 whitespace-nowrap">{label}:</span>
+                                      {isImage ? (
+                                        <a href={value} target="_blank" rel="noreferrer">
+                                          <img src={value} alt={label} className="w-20 h-20 object-cover rounded-lg border border-gray-200 hover:opacity-80 transition-opacity" />
+                                        </a>
+                                      ) : (
+                                        <span className="text-xs text-gray-600">{value}</span>
+                                      )}
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            )}
                           </div>
-                          <span className="text-sm text-navy flex-1">{item.name_en ?? item.name}</span>
-                          <span className="text-xs text-gray-400">× {item.quantity}</span>
-                          <span className="text-sm font-semibold text-navy">{(item.price * item.quantity).toFixed(2)} KM</span>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                     <div className="flex justify-between mt-3 pt-3 border-t border-gray-100">
                       <span className="text-sm text-gray-500">Total</span>

@@ -69,12 +69,39 @@ serve(async (req) => {
 
 // ─── Email templates ──────────────────────────────────────────────────────────
 
-function itemsTable(items: Array<{ name: string; name_en?: string; quantity: number; price: number }>) {
+type OrderItem = {
+  name: string;
+  name_en?: string;
+  quantity: number;
+  price: number;
+  customizations?: Record<string, string>;
+};
+
+function isImageUrl(val: string) {
+  return val.startsWith("http") && /\.(jpg|jpeg|png|webp)(\?|$)/i.test(val);
+}
+
+function customizationsHtml(customizations: Record<string, string>) {
+  const entries = Object.entries(customizations).filter(([, v]) => v);
+  if (entries.length === 0) return "";
+  const rows = entries.map(([label, value]) => {
+    if (isImageUrl(value)) {
+      return `<tr><td style="padding:4px 0;font-size:12px;color:#888;vertical-align:top;padding-right:8px;white-space:nowrap;">${label}:</td><td style="padding:4px 0;"><a href="${value}" style="display:inline-block;"><img src="${value}" alt="${label}" width="120" style="border-radius:8px;border:1px solid #e5e5e5;display:block;" /></a></td></tr>`;
+    }
+    return `<tr><td style="padding:2px 0;font-size:12px;color:#888;vertical-align:top;padding-right:8px;white-space:nowrap;">${label}:</td><td style="padding:2px 0;font-size:12px;color:#444;">${value}</td></tr>`;
+  }).join("");
+  return `<table style="border-collapse:collapse;margin-top:6px;">${rows}</table>`;
+}
+
+function itemsTable(items: OrderItem[]) {
   const rows = items.map((item) => `
     <tr>
-      <td style="padding:10px 0;border-bottom:1px solid #f0efe8;font-size:14px;color:#1a2744;">${item.name_en ?? item.name}</td>
-      <td style="padding:10px 0;border-bottom:1px solid #f0efe8;font-size:14px;color:#888;text-align:center;">×${item.quantity}</td>
-      <td style="padding:10px 0;border-bottom:1px solid #f0efe8;font-size:14px;color:#1a2744;text-align:right;font-weight:600;">${(item.price * item.quantity).toFixed(2)} KM</td>
+      <td style="padding:10px 0;border-bottom:1px solid #f0efe8;font-size:14px;color:#1a2744;vertical-align:top;">
+        ${item.name_en ?? item.name}
+        ${item.customizations ? customizationsHtml(item.customizations) : ""}
+      </td>
+      <td style="padding:10px 0;border-bottom:1px solid #f0efe8;font-size:14px;color:#888;text-align:center;vertical-align:top;">×${item.quantity}</td>
+      <td style="padding:10px 0;border-bottom:1px solid #f0efe8;font-size:14px;color:#1a2744;text-align:right;font-weight:600;vertical-align:top;">${(item.price * item.quantity).toFixed(2)} KM</td>
     </tr>`).join("");
 
   return `
@@ -130,7 +157,7 @@ function emailWrapper(storeName: string, content: string) {
 }
 
 function customerEmail(order: Record<string, unknown>, settings: Record<string, unknown>, storeName: string) {
-  const items = order.items as Array<{ name: string; name_en?: string; quantity: number; price: number }>;
+  const items = order.items as OrderItem[];
   return emailWrapper(storeName, `
     <h1 style="margin:0 0 6px;font-size:24px;color:#1a2744;font-weight:700;">Order Confirmed!</h1>
     <p style="margin:0 0 28px;font-size:15px;color:#666;">Thank you, ${(order.customer_name as string).split(" ")[0]}! We'll be in touch shortly.</p>
@@ -161,7 +188,7 @@ function customerEmail(order: Record<string, unknown>, settings: Record<string, 
 }
 
 function ownerEmail(order: Record<string, unknown>, storeName: string) {
-  const items = order.items as Array<{ name: string; name_en?: string; quantity: number; price: number }>;
+  const items = order.items as OrderItem[];
   return emailWrapper(storeName, `
     <h1 style="margin:0 0 6px;font-size:22px;color:#1a2744;font-weight:700;">New Order Received</h1>
     <p style="margin:0 0 28px;font-size:15px;color:#666;">A new order has been placed on your store.</p>
