@@ -12,6 +12,8 @@
   },
   "dependencies": {
     "@google/genai": "^2.4.0",
+    "@react-three/drei": "^10.7.7",
+    "@react-three/fiber": "^9.6.1",
     "@supabase/supabase-js": "^2.108.2",
     "@tailwindcss/vite": "^4.1.14",
     "@types/react-router-dom": "^5.3.3",
@@ -24,6 +26,7 @@
     "react-dom": "^19.0.1",
     "react-helmet-async": "^3.0.0",
     "react-router-dom": "^7.18.0",
+    "three": "^0.185.1",
     "vite": "^6.2.3"
   },
   "devDependencies": {
@@ -35,5 +38,11 @@
     "tsx": "^4.21.0",
     "typescript": "~5.8.2",
     "vite": "^6.2.3"
+  },
+  "allowScripts": {
+    "esbuild@0.25.12": true,
+    "esbuild@0.28.1": true,
+    "protobufjs@7.6.4": true,
+    "fsevents@2.3.3": true
   }
 }

@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
-import { X, Upload, Trash2, Plus, Search } from "lucide-react";
+import { X, Upload, Trash2, Plus, Search, Box } from "lucide-react";
+import { MeshPickerCanvas } from "./MeshPickerCanvas";
 import { supabase, type Product, type Category, type CustomField, type FieldGroup, localName } from "../../lib/supabase";
 import { CustomFieldsList, newField } from "./CustomFieldsEditor";
 
@@ -17,6 +18,9 @@ const empty = {
   image_url: "",
   gallery_images: [] as string[],
   in_stock: true,
+  has_3d_preview: false,
+  model_3d_url: "",
+  model_texture_mesh: "",
 };
 
 type LangTab = "en" | "bs";
@@ -38,12 +42,14 @@ export function ProductForm({ product, onClose, onSaved }: Props) {
   const mainFileRef = useRef<HTMLInputElement>(null);
   const galleryFileRef = useRef<HTMLInputElement>(null);
   const gallerySlotRef = useRef<number>(-1);
+  const modelFileRef = useRef<HTMLInputElement>(null);
+  const [uploading3d, setUploading3d] = useState(false);
 
   useEffect(() => {
     Promise.all([
       supabase.from("categories").select("*").order("name"),
       supabase.from("field_groups").select("*").order("name"),
-      supabase.from("products").select("id,name,name_en,name_bs,image_url,price,category,in_stock,description,description_en,description_bs,gallery_images,custom_fields,similar_products,compare_price,created_at").order("name"),
+      supabase.from("products").select("*").order("name"),
     ]).then(([catsRes, groupsRes, prodsRes]) => {
       setCategories(catsRes.data ?? []);
       setGroups(groupsRes.data ?? []);
@@ -63,6 +69,9 @@ export function ProductForm({ product, onClose, onSaved }: Props) {
         image_url: product.image_url ?? "",
         gallery_images: product.gallery_images ?? [],
         in_stock: product.in_stock,
+        has_3d_preview: product.has_3d_preview ?? false,
+        model_3d_url: product.model_3d_url ?? "",
+        model_texture_mesh: product.model_texture_mesh ?? "",
       });
       setCustomFields(product.custom_fields ?? []);
       setSimilarIds(product.similar_products ?? []);
@@ -82,6 +91,21 @@ export function ProductForm({ product, onClose, onSaved }: Props) {
     if (!group) return;
     const copied = group.fields.map((f) => ({ ...f, id: `${Date.now()}-${Math.random().toString(36).slice(2)}` }));
     setCustomFields(copied);
+  }
+
+  async function handleModelFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploading3d(true);
+    setError(null);
+    const ext = file.name.split(".").pop();
+    const path = `${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+    const { error: err } = await supabase.storage.from("models").upload(path, file, { upsert: false });
+    if (err) { setError(err.message); setUploading3d(false); return; }
+    const url = supabase.storage.from("models").getPublicUrl(path).data.publicUrl;
+    set("model_3d_url", url);
+    setUploading3d(false);
+    if (modelFileRef.current) modelFileRef.current.value = "";
   }
 
   async function uploadFile(file: File): Promise<string | null> {
@@ -158,6 +182,9 @@ export function ProductForm({ product, onClose, onSaved }: Props) {
       image_url: form.image_url.trim() || null,
       gallery_images: form.gallery_images.length > 0 ? form.gallery_images : [],
       in_stock: form.in_stock,
+      has_3d_preview: form.has_3d_preview,
+      model_3d_url: form.model_3d_url.trim() || null,
+      model_texture_mesh: form.model_texture_mesh.trim() || null,
       custom_fields: customFields,
       similar_products: similarIds,
     };
@@ -318,6 +345,62 @@ export function ProductForm({ product, onClose, onSaved }: Props) {
               </div>
               <span className="text-sm font-medium text-navy">In Stock</span>
             </label>
+
+            {/* 3D Preview */}
+            <div className="flex flex-col gap-3 pt-1">
+              <div className="flex items-center gap-3">
+                <div onClick={() => set("has_3d_preview", !form.has_3d_preview)}
+                  className={`w-10 h-6 rounded-full transition-colors flex items-center px-1 cursor-pointer ${form.has_3d_preview ? "bg-navy" : "bg-gray-200"}`}>
+                  <div className={`w-4 h-4 rounded-full bg-white shadow transition-transform ${form.has_3d_preview ? "translate-x-4" : "translate-x-0"}`} />
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-navy flex items-center gap-1.5">
+                    <Box className="w-3.5 h-3.5 text-gray-400" strokeWidth={1.75} />
+                    Enable 3D Preview
+                  </p>
+                  <p className="text-xs text-gray-400">Customers can preview their uploaded photo on the product in 3D.</p>
+                </div>
+              </div>
+
+              {form.has_3d_preview && (
+                <div className="flex flex-col gap-3 pl-[52px]">
+                  {/* GLB Upload */}
+                  <Field label="3D Model File (.glb)">
+                    {form.model_3d_url ? (
+                      <div className="flex items-center gap-3 px-3 py-2.5 bg-navy/5 border border-navy/15 rounded-lg">
+                        <Box className="w-4 h-4 text-navy/50 flex-shrink-0" strokeWidth={1.5} />
+                        <span className="text-xs text-navy/70 flex-1 truncate">Model uploaded</span>
+                        <button type="button" onClick={() => set("model_3d_url", "")}
+                          className="p-1 text-gray-400 hover:text-red-500 transition-colors">
+                          <X className="w-3.5 h-3.5" strokeWidth={2} />
+                        </button>
+                      </div>
+                    ) : (
+                      <button type="button" onClick={() => modelFileRef.current?.click()} disabled={uploading3d}
+                        className="flex flex-col items-center justify-center gap-2 w-full h-24 border-2 border-dashed border-gray-200 rounded-xl text-gray-400 hover:border-navy/40 hover:text-navy transition-colors disabled:opacity-60">
+                        {uploading3d ? (
+                          <><Spinner /><span className="text-xs">Uploading model…</span></>
+                        ) : (
+                          <><Upload className="w-5 h-5" strokeWidth={1.5} /><span className="text-xs font-medium">Click to upload .glb file</span></>
+                        )}
+                      </button>
+                    )}
+                    <input ref={modelFileRef} type="file" accept=".glb,.gltf" className="hidden" onChange={handleModelFile} />
+                  </Field>
+
+                  {/* Mesh picker */}
+                  {form.model_3d_url && (
+                    <Field label="Photo Surface — click the part of the model where the photo should appear">
+                      <MeshPickerCanvas
+                        modelUrl={form.model_3d_url}
+                        selectedMesh={form.model_texture_mesh}
+                        onSelect={(name) => set("model_texture_mesh", name)}
+                      />
+                    </Field>
+                  )}
+                </div>
+              )}
+            </div>
 
             {/* Custom Fields */}
             <div className="flex flex-col gap-3">

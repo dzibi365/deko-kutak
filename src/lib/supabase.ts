@@ -35,6 +35,9 @@ export type Product = {
   in_stock: boolean;
   custom_fields: CustomField[] | null;
   similar_products: number[] | null;
+  has_3d_preview: boolean;
+  model_3d_url: string | null;
+  model_texture_mesh: string | null;
   created_at: string;
 };
 

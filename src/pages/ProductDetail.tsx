@@ -1,11 +1,12 @@
 import { useEffect, useRef, useState } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
-import { ShoppingCart, Heart, ArrowLeft, CheckCircle, XCircle, Share2, Upload, X as XIcon, ChevronRight } from "lucide-react";
+import { ShoppingCart, Heart, ArrowLeft, CheckCircle, XCircle, Share2, Upload, X as XIcon, ChevronRight, Box } from "lucide-react";
 import { supabase, type Product, type Category, type CustomField, localName, localDesc } from "../lib/supabase";
 import { Navbar, Footer } from "../components/Layout";
 import { CartDrawer } from "../components/CartDrawer";
 import { AuthModal } from "../components/AuthModal";
 import { ReviewsSection } from "../components/ReviewsSection";
+import { ThreeDPreviewModal } from "../components/ThreeDPreviewModal";
 import { useLang } from "../context/LanguageContext";
 import { useCart } from "../context/CartContext";
 import { SiteMeta } from "../components/SiteMeta";
@@ -24,6 +25,7 @@ function ProductDetailContent() {
   const [fieldValues, setFieldValues] = useState<Record<string, string>>({});
   const [fieldError, setFieldError] = useState<string | null>(null);
   const [similarProducts, setSimilarProducts] = useState<Product[]>([]);
+  const [preview3DUrl, setPreview3DUrl] = useState<string | null>(null);
 
   useEffect(() => {
     async function load() {
@@ -196,6 +198,10 @@ function ProductDetailContent() {
             lang={lang}
             values={fieldValues}
             onChange={(id, val) => { setFieldValues((prev) => ({ ...prev, [id]: val })); setFieldError(null); }}
+            has3DPreview={product.has_3d_preview}
+            model3dUrl={product.model_3d_url}
+            model3dMesh={product.model_texture_mesh}
+            onPreview3D={(url) => setPreview3DUrl(url)}
           />
 
           {fieldError && (
@@ -253,6 +259,16 @@ function ProductDetailContent() {
       {similarProducts.length > 0 && (
         <SimilarProductsSection products={similarProducts} lang={lang} tr={tr} />
       )}
+
+      {/* 3D Preview Modal */}
+      {preview3DUrl && product.has_3d_preview && product.model_3d_url && product.model_texture_mesh && (
+        <ThreeDPreviewModal
+          modelUrl={product.model_3d_url}
+          textureUrl={preview3DUrl}
+          meshName={product.model_texture_mesh}
+          onClose={() => setPreview3DUrl(null)}
+        />
+      )}
     </div>
   );
 }
@@ -264,6 +280,7 @@ const fieldInputCls =
 
 function ImageUploadField({
   fieldId, value, required, label, lang, onChange,
+  has3DPreview, onPreview3D,
 }: {
   fieldId: string;
   value: string;
@@ -271,6 +288,8 @@ function ImageUploadField({
   label: string;
   lang: string;
   onChange: (id: string, value: string) => void;
+  has3DPreview?: boolean;
+  onPreview3D?: (url: string) => void;
 }) {
   const fileRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
@@ -296,15 +315,27 @@ function ImageUploadField({
   return (
     <div className="flex flex-col gap-2">
       {value ? (
-        <div className="relative w-full">
-          <img src={value} alt={label} className="w-full max-h-56 object-contain rounded-xl border border-gray-200 bg-gray-50" />
-          <button
-            type="button"
-            onClick={() => onChange(fieldId, "")}
-            className="absolute top-2 right-2 p-1.5 bg-white/90 border border-gray-200 rounded-lg text-gray-500 hover:text-red-500 hover:border-red-200 transition-colors shadow-sm"
-          >
-            <XIcon className="w-4 h-4" strokeWidth={1.75} />
-          </button>
+        <div className="flex flex-col gap-2">
+          <div className="relative w-full">
+            <img src={value} alt={label} className="w-full max-h-56 object-contain rounded-xl border border-gray-200 bg-gray-50" />
+            <button
+              type="button"
+              onClick={() => onChange(fieldId, "")}
+              className="absolute top-2 right-2 p-1.5 bg-white/90 border border-gray-200 rounded-lg text-gray-500 hover:text-red-500 hover:border-red-200 transition-colors shadow-sm"
+            >
+              <XIcon className="w-4 h-4" strokeWidth={1.75} />
+            </button>
+          </div>
+          {has3DPreview && onPreview3D && (
+            <button
+              type="button"
+              onClick={() => onPreview3D(value)}
+              className="flex items-center justify-center gap-2 w-full py-2.5 bg-navy text-white text-sm font-semibold rounded-xl hover:bg-navy/90 transition-colors"
+            >
+              <Box className="w-4 h-4" strokeWidth={1.75} />
+              {lang === "bs" ? "Pogledaj u 3D" : "Preview in 3D"}
+            </button>
+          )}
         </div>
       ) : (
         <button
@@ -335,13 +366,20 @@ function ImageUploadField({
 
 function ProductCustomFields({
   fields, lang, values, onChange,
+  has3DPreview, model3dUrl, model3dMesh, onPreview3D,
 }: {
   fields: CustomField[];
   lang: string;
   values: Record<string, string>;
   onChange: (id: string, value: string) => void;
+  has3DPreview?: boolean;
+  model3dUrl?: string | null;
+  model3dMesh?: string | null;
+  onPreview3D?: (url: string) => void;
 }) {
   if (fields.length === 0) return null;
+
+  const canPreview = !!(has3DPreview && model3dUrl && model3dMesh);
 
   return (
     <div className="flex flex-col gap-4 mb-6">
@@ -413,6 +451,8 @@ function ProductCustomFields({
                 label={label ?? ""}
                 lang={lang}
                 onChange={onChange}
+                has3DPreview={canPreview}
+                onPreview3D={onPreview3D}
               />
             )}
           </div>
