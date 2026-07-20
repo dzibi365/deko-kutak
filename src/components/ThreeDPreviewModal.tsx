@@ -1,8 +1,19 @@
 import { Suspense, useMemo, useEffect, useState, useCallback } from "react";
-import { X, RotateCcw, AlertTriangle } from "lucide-react";
+import { X, RotateCcw, AlertTriangle, Palette } from "lucide-react";
 import { Canvas, useThree } from "@react-three/fiber";
 import { OrbitControls, useGLTF, useProgress, Html } from "@react-three/drei";
 import * as THREE from "three";
+
+const PRESET_COLORS = [
+  { hex: "#ffffff", label: "White" },
+  { hex: "#f5efe6", label: "Cream" },
+  { hex: "#d4b896", label: "Caramel" },
+  { hex: "#a8b89a", label: "Sage" },
+  { hex: "#5c7a5c", label: "Forest" },
+  { hex: "#2d4a7a", label: "Navy" },
+  { hex: "#8b2c3a", label: "Burgundy" },
+  { hex: "#2a2a2a", label: "Charcoal" },
+];
 
 function Loader() {
   const { progress } = useProgress();
@@ -27,13 +38,29 @@ type ModelProps = {
   modelUrl: string;
   textureUrl: string;
   meshName: string;
+  color: string;
   onStatus: (s: "ok" | "mesh_not_found" | "tex_error", names?: string[]) => void;
 };
 
-function Model({ modelUrl, textureUrl, meshName, onStatus }: ModelProps) {
+function Model({ modelUrl, textureUrl, meshName, color, onStatus }: ModelProps) {
   const { scene } = useGLTF(modelUrl);
   const cloned = useMemo(() => scene.clone(true), [scene]);
 
+  // Apply color to all meshes except the photo face
+  useEffect(() => {
+    cloned.traverse((n) => {
+      const m = n as THREE.Mesh;
+      if (m.isMesh && m.name.toLowerCase() !== meshName.toLowerCase()) {
+        m.material = new THREE.MeshStandardMaterial({
+          color: new THREE.Color(color),
+          roughness: 0.6,
+          metalness: 0.0,
+        });
+      }
+    });
+  }, [cloned, color, meshName]);
+
+  // Apply customer photo to the selected mesh
   useEffect(() => {
     if (!textureUrl || !meshName) return;
     let active = true;
@@ -65,7 +92,6 @@ function Model({ modelUrl, textureUrl, meshName, onStatus }: ModelProps) {
         const existingUv = geom.getAttribute("uv") as THREE.BufferAttribute | null;
 
         if (existingUv && existingUv.count > 0) {
-          // Remap existing UVs to [0,1]×[0,1] so full image covers the face
           let minU = Infinity, maxU = -Infinity, minV = Infinity, maxV = -Infinity;
           for (let i = 0; i < existingUv.count; i++) {
             const u = existingUv.getX(i), v = existingUv.getY(i);
@@ -81,11 +107,10 @@ function Model({ modelUrl, textureUrl, meshName, onStatus }: ModelProps) {
           }
         } else {
           // No UV attribute — generate planar UVs from vertex positions
-          // Use the face's dominant normal to pick the two projection axes
           const posAttr = geom.getAttribute("position") as THREE.BufferAttribute;
           const normalAttr = geom.getAttribute("normal") as THREE.BufferAttribute | null;
 
-          let uAxis = 0, vAxis = 2; // default: project onto XZ (Y-up face)
+          let uAxis = 0, vAxis = 2;
           if (normalAttr && normalAttr.count > 0) {
             let sumX = 0, sumY = 0, sumZ = 0;
             for (let i = 0; i < normalAttr.count; i++) {
@@ -93,9 +118,8 @@ function Model({ modelUrl, textureUrl, meshName, onStatus }: ModelProps) {
               sumY += Math.abs(normalAttr.getY(i));
               sumZ += Math.abs(normalAttr.getZ(i));
             }
-            if (sumX >= sumY && sumX >= sumZ) { uAxis = 1; vAxis = 2; } // X-facing
-            else if (sumZ >= sumX && sumZ >= sumY) { uAxis = 0; vAxis = 1; } // Z-facing
-            // else Y-facing (default)
+            if (sumX >= sumY && sumX >= sumZ) { uAxis = 1; vAxis = 2; }
+            else if (sumZ >= sumX && sumZ >= sumY) { uAxis = 0; vAxis = 1; }
           }
 
           const comp = (i: number, axis: number) =>
@@ -117,7 +141,6 @@ function Model({ modelUrl, textureUrl, meshName, onStatus }: ModelProps) {
         }
 
         (target as THREE.Mesh).geometry = geom;
-
         texture.colorSpace = THREE.SRGBColorSpace;
         texture.flipY = false;
         texture.needsUpdate = true;
@@ -151,11 +174,14 @@ type Props = {
 export function ThreeDPreviewModal({ modelUrl, textureUrl, meshName, onClose }: Props) {
   const [status, setStatus] = useState<"loading" | "ok" | "mesh_not_found" | "tex_error">("loading");
   const [availableMeshes, setAvailableMeshes] = useState<string[]>([]);
+  const [color, setColor] = useState("#ffffff");
 
   const handleStatus = useCallback((s: "ok" | "mesh_not_found" | "tex_error", names?: string[]) => {
     setStatus(s);
     if (names) setAvailableMeshes(names);
   }, []);
+
+  const isCustomColor = !PRESET_COLORS.some((p) => p.hex === color);
 
   return (
     <div className="fixed inset-0 z-[60] bg-black/95 flex flex-col">
@@ -202,15 +228,53 @@ export function ThreeDPreviewModal({ modelUrl, textureUrl, meshName, onClose }: 
           <directionalLight position={[-3, 2, -4]} intensity={0.5} />
           <pointLight position={[0, -3, 0]} intensity={0.2} />
           <Suspense fallback={<Loader />}>
-            <Model modelUrl={modelUrl} textureUrl={textureUrl} meshName={meshName} onStatus={handleStatus} />
+            <Model
+              modelUrl={modelUrl}
+              textureUrl={textureUrl}
+              meshName={meshName}
+              color={color}
+              onStatus={handleStatus}
+            />
           </Suspense>
           <OrbitControls enablePan={false} minDistance={0.5} maxDistance={8} autoRotate autoRotateSpeed={1.2} />
           <CameraResetter />
         </Canvas>
       </div>
 
-      <div className="flex-shrink-0 text-center py-3">
-        <p className="text-xs text-white/20">Click outside to close</p>
+      {/* Color picker */}
+      <div className="flex-shrink-0 px-5 py-3 border-t border-white/10 flex items-center gap-3">
+        <Palette className="w-4 h-4 text-white/40 flex-shrink-0" strokeWidth={1.75} />
+        <span className="text-xs text-white/40 flex-shrink-0">Color</span>
+        <div className="flex items-center gap-1.5 flex-1">
+          {PRESET_COLORS.map((p) => (
+            <button
+              key={p.hex}
+              title={p.label}
+              onClick={() => setColor(p.hex)}
+              style={{ background: p.hex }}
+              className={`w-6 h-6 rounded-full border-2 transition-all flex-shrink-0 ${
+                color === p.hex
+                  ? "border-white scale-110 shadow-lg"
+                  : "border-white/20 hover:border-white/60 hover:scale-105"
+              }`}
+            />
+          ))}
+        </div>
+        {/* Custom color picker */}
+        <label
+          title="Custom color"
+          className={`w-6 h-6 rounded-full border-2 flex-shrink-0 cursor-pointer overflow-hidden transition-all ${
+            isCustomColor ? "border-white scale-110" : "border-white/20 hover:border-white/60"
+          }`}
+          style={{ background: isCustomColor ? color : "conic-gradient(red, yellow, lime, cyan, blue, magenta, red)" }}
+        >
+          <input
+            type="color"
+            value={color}
+            onChange={(e) => setColor(e.target.value)}
+            className="opacity-0 w-0 h-0 absolute"
+          />
+        </label>
       </div>
     </div>
   );
