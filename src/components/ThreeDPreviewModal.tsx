@@ -1,4 +1,4 @@
-import { Suspense, useMemo, useEffect, useState } from "react";
+import { Suspense, useMemo, useEffect, useState, useCallback } from "react";
 import { X, RotateCcw, AlertTriangle } from "lucide-react";
 import { Canvas, useThree } from "@react-three/fiber";
 import { OrbitControls, useGLTF, useProgress, Html } from "@react-three/drei";
@@ -36,6 +36,7 @@ function Model({ modelUrl, textureUrl, meshName, onStatus }: ModelProps) {
 
   useEffect(() => {
     if (!textureUrl || !meshName) return;
+    let active = true;
 
     const allNames: string[] = [];
     cloned.traverse((n) => { if ((n as THREE.Mesh).isMesh) allNames.push(n.name); });
@@ -59,19 +60,24 @@ function Model({ modelUrl, textureUrl, meshName, onStatus }: ModelProps) {
     loader.load(
       textureUrl,
       (texture) => {
+        if (!active) return;
         texture.colorSpace = THREE.SRGBColorSpace;
         texture.flipY = false;
         texture.needsUpdate = true;
-        (target as THREE.Mesh).material = new THREE.MeshStandardMaterial({
+        const mat = new THREE.MeshStandardMaterial({
           map: texture,
           roughness: 0.5,
           metalness: 0.05,
         });
+        (target as THREE.Mesh).material = mat;
+        mat.needsUpdate = true;
         onStatus("ok");
       },
       undefined,
-      (err) => { console.error("[3D Preview] Texture error:", err); onStatus("tex_error"); }
+      (err) => { if (active) { console.error("[3D Preview] Texture error:", err); onStatus("tex_error"); } }
     );
+
+    return () => { active = false; };
   }, [cloned, textureUrl, meshName, onStatus]);
 
   return <primitive object={cloned} />;
@@ -94,10 +100,10 @@ export function ThreeDPreviewModal({ modelUrl, textureUrl, meshName, onClose }: 
   const [status, setStatus] = useState<"loading" | "ok" | "mesh_not_found" | "tex_error">("loading");
   const [availableMeshes, setAvailableMeshes] = useState<string[]>([]);
 
-  function handleStatus(s: "ok" | "mesh_not_found" | "tex_error", names?: string[]) {
+  const handleStatus = useCallback((s: "ok" | "mesh_not_found" | "tex_error", names?: string[]) => {
     setStatus(s);
     if (names) setAvailableMeshes(names);
-  }
+  }, []);
 
   return (
     <div className="fixed inset-0 z-[60] bg-black/95 flex flex-col">
