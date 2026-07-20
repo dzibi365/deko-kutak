@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Save, Mail, Info, ImagePlus, X, Instagram, Facebook, Search, Phone, Clock } from "lucide-react";
+import { Save, Mail, Info, ImagePlus, X, Instagram, Facebook, Search, Phone, Clock, KeyRound } from "lucide-react";
 import { supabase } from "../../lib/supabase";
 
 type Settings = {
@@ -54,6 +54,11 @@ export default function StoreSettings() {
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [savingPassword, setSavingPassword] = useState(false);
+  const [passwordError, setPasswordError] = useState<string | null>(null);
+  const [passwordSaved, setPasswordSaved] = useState(false);
   const [uploadingLogo, setUploadingLogo] = useState(false);
   const [uploadingFooterLogo, setUploadingFooterLogo] = useState(false);
   const [uploadingOg, setUploadingOg] = useState(false);
@@ -185,6 +190,20 @@ export default function StoreSettings() {
     if (err) { setError(err.message); return; }
     setSaved(true);
     setTimeout(() => setSaved(false), 2500);
+  }
+
+  async function handleChangePassword() {
+    setPasswordError(null);
+    if (newPassword.length < 6) { setPasswordError("Password must be at least 6 characters."); return; }
+    if (newPassword !== confirmPassword) { setPasswordError("Passwords do not match."); return; }
+    setSavingPassword(true);
+    const { error: err } = await supabase.auth.updateUser({ password: newPassword });
+    setSavingPassword(false);
+    if (err) { setPasswordError(err.message); return; }
+    setPasswordSaved(true);
+    setNewPassword("");
+    setConfirmPassword("");
+    setTimeout(() => setPasswordSaved(false), 3000);
   }
 
   if (loading) return <div className="p-8 text-sm text-gray-400">Loading…</div>;
@@ -689,6 +708,48 @@ export default function StoreSettings() {
             rows={2} placeholder="e.g. Use your order number as the payment reference."
             className={`${inputCls} resize-none`} />
         </Field>
+      </div>
+
+      {/* Change Password */}
+      <div className="bg-white border border-gray-200 rounded-xl p-6 flex flex-col gap-4">
+        <div className="flex items-center gap-2">
+          <KeyRound className="w-4 h-4 text-navy/50" strokeWidth={1.75} />
+          <h2 className="font-semibold text-navy text-sm">Change Password</h2>
+        </div>
+
+        <Field label="New Password">
+          <input
+            type="password"
+            value={newPassword}
+            onChange={(e) => setNewPassword(e.target.value)}
+            placeholder="••••••••"
+            autoComplete="new-password"
+            className={inputCls}
+          />
+        </Field>
+
+        <Field label="Confirm New Password">
+          <input
+            type="password"
+            value={confirmPassword}
+            onChange={(e) => setConfirmPassword(e.target.value)}
+            placeholder="••••••••"
+            autoComplete="new-password"
+            className={inputCls}
+          />
+        </Field>
+
+        {passwordError && <p className="text-sm text-red-500 px-4 py-3 bg-red-50 rounded-lg">{passwordError}</p>}
+        {passwordSaved && <p className="text-sm text-green-700 px-4 py-3 bg-green-50 rounded-lg">Password updated successfully.</p>}
+
+        <button
+          type="button"
+          onClick={handleChangePassword}
+          disabled={savingPassword || !newPassword || !confirmPassword}
+          className="self-start flex items-center gap-2 px-4 py-2 bg-navy text-white text-sm font-semibold rounded-lg hover:bg-navy/90 transition-colors disabled:opacity-60"
+        >
+          {savingPassword ? "Updating…" : "Update Password"}
+        </button>
       </div>
 
       {/* Email invoices */}

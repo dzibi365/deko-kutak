@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Package, LogOut, ArrowLeft } from "lucide-react";
+import { Package, LogOut, ArrowLeft, KeyRound } from "lucide-react";
 import { supabase } from "../lib/supabase";
 import { useCustomerAuth } from "../context/CustomerAuthContext";
 import { useLang } from "../context/LanguageContext";
@@ -32,6 +32,31 @@ function AccountContent() {
   const navigate = useNavigate();
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [savingPassword, setSavingPassword] = useState(false);
+  const [passwordError, setPasswordError] = useState<string | null>(null);
+  const [passwordSaved, setPasswordSaved] = useState(false);
+
+  async function handleChangePassword() {
+    setPasswordError(null);
+    if (newPassword.length < 6) {
+      setPasswordError(lang === "bs" ? "Lozinka mora imati najmanje 6 znakova." : "Password must be at least 6 characters.");
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      setPasswordError(lang === "bs" ? "Lozinke se ne podudaraju." : "Passwords do not match.");
+      return;
+    }
+    setSavingPassword(true);
+    const { error } = await supabase.auth.updateUser({ password: newPassword });
+    setSavingPassword(false);
+    if (error) { setPasswordError(error.message); return; }
+    setPasswordSaved(true);
+    setNewPassword("");
+    setConfirmPassword("");
+    setTimeout(() => setPasswordSaved(false), 3000);
+  }
 
   useEffect(() => {
     if (!user) { setLoading(false); return; }
@@ -88,6 +113,65 @@ function AccountContent() {
           <p className="font-semibold text-navy">{name}</p>
           <p className="text-sm text-gray-400">{user.email}</p>
         </div>
+      </div>
+
+      {/* Change Password */}
+      <div className="bg-white border border-gray-100 rounded-2xl p-6 mb-6 flex flex-col gap-4">
+        <div className="flex items-center gap-2">
+          <KeyRound className="w-4 h-4 text-navy/50" strokeWidth={1.75} />
+          <h2 className="font-semibold text-navy text-sm">
+            {lang === "bs" ? "Promjena lozinke" : "Change Password"}
+          </h2>
+        </div>
+
+        <div className="flex flex-col gap-3">
+          <div className="flex flex-col gap-1.5">
+            <label className="text-sm font-medium text-navy">
+              {lang === "bs" ? "Nova lozinka" : "New Password"}
+            </label>
+            <input
+              type="password"
+              value={newPassword}
+              onChange={(e) => setNewPassword(e.target.value)}
+              placeholder="••••••••"
+              autoComplete="new-password"
+              className="px-3 py-2.5 border border-gray-200 rounded-xl text-sm text-navy placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-navy/20 focus:border-navy transition w-full"
+            />
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <label className="text-sm font-medium text-navy">
+              {lang === "bs" ? "Potvrdi novu lozinku" : "Confirm New Password"}
+            </label>
+            <input
+              type="password"
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              placeholder="••••••••"
+              autoComplete="new-password"
+              className="px-3 py-2.5 border border-gray-200 rounded-xl text-sm text-navy placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-navy/20 focus:border-navy transition w-full"
+            />
+          </div>
+        </div>
+
+        {passwordError && (
+          <p className="text-sm text-red-600 px-4 py-3 bg-red-50 rounded-xl">{passwordError}</p>
+        )}
+        {passwordSaved && (
+          <p className="text-sm text-green-700 px-4 py-3 bg-green-50 rounded-xl">
+            {lang === "bs" ? "Lozinka uspješno promijenjena." : "Password updated successfully."}
+          </p>
+        )}
+
+        <button
+          type="button"
+          onClick={handleChangePassword}
+          disabled={savingPassword || !newPassword || !confirmPassword}
+          className="self-start px-5 py-2.5 bg-navy text-white text-sm font-semibold rounded-xl hover:bg-navy/90 transition-colors disabled:opacity-60"
+        >
+          {savingPassword
+            ? (lang === "bs" ? "Ažuriranje…" : "Updating…")
+            : (lang === "bs" ? "Spremi lozinku" : "Update Password")}
+        </button>
       </div>
 
       {/* Orders */}
