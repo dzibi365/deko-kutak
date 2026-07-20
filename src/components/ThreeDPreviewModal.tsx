@@ -40,6 +40,9 @@ function Model({ modelUrl, textureUrl, meshName, onStatus }: ModelProps) {
 
     const allNames: string[] = [];
     cloned.traverse((n) => { if ((n as THREE.Mesh).isMesh) allNames.push(n.name); });
+    console.log("[3D] All meshes in model:", allNames);
+    console.log("[3D] Looking for mesh:", meshName);
+    console.log("[3D] Texture URL:", textureUrl);
 
     let target: THREE.Mesh | null = null;
     cloned.traverse((n) => {
@@ -55,12 +58,19 @@ function Model({ modelUrl, textureUrl, meshName, onStatus }: ModelProps) {
       return;
     }
 
+    const uvAttrCheck = (target as THREE.Mesh).geometry.getAttribute("uv");
+    console.log("[3D] Target mesh found:", (target as THREE.Mesh).name,
+      "| UV count:", uvAttrCheck?.count ?? "NO UV ATTRIBUTE",
+      "| Visible:", (target as THREE.Mesh).visible,
+      "| Parent:", (target as THREE.Mesh).parent?.name);
+
     const loader = new THREE.TextureLoader();
     loader.crossOrigin = "anonymous";
     loader.load(
       textureUrl,
       (texture) => {
         if (!active) return;
+        console.log("[3D] Texture loaded! Size:", texture.image?.width, "×", texture.image?.height);
 
         // Remap geometry UVs to [0,1]×[0,1] so the full image covers the face
         const geom = (target as THREE.Mesh).geometry.clone();
@@ -72,13 +82,19 @@ function Model({ modelUrl, textureUrl, meshName, onStatus }: ModelProps) {
             if (u < minU) minU = u; if (u > maxU) maxU = u;
             if (v < minV) minV = v; if (v > maxV) maxV = v;
           }
+          console.log("[3D] UV bounds:", { minU: minU.toFixed(3), maxU: maxU.toFixed(3), minV: minV.toFixed(3), maxV: maxV.toFixed(3) });
           if (maxU > minU && maxV > minV) {
             const rU = maxU - minU, rV = maxV - minV;
             for (let i = 0; i < uvAttr.count; i++) {
               uvAttr.setXY(i, (uvAttr.getX(i) - minU) / rU, (uvAttr.getY(i) - minV) / rV);
             }
             uvAttr.needsUpdate = true;
+            console.log("[3D] UVs remapped to [0,1]×[0,1]");
+          } else {
+            console.warn("[3D] UV range degenerate — cannot remap");
           }
+        } else {
+          console.warn("[3D] No UV attribute found on target mesh!");
         }
         // Always assign cloned geometry (whether UVs were remapped or not)
         (target as THREE.Mesh).geometry = geom;
@@ -92,10 +108,11 @@ function Model({ modelUrl, textureUrl, meshName, onStatus }: ModelProps) {
           side: THREE.DoubleSide,
         });
         (target as THREE.Mesh).material = mat;
+        console.log("[3D] Material applied to mesh:", (target as THREE.Mesh).name);
         onStatus("ok");
       },
       undefined,
-      (err) => { if (active) { console.error("[3D Preview] Texture error:", err); onStatus("tex_error"); } }
+      (err) => { if (active) { console.error("[3D Preview] Texture FAILED to load:", err); onStatus("tex_error"); } }
     );
 
     return () => { active = false; };
