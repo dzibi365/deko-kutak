@@ -79,20 +79,19 @@ function Model({ modelUrl, textureUrl, meshName, onStatus }: ModelProps) {
             }
             uvAttr.needsUpdate = true;
           }
-          (target as THREE.Mesh).geometry = geom;
         }
+        // Always assign cloned geometry (whether UVs were remapped or not)
+        (target as THREE.Mesh).geometry = geom;
 
         texture.colorSpace = THREE.SRGBColorSpace;
         texture.flipY = false;
         texture.needsUpdate = true;
-        const mat = new THREE.MeshStandardMaterial({
+        // MeshBasicMaterial ignores lighting — shows texture as-is regardless of face normals
+        const mat = new THREE.MeshBasicMaterial({
           map: texture,
-          roughness: 0.5,
-          metalness: 0.05,
           side: THREE.DoubleSide,
         });
         (target as THREE.Mesh).material = mat;
-        mat.needsUpdate = true;
         onStatus("ok");
       },
       undefined,
