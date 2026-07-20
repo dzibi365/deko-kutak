@@ -40,9 +40,6 @@ function Model({ modelUrl, textureUrl, meshName, onStatus }: ModelProps) {
 
     const allNames: string[] = [];
     cloned.traverse((n) => { if ((n as THREE.Mesh).isMesh) allNames.push(n.name); });
-    console.log("[3D] All meshes in model:", allNames);
-    console.log("[3D] Looking for mesh:", meshName);
-    console.log("[3D] Texture URL:", textureUrl);
 
     let target: THREE.Mesh | null = null;
     cloned.traverse((n) => {
@@ -53,16 +50,9 @@ function Model({ modelUrl, textureUrl, meshName, onStatus }: ModelProps) {
     });
 
     if (!target) {
-      console.warn("[3D Preview] Mesh not found. Available:", allNames);
       onStatus("mesh_not_found", allNames);
       return;
     }
-
-    const uvAttrCheck = (target as THREE.Mesh).geometry.getAttribute("uv");
-    console.log("[3D] Target mesh found:", (target as THREE.Mesh).name,
-      "| UV count:", uvAttrCheck?.count ?? "NO UV ATTRIBUTE",
-      "| Visible:", (target as THREE.Mesh).visible,
-      "| Parent:", (target as THREE.Mesh).parent?.name);
 
     const loader = new THREE.TextureLoader();
     loader.crossOrigin = "anonymous";
@@ -70,49 +60,73 @@ function Model({ modelUrl, textureUrl, meshName, onStatus }: ModelProps) {
       textureUrl,
       (texture) => {
         if (!active) return;
-        console.log("[3D] Texture loaded! Size:", texture.image?.width, "×", texture.image?.height);
 
-        // Remap geometry UVs to [0,1]×[0,1] so the full image covers the face
         const geom = (target as THREE.Mesh).geometry.clone();
-        const uvAttr = geom.getAttribute("uv") as THREE.BufferAttribute | null;
-        if (uvAttr && uvAttr.count > 0) {
+        const existingUv = geom.getAttribute("uv") as THREE.BufferAttribute | null;
+
+        if (existingUv && existingUv.count > 0) {
+          // Remap existing UVs to [0,1]×[0,1] so full image covers the face
           let minU = Infinity, maxU = -Infinity, minV = Infinity, maxV = -Infinity;
-          for (let i = 0; i < uvAttr.count; i++) {
-            const u = uvAttr.getX(i), v = uvAttr.getY(i);
+          for (let i = 0; i < existingUv.count; i++) {
+            const u = existingUv.getX(i), v = existingUv.getY(i);
             if (u < minU) minU = u; if (u > maxU) maxU = u;
             if (v < minV) minV = v; if (v > maxV) maxV = v;
           }
-          console.log("[3D] UV bounds:", { minU: minU.toFixed(3), maxU: maxU.toFixed(3), minV: minV.toFixed(3), maxV: maxV.toFixed(3) });
           if (maxU > minU && maxV > minV) {
             const rU = maxU - minU, rV = maxV - minV;
-            for (let i = 0; i < uvAttr.count; i++) {
-              uvAttr.setXY(i, (uvAttr.getX(i) - minU) / rU, (uvAttr.getY(i) - minV) / rV);
+            for (let i = 0; i < existingUv.count; i++) {
+              existingUv.setXY(i, (existingUv.getX(i) - minU) / rU, (existingUv.getY(i) - minV) / rV);
             }
-            uvAttr.needsUpdate = true;
-            console.log("[3D] UVs remapped to [0,1]×[0,1]");
-          } else {
-            console.warn("[3D] UV range degenerate — cannot remap");
+            existingUv.needsUpdate = true;
           }
         } else {
-          console.warn("[3D] No UV attribute found on target mesh!");
+          // No UV attribute — generate planar UVs from vertex positions
+          // Use the face's dominant normal to pick the two projection axes
+          const posAttr = geom.getAttribute("position") as THREE.BufferAttribute;
+          const normalAttr = geom.getAttribute("normal") as THREE.BufferAttribute | null;
+
+          let uAxis = 0, vAxis = 2; // default: project onto XZ (Y-up face)
+          if (normalAttr && normalAttr.count > 0) {
+            let sumX = 0, sumY = 0, sumZ = 0;
+            for (let i = 0; i < normalAttr.count; i++) {
+              sumX += Math.abs(normalAttr.getX(i));
+              sumY += Math.abs(normalAttr.getY(i));
+              sumZ += Math.abs(normalAttr.getZ(i));
+            }
+            if (sumX >= sumY && sumX >= sumZ) { uAxis = 1; vAxis = 2; } // X-facing
+            else if (sumZ >= sumX && sumZ >= sumY) { uAxis = 0; vAxis = 1; } // Z-facing
+            // else Y-facing (default)
+          }
+
+          const comp = (i: number, axis: number) =>
+            axis === 0 ? posAttr.getX(i) : axis === 1 ? posAttr.getY(i) : posAttr.getZ(i);
+
+          let minU = Infinity, maxU = -Infinity, minV = Infinity, maxV = -Infinity;
+          for (let i = 0; i < posAttr.count; i++) {
+            const u = comp(i, uAxis), v = comp(i, vAxis);
+            if (u < minU) minU = u; if (u > maxU) maxU = u;
+            if (v < minV) minV = v; if (v > maxV) maxV = v;
+          }
+          const rU = maxU - minU || 1, rV = maxV - minV || 1;
+          const uvData = new Float32Array(posAttr.count * 2);
+          for (let i = 0; i < posAttr.count; i++) {
+            uvData[i * 2]     = (comp(i, uAxis) - minU) / rU;
+            uvData[i * 2 + 1] = (comp(i, vAxis) - minV) / rV;
+          }
+          geom.setAttribute("uv", new THREE.BufferAttribute(uvData, 2));
         }
-        // Always assign cloned geometry (whether UVs were remapped or not)
+
         (target as THREE.Mesh).geometry = geom;
 
         texture.colorSpace = THREE.SRGBColorSpace;
         texture.flipY = false;
         texture.needsUpdate = true;
-        // MeshBasicMaterial ignores lighting — shows texture as-is regardless of face normals
-        const mat = new THREE.MeshBasicMaterial({
-          map: texture,
-          side: THREE.DoubleSide,
-        });
+        const mat = new THREE.MeshBasicMaterial({ map: texture, side: THREE.DoubleSide });
         (target as THREE.Mesh).material = mat;
-        console.log("[3D] Material applied to mesh:", (target as THREE.Mesh).name);
         onStatus("ok");
       },
       undefined,
-      (err) => { if (active) { console.error("[3D Preview] Texture FAILED to load:", err); onStatus("tex_error"); } }
+      (err) => { if (active) { console.error("[3D Preview] Texture error:", err); onStatus("tex_error"); } }
     );
 
     return () => { active = false; };
