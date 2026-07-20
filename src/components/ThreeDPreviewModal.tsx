@@ -55,6 +55,22 @@ function Model({ modelUrl, textureUrl, meshName, onStatus }: ModelProps) {
       return;
     }
 
+    // Compute UV bounds so the full image fills the face regardless of UV layout
+    const uvAttr = (target as THREE.Mesh).geometry.getAttribute("uv");
+    let uvRepeat = new THREE.Vector2(1, 1);
+    let uvOffset = new THREE.Vector2(0, 0);
+    if (uvAttr) {
+      let minU = Infinity, maxU = -Infinity, minV = Infinity, maxV = -Infinity;
+      for (let i = 0; i < uvAttr.count; i++) {
+        const u = uvAttr.getX(i), v = uvAttr.getY(i);
+        if (u < minU) minU = u; if (u > maxU) maxU = u;
+        if (v < minV) minV = v; if (v > maxV) maxV = v;
+      }
+      const rU = maxU - minU || 1, rV = maxV - minV || 1;
+      uvRepeat.set(1 / rU, 1 / rV);
+      uvOffset.set(-minU / rU, -minV / rV);
+    }
+
     const loader = new THREE.TextureLoader();
     loader.crossOrigin = "anonymous";
     loader.load(
@@ -63,6 +79,10 @@ function Model({ modelUrl, textureUrl, meshName, onStatus }: ModelProps) {
         if (!active) return;
         texture.colorSpace = THREE.SRGBColorSpace;
         texture.flipY = false;
+        texture.wrapS = THREE.RepeatWrapping;
+        texture.wrapT = THREE.RepeatWrapping;
+        texture.repeat.copy(uvRepeat);
+        texture.offset.copy(uvOffset);
         texture.needsUpdate = true;
         const mat = new THREE.MeshStandardMaterial({
           map: texture,
