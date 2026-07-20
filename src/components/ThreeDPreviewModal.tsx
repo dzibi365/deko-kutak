@@ -55,39 +55,41 @@ function Model({ modelUrl, textureUrl, meshName, onStatus }: ModelProps) {
       return;
     }
 
-    // Compute UV bounds so the full image fills the face regardless of UV layout
-    const uvAttr = (target as THREE.Mesh).geometry.getAttribute("uv");
-    let uvRepeat = new THREE.Vector2(1, 1);
-    let uvOffset = new THREE.Vector2(0, 0);
-    if (uvAttr) {
-      let minU = Infinity, maxU = -Infinity, minV = Infinity, maxV = -Infinity;
-      for (let i = 0; i < uvAttr.count; i++) {
-        const u = uvAttr.getX(i), v = uvAttr.getY(i);
-        if (u < minU) minU = u; if (u > maxU) maxU = u;
-        if (v < minV) minV = v; if (v > maxV) maxV = v;
-      }
-      const rU = maxU - minU || 1, rV = maxV - minV || 1;
-      uvRepeat.set(1 / rU, 1 / rV);
-      uvOffset.set(-minU / rU, -minV / rV);
-    }
-
     const loader = new THREE.TextureLoader();
     loader.crossOrigin = "anonymous";
     loader.load(
       textureUrl,
       (texture) => {
         if (!active) return;
+
+        // Remap geometry UVs to [0,1]×[0,1] so the full image covers the face
+        const geom = (target as THREE.Mesh).geometry.clone();
+        const uvAttr = geom.getAttribute("uv") as THREE.BufferAttribute | null;
+        if (uvAttr && uvAttr.count > 0) {
+          let minU = Infinity, maxU = -Infinity, minV = Infinity, maxV = -Infinity;
+          for (let i = 0; i < uvAttr.count; i++) {
+            const u = uvAttr.getX(i), v = uvAttr.getY(i);
+            if (u < minU) minU = u; if (u > maxU) maxU = u;
+            if (v < minV) minV = v; if (v > maxV) maxV = v;
+          }
+          if (maxU > minU && maxV > minV) {
+            const rU = maxU - minU, rV = maxV - minV;
+            for (let i = 0; i < uvAttr.count; i++) {
+              uvAttr.setXY(i, (uvAttr.getX(i) - minU) / rU, (uvAttr.getY(i) - minV) / rV);
+            }
+            uvAttr.needsUpdate = true;
+          }
+          (target as THREE.Mesh).geometry = geom;
+        }
+
         texture.colorSpace = THREE.SRGBColorSpace;
         texture.flipY = false;
-        texture.wrapS = THREE.RepeatWrapping;
-        texture.wrapT = THREE.RepeatWrapping;
-        texture.repeat.copy(uvRepeat);
-        texture.offset.copy(uvOffset);
         texture.needsUpdate = true;
         const mat = new THREE.MeshStandardMaterial({
           map: texture,
           roughness: 0.5,
           metalness: 0.05,
+          side: THREE.DoubleSide,
         });
         (target as THREE.Mesh).material = mat;
         mat.needsUpdate = true;
