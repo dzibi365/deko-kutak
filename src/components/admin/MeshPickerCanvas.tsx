@@ -40,7 +40,6 @@ function PickerModel({
   const cloned = useMemo(() => scene.clone(true), [scene]);
   const [hovered, setHovered] = useState<string | null>(null);
 
-  // Store original materials once
   useEffect(() => {
     cloned.traverse((node) => {
       const mesh = node as THREE.Mesh;
@@ -48,26 +47,17 @@ function PickerModel({
     });
   }, [cloned]);
 
-  // Apply highlight materials whenever selection/hover changes
   useEffect(() => {
     cloned.traverse((node) => {
       const mesh = node as THREE.Mesh;
       if (!mesh.isMesh || !mesh.userData.origMat) return;
-
       if (mesh.name === selectedMesh) {
         mesh.material = new THREE.MeshStandardMaterial({
-          color: COPPER,
-          emissive: COPPER,
-          emissiveIntensity: 0.35,
-          roughness: 0.3,
-          metalness: 0.1,
+          color: COPPER, emissive: COPPER, emissiveIntensity: 0.35, roughness: 0.3, metalness: 0.1,
         });
       } else if (mesh.name === hovered) {
         mesh.material = new THREE.MeshStandardMaterial({
-          color: HOVER_COLOR,
-          emissive: HOVER_COLOR,
-          emissiveIntensity: 0.2,
-          roughness: 0.4,
+          color: HOVER_COLOR, emissive: HOVER_COLOR, emissiveIntensity: 0.2, roughness: 0.4,
         });
       } else {
         mesh.material = mesh.userData.origMat;
@@ -108,7 +98,6 @@ export function MeshPickerCanvas({ modelUrl, selectedMesh, onSelect }: Props) {
       <div className="w-full h-52 rounded-xl overflow-hidden bg-[#111] border border-gray-200 relative">
         <style>{`@keyframes spin3d { to { transform: rotate(360deg); } }`}</style>
 
-        {/* Instruction overlay — only when nothing selected */}
         {!selectedMesh && (
           <div className="absolute top-2 left-2 z-10 flex items-center gap-1.5 px-2.5 py-1.5 bg-black/50 rounded-lg pointer-events-none">
             <MousePointer2 className="w-3 h-3 text-white/60" strokeWidth={1.5} />
@@ -120,44 +109,25 @@ export function MeshPickerCanvas({ modelUrl, selectedMesh, onSelect }: Props) {
           <ambientLight intensity={0.9} />
           <directionalLight position={[4, 5, 4]} intensity={1.4} />
           <directionalLight position={[-3, 2, -3]} intensity={0.4} />
-
           <Suspense fallback={<Loader />}>
-            <PickerModel
-              modelUrl={modelUrl}
-              selectedMesh={selectedMesh}
-              onSelect={onSelect}
-            />
+            <PickerModel modelUrl={modelUrl} selectedMesh={selectedMesh} onSelect={onSelect} />
           </Suspense>
-
-          <OrbitControls
-            enablePan={false}
-            autoRotate={!selectedMesh}
-            autoRotateSpeed={1.2}
-            minDistance={0.5}
-            maxDistance={8}
-          />
+          <OrbitControls enablePan={false} autoRotate={!selectedMesh} autoRotateSpeed={1.2} minDistance={0.5} maxDistance={8} />
         </Canvas>
       </div>
 
-      {/* Status chip */}
       {selectedMesh ? (
         <div className="flex items-center gap-2 px-3 py-2 bg-amber-50 border border-amber-200 rounded-lg">
           <div className="w-2.5 h-2.5 rounded-full bg-amber-500 flex-shrink-0" />
           <p className="text-xs text-navy flex-1">
             Photo surface: <span className="font-mono font-semibold text-amber-700">{selectedMesh}</span>
           </p>
-          <button
-            type="button"
-            onClick={() => onSelect("")}
-            className="text-xs text-gray-400 hover:text-red-500 transition-colors"
-          >
+          <button type="button" onClick={() => onSelect("")} className="text-xs text-gray-400 hover:text-red-500 transition-colors">
             Clear
           </button>
         </div>
       ) : (
-        <p className="text-xs text-gray-400 text-center">
-          Drag to rotate · Click any surface to mark it as the photo area
-        </p>
+        <p className="text-xs text-gray-400 text-center">Drag to rotate · Click any surface to mark it as the photo area</p>
       )}
     </div>
   );
