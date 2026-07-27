@@ -189,7 +189,13 @@ function ProductDetailContent() {
 
           {/* Description */}
           {desc && (
-            <p className="text-navy/70 leading-relaxed mb-8 text-base">{desc}</p>
+            <div className="text-navy/70 leading-relaxed mb-8 text-base">
+              {desc.split('\n').map((line, i) =>
+                line.trim() === ''
+                  ? <br key={i} />
+                  : <p key={i} className="mb-1">{line}</p>
+              )}
+            </div>
           )}
 
           {/* Custom fields */}
