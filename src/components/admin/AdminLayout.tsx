@@ -1,6 +1,6 @@
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
-import { LayoutDashboard, Package, Tag, LogOut, Store, ImagePlay, ShoppingBag, Settings, MessageSquare, Layers } from "lucide-react";
+import { LayoutDashboard, Package, Tag, LogOut, Store, ImagePlay, ShoppingBag, Settings, MessageSquare, Layers, Scissors } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
 import { supabase } from "../../lib/supabase";
 
@@ -13,6 +13,7 @@ const navItems = [
   { to: "/admin/reviews", label: "Reviews", icon: MessageSquare, end: false },
   { to: "/admin/homepage", label: "Homepage", icon: ImagePlay, end: false },
   { to: "/admin/settings", label: "Settings", icon: Settings, end: false },
+  { to: "/admin/image-tools", label: "Image Tools", icon: Scissors, end: false },
 ];
 
 export function AdminLayout() {
