@@ -118,17 +118,45 @@ function ProductDetailContent() {
         {/* Images */}
         <div className="flex flex-col gap-3">
           {/* Main image */}
-          <div className="aspect-square bg-cream/60 rounded-2xl overflow-hidden border-[0.5px] border-navy/10 flex items-center justify-center">
-            {activeImage ? (
-              <img
-                src={activeImage}
-                alt={name}
-                className="w-full h-full object-cover"
-              />
-            ) : (
-              <span className="text-navy/20 font-semibold tracking-widest uppercase text-sm">No Image</span>
-            )}
-          </div>
+          {(() => {
+            const activeIdx = allImages.indexOf(activeImage ?? "");
+            function goPrev() { if (activeIdx > 0) setActiveImage(allImages[activeIdx - 1]); }
+            function goNext() { if (activeIdx < allImages.length - 1) setActiveImage(allImages[activeIdx + 1]); }
+            let touchStartX = 0;
+            return (
+              <div
+                className="relative aspect-square bg-cream/60 rounded-2xl overflow-hidden border-[0.5px] border-navy/10 flex items-center justify-center select-none"
+                onTouchStart={(e) => { touchStartX = e.touches[0].clientX; }}
+                onTouchEnd={(e) => {
+                  const diff = touchStartX - e.changedTouches[0].clientX;
+                  if (Math.abs(diff) > 50) diff > 0 ? goNext() : goPrev();
+                }}
+              >
+                {activeImage ? (
+                  <img src={activeImage} alt={name} className="w-full h-full object-cover pointer-events-none" />
+                ) : (
+                  <span className="text-navy/20 font-semibold tracking-widest uppercase text-sm">No Image</span>
+                )}
+
+                {/* Dot indicators */}
+                {allImages.length > 1 && (
+                  <div className="absolute bottom-3 left-0 right-0 flex justify-center gap-1.5">
+                    {allImages.map((url, idx) => (
+                      <button
+                        key={idx}
+                        onClick={() => setActiveImage(url)}
+                        className={`rounded-full transition-all duration-200 ${
+                          activeImage === url
+                            ? "w-5 h-2 bg-white"
+                            : "w-2 h-2 bg-white/50 hover:bg-white/80"
+                        }`}
+                      />
+                    ))}
+                  </div>
+                )}
+              </div>
+            );
+          })()}
 
           {/* Thumbnails */}
           {allImages.length > 1 && (
