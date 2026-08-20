@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { useParams, useNavigate, Link } from "react-router-dom";
-import { ShoppingCart, Heart, ArrowLeft, CheckCircle, XCircle, Share2, Upload, X as XIcon, ChevronRight, Box } from "lucide-react";
+import { ShoppingCart, Heart, ArrowLeft, CheckCircle, XCircle, Share2, Upload, X as XIcon, ChevronRight, ChevronLeft, Box, ZoomIn } from "lucide-react";
 import { supabase, type Product, type Category, type CustomField, localName, localDesc } from "../lib/supabase";
 import { Navbar, Footer } from "../components/Layout";
 import { CartDrawer } from "../components/CartDrawer";
@@ -11,6 +11,104 @@ import { ThreeDPreviewModal } from "../components/ThreeDPreviewModal";
 import { useLang } from "../context/LanguageContext";
 import { useCart } from "../context/CartContext";
 import { SiteMeta } from "../components/SiteMeta";
+
+function LightboxModal({ images, startIndex, onClose }: { images: string[]; startIndex: number; onClose: () => void }) {
+  const [idx, setIdx] = useState(startIndex);
+  const [dir, setDir] = useState<"left" | "right">("left");
+  const touchStartX = useRef(0);
+
+  function go(next: number, d: "left" | "right") { setDir(d); setIdx(next); }
+  function prev() { if (idx > 0) go(idx - 1, "right"); }
+  function next() { if (idx < images.length - 1) go(idx + 1, "left"); }
+
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape") onClose();
+      if (e.key === "ArrowLeft") prev();
+      if (e.key === "ArrowRight") next();
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  });
+
+  return (
+    <motion.div
+      className="fixed inset-0 z-[70] bg-black/95 flex flex-col"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 0.2 }}
+    >
+      {/* Header */}
+      <div className="flex items-center justify-between px-5 py-4 flex-shrink-0">
+        <span className="text-white/40 text-sm">{idx + 1} / {images.length}</span>
+        <button onClick={onClose} className="p-2 text-white/50 hover:text-white rounded-xl hover:bg-white/10 transition-colors">
+          <XIcon className="w-5 h-5" strokeWidth={1.75} />
+        </button>
+      </div>
+
+      {/* Image */}
+      <div
+        className="flex-1 relative overflow-hidden"
+        onTouchStart={(e) => { touchStartX.current = e.touches[0].clientX; }}
+        onTouchEnd={(e) => {
+          const diff = touchStartX.current - e.changedTouches[0].clientX;
+          if (Math.abs(diff) > 50) diff > 0 ? next() : prev();
+        }}
+      >
+        <AnimatePresence initial={false} custom={dir}>
+          <motion.img
+            key={idx}
+            src={images[idx]}
+            alt=""
+            custom={dir}
+            variants={{
+              enter: (d: string) => ({ x: d === "left" ? "100%" : "-100%", opacity: 0.6 }),
+              center: { x: 0, opacity: 1 },
+              exit:  (d: string) => ({ x: d === "left" ? "-100%" : "100%", opacity: 0.6 }),
+            }}
+            initial="enter"
+            animate="center"
+            exit="exit"
+            transition={{ type: "spring", stiffness: 320, damping: 32, mass: 0.8 }}
+            className="absolute inset-0 w-full h-full object-contain"
+          />
+        </AnimatePresence>
+
+        {/* Prev / Next arrows */}
+        {images.length > 1 && (
+          <>
+            <button
+              onClick={prev} disabled={idx === 0}
+              className="absolute left-3 top-1/2 -translate-y-1/2 p-2.5 bg-black/40 hover:bg-black/60 text-white rounded-full transition-colors disabled:opacity-20"
+            >
+              <ChevronLeft className="w-5 h-5" strokeWidth={1.75} />
+            </button>
+            <button
+              onClick={next} disabled={idx === images.length - 1}
+              className="absolute right-3 top-1/2 -translate-y-1/2 p-2.5 bg-black/40 hover:bg-black/60 text-white rounded-full transition-colors disabled:opacity-20"
+            >
+              <ChevronRight className="w-5 h-5" strokeWidth={1.75} />
+            </button>
+          </>
+        )}
+      </div>
+
+      {/* Dot indicators */}
+      {images.length > 1 && (
+        <div className="flex justify-center gap-1.5 py-4 flex-shrink-0">
+          {images.map((_, i) => (
+            <button
+              key={i}
+              onClick={() => go(i, i > idx ? "left" : "right")}
+              className={`rounded-full transition-all duration-200 ${i === idx ? "w-5 h-2 bg-white" : "w-2 h-2 bg-white/30 hover:bg-white/60"}`}
+            />
+          ))}
+        </div>
+      )}
+    </motion.div>
+  );
+}
 
 function ProductDetailContent() {
   const { id } = useParams<{ id: string }>();
@@ -28,6 +126,7 @@ function ProductDetailContent() {
   const [fieldError, setFieldError] = useState<string | null>(null);
   const [similarProducts, setSimilarProducts] = useState<Product[]>([]);
   const [preview3DUrl, setPreview3DUrl] = useState<string | null>(null);
+  const [lightboxOpen, setLightboxOpen] = useState(false);
   const touchStartX = useRef(0);
 
   useEffect(() => {
@@ -131,11 +230,12 @@ function ProductDetailContent() {
             function goNext() { if (activeIdx < allImages.length - 1) navigateImage(allImages[activeIdx + 1], "left"); }
             return (
               <div
-                className="relative aspect-square bg-cream/60 rounded-2xl overflow-hidden border-[0.5px] border-navy/10 select-none"
+                className="relative aspect-square bg-cream/60 rounded-2xl overflow-hidden border-[0.5px] border-navy/10 select-none cursor-zoom-in group"
+                onClick={() => { if (activeImage) setLightboxOpen(true); }}
                 onTouchStart={(e) => { touchStartX.current = e.touches[0].clientX; }}
                 onTouchEnd={(e) => {
                   const diff = touchStartX.current - e.changedTouches[0].clientX;
-                  if (Math.abs(diff) > 50) diff > 0 ? goNext() : goPrev();
+                  if (Math.abs(diff) > 50) { e.preventDefault(); diff > 0 ? goNext() : goPrev(); }
                 }}
               >
                 <AnimatePresence initial={false} custom={slideDir}>
@@ -163,13 +263,20 @@ function ProductDetailContent() {
                   )}
                 </AnimatePresence>
 
+                {/* Zoom hint */}
+                {activeImage && (
+                  <div className="absolute top-3 right-3 z-10 p-1.5 bg-black/30 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+                    <ZoomIn className="w-4 h-4 text-white" strokeWidth={1.75} />
+                  </div>
+                )}
+
                 {/* Dot indicators */}
                 {allImages.length > 1 && (
                   <div className="absolute bottom-3 left-0 right-0 flex justify-center gap-1.5 z-10">
                     {allImages.map((url, idx) => (
                       <button
                         key={idx}
-                        onClick={() => navigateImage(url, idx > activeIdx ? "left" : "right")}
+                        onClick={(e) => { e.stopPropagation(); navigateImage(url, idx > activeIdx ? "left" : "right"); }}
                         className={`rounded-full transition-all duration-200 ${
                           activeImage === url
                             ? "w-5 h-2 bg-white"
@@ -331,6 +438,17 @@ function ProductDetailContent() {
           onClose={() => setPreview3DUrl(null)}
         />
       )}
+
+      {/* Lightbox */}
+      <AnimatePresence>
+        {lightboxOpen && allImages.length > 0 && (
+          <LightboxModal
+            images={allImages}
+            startIndex={Math.max(0, allImages.indexOf(activeImage ?? ""))}
+            onClose={() => setLightboxOpen(false)}
+          />
+        )}
+      </AnimatePresence>
     </div>
   );
 }
