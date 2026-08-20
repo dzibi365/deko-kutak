@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { AnimatePresence, motion } from "motion/react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { ShoppingCart, Heart, ArrowLeft, CheckCircle, XCircle, Share2, Upload, X as XIcon, ChevronRight, Box } from "lucide-react";
 import { supabase, type Product, type Category, type CustomField, localName, localDesc } from "../lib/supabase";
@@ -22,10 +23,12 @@ function ProductDetailContent() {
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
   const [activeImage, setActiveImage] = useState<string | null>(null);
+  const [slideDir, setSlideDir] = useState<"left" | "right">("left");
   const [fieldValues, setFieldValues] = useState<Record<string, string>>({});
   const [fieldError, setFieldError] = useState<string | null>(null);
   const [similarProducts, setSimilarProducts] = useState<Product[]>([]);
   const [preview3DUrl, setPreview3DUrl] = useState<string | null>(null);
+  const touchStartX = useRef(0);
 
   useEffect(() => {
     async function load() {
@@ -120,31 +123,53 @@ function ProductDetailContent() {
           {/* Main image */}
           {(() => {
             const activeIdx = allImages.indexOf(activeImage ?? "");
-            function goPrev() { if (activeIdx > 0) setActiveImage(allImages[activeIdx - 1]); }
-            function goNext() { if (activeIdx < allImages.length - 1) setActiveImage(allImages[activeIdx + 1]); }
-            let touchStartX = 0;
+            function navigateImage(url: string, dir: "left" | "right") {
+              setSlideDir(dir);
+              setActiveImage(url);
+            }
+            function goPrev() { if (activeIdx > 0) navigateImage(allImages[activeIdx - 1], "right"); }
+            function goNext() { if (activeIdx < allImages.length - 1) navigateImage(allImages[activeIdx + 1], "left"); }
             return (
               <div
-                className="relative aspect-square bg-cream/60 rounded-2xl overflow-hidden border-[0.5px] border-navy/10 flex items-center justify-center select-none"
-                onTouchStart={(e) => { touchStartX = e.touches[0].clientX; }}
+                className="relative aspect-square bg-cream/60 rounded-2xl overflow-hidden border-[0.5px] border-navy/10 select-none"
+                onTouchStart={(e) => { touchStartX.current = e.touches[0].clientX; }}
                 onTouchEnd={(e) => {
-                  const diff = touchStartX - e.changedTouches[0].clientX;
+                  const diff = touchStartX.current - e.changedTouches[0].clientX;
                   if (Math.abs(diff) > 50) diff > 0 ? goNext() : goPrev();
                 }}
               >
-                {activeImage ? (
-                  <img src={activeImage} alt={name} className="w-full h-full object-cover pointer-events-none" />
-                ) : (
-                  <span className="text-navy/20 font-semibold tracking-widest uppercase text-sm">No Image</span>
-                )}
+                <AnimatePresence initial={false} custom={slideDir}>
+                  {activeImage ? (
+                    <motion.img
+                      key={activeImage}
+                      src={activeImage}
+                      alt={name}
+                      custom={slideDir}
+                      variants={{
+                        enter: (dir: string) => ({ x: dir === "left" ? "100%" : "-100%", opacity: 0.6 }),
+                        center: { x: 0, opacity: 1 },
+                        exit:  (dir: string) => ({ x: dir === "left" ? "-100%" : "100%", opacity: 0.6 }),
+                      }}
+                      initial="enter"
+                      animate="center"
+                      exit="exit"
+                      transition={{ type: "spring", stiffness: 320, damping: 32, mass: 0.8 }}
+                      className="absolute inset-0 w-full h-full object-cover"
+                    />
+                  ) : (
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <span className="text-navy/20 font-semibold tracking-widest uppercase text-sm">No Image</span>
+                    </div>
+                  )}
+                </AnimatePresence>
 
                 {/* Dot indicators */}
                 {allImages.length > 1 && (
-                  <div className="absolute bottom-3 left-0 right-0 flex justify-center gap-1.5">
+                  <div className="absolute bottom-3 left-0 right-0 flex justify-center gap-1.5 z-10">
                     {allImages.map((url, idx) => (
                       <button
                         key={idx}
-                        onClick={() => setActiveImage(url)}
+                        onClick={() => navigateImage(url, idx > activeIdx ? "left" : "right")}
                         className={`rounded-full transition-all duration-200 ${
                           activeImage === url
                             ? "w-5 h-2 bg-white"
@@ -161,19 +186,22 @@ function ProductDetailContent() {
           {/* Thumbnails */}
           {allImages.length > 1 && (
             <div className="grid grid-cols-4 gap-2">
-              {allImages.map((url, idx) => (
-                <button
-                  key={idx}
-                  onClick={() => setActiveImage(url)}
-                  className={`aspect-square rounded-lg overflow-hidden border-2 transition-all ${
-                    activeImage === url
-                      ? "border-navy"
-                      : "border-transparent hover:border-navy/30"
-                  }`}
-                >
-                  <img src={url} alt={`${name} ${idx + 1}`} className="w-full h-full object-cover" />
-                </button>
-              ))}
+              {allImages.map((url, idx) => {
+                const activeIdx = allImages.indexOf(activeImage ?? "");
+                return (
+                  <button
+                    key={idx}
+                    onClick={() => { setSlideDir(idx > activeIdx ? "left" : "right"); setActiveImage(url); }}
+                    className={`aspect-square rounded-lg overflow-hidden border-2 transition-all ${
+                      activeImage === url
+                        ? "border-navy"
+                        : "border-transparent hover:border-navy/30"
+                    }`}
+                  >
+                    <img src={url} alt={`${name} ${idx + 1}`} className="w-full h-full object-cover" />
+                  </button>
+                );
+              })}
             </div>
           )}
         </div>
