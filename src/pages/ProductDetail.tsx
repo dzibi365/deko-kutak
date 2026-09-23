@@ -128,6 +128,46 @@ function ProductDetailContent() {
   const [preview3DUrl, setPreview3DUrl] = useState<string | null>(null);
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const touchStartX = useRef(0);
+  const colRef = useRef<HTMLDivElement>(null);
+  const cardRef = useRef<HTMLDivElement>(null);
+  const rowRef = useRef<HTMLDivElement>(null);
+  const [cardFixed, setCardFixed] = useState(false);
+  const [cardAtBottom, setCardAtBottom] = useState(false);
+  const [fixedStyle, setFixedStyle] = useState<React.CSSProperties>({});
+  const [placeholderH, setPlaceholderH] = useState(0);
+
+  useEffect(() => {
+    const getTop = () => 10;
+    const check = () => {
+      if (window.innerWidth < 1024) { setCardFixed(false); setCardAtBottom(false); return; }
+      const col = colRef.current; const card = cardRef.current; const row = rowRef.current;
+      if (!col || !card || !row) return;
+      const top = getTop();
+      const colRect = col.getBoundingClientRect();
+      const rowBottom = row.getBoundingClientRect().bottom;
+      const h = card.offsetHeight;
+      if (colRect.top <= top) {
+        if (rowBottom > top + h) {
+          setFixedStyle({ position: 'fixed', top, left: colRect.left, width: colRect.width, zIndex: 40 });
+          setPlaceholderH(h);
+          setCardFixed(true);
+          setCardAtBottom(false);
+        } else {
+          setCardFixed(false);
+          setFixedStyle({});
+          setCardAtBottom(true);
+        }
+      } else {
+        setCardFixed(false);
+        setCardAtBottom(false);
+        setFixedStyle({});
+      }
+    };
+    window.addEventListener('scroll', check, { passive: true });
+    window.addEventListener('resize', check);
+    check();
+    return () => { window.removeEventListener('scroll', check); window.removeEventListener('resize', check); };
+  }, [product]);
 
   useEffect(() => {
     async function load() {
@@ -164,6 +204,7 @@ function ProductDetailContent() {
     }
     load();
   }, [id]);
+
 
   const allImages = product
     ? [product.image_url, ...(product.gallery_images ?? [])].filter(Boolean) as string[]
@@ -205,20 +246,20 @@ function ProductDetailContent() {
   const desc = localDesc(product, lang);
 
   return (
-    <div className="max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-10">
+    <div className="max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 pt-4 pb-12">
       <SiteMeta title={name} description={desc || undefined} />
       {/* Back link */}
       <button
         onClick={() => navigate(-1)}
-        className="flex items-center gap-2 text-sm text-navy/60 hover:text-navy transition-colors mb-8 group"
+        className="flex items-center gap-2 text-sm text-navy/60 hover:text-navy transition-colors mb-3 group"
       >
         <ArrowLeft className="w-4 h-4 group-hover:-translate-x-0.5 transition-transform" strokeWidth={2} />
         {tr("product_back")}
       </button>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-16">
-        {/* Images */}
-        <div className="flex flex-col gap-3">
+      <div className="flex flex-col lg:flex-row gap-8 lg:gap-12" ref={rowRef}>
+        {/* LEFT: Images + description */}
+        <div className="min-w-0 lg:flex-1 flex flex-col gap-3">
           {/* Main image */}
           {(() => {
             const activeIdx = allImages.indexOf(activeImage ?? "");
@@ -311,112 +352,126 @@ function ProductDetailContent() {
               })}
             </div>
           )}
-        </div>
 
-        {/* Info */}
-        <div className="flex flex-col pt-2">
-          {/* Category */}
-          {product.category && (
-            <span className="text-xs font-semibold text-copper uppercase tracking-widest mb-3">
-              {category ? localName(category, lang) : product.category}
-            </span>
-          )}
-
-          {/* Name */}
-          <h1 className="text-3xl font-semibold text-navy leading-tight tracking-tight mb-4">
-            {name}
-          </h1>
-
-          {/* Price */}
-          <p className="text-2xl font-semibold text-navy mb-5">
-            {product.price.toFixed(2)} KM
-          </p>
-
-          {/* Stock */}
-          <div className="flex items-center gap-2 mb-6">
-            {product.in_stock ? (
-              <>
-                <CheckCircle className="w-4 h-4 text-green-500" strokeWidth={2} />
-                <span className="text-sm font-medium text-green-600">{tr("product_in_stock")}</span>
-              </>
-            ) : (
-              <>
-                <XCircle className="w-4 h-4 text-red-400" strokeWidth={2} />
-                <span className="text-sm font-medium text-red-500">{tr("product_out_of_stock")}</span>
-              </>
-            )}
-          </div>
-
-          {/* Divider */}
-          <div className="border-t border-navy/10 mb-6" />
-
-          {/* Description */}
+          {/* Description below images */}
           {desc && (
-            <div className="text-navy/70 leading-relaxed mb-8 text-base">
-              {desc.split('\n').map((line, i) =>
-                line.trim() === ''
-                  ? <br key={i} />
-                  : <p key={i} className="mb-1">{line}</p>
-              )}
+            <div className="mt-4 pt-6 border-t border-navy/10">
+              <h2 className="text-sm font-semibold text-navy uppercase tracking-widest mb-3">
+                {lang === "bs" ? "Opis proizvoda" : "Product Details"}
+              </h2>
+              <div className="text-navy/70 leading-relaxed text-base">
+                {desc.split('\n').map((line, i) =>
+                  line.trim() === ''
+                    ? <br key={i} />
+                    : <p key={i} className="mb-1">{line}</p>
+                )}
+              </div>
             </div>
           )}
+        </div>
 
-          {/* Custom fields */}
-          <ProductCustomFields
-            fields={product.custom_fields ?? []}
-            lang={lang}
-            values={fieldValues}
-            onChange={(id, val) => { setFieldValues((prev) => ({ ...prev, [id]: val })); setFieldError(null); }}
-            has3DPreview={product.has_3d_preview}
-            model3dUrl={product.model_3d_url}
-            model3dMesh={product.model_texture_mesh}
-            onPreview3D={(url) => setPreview3DUrl(url)}
-          />
+        {/* RIGHT: purchase card */}
+        <div className="lg:w-[380px] lg:flex-shrink-0 relative" ref={colRef}>
+          {cardFixed && <div style={{ height: placeholderH }} />}
+          <div ref={cardRef} style={cardFixed ? fixedStyle : cardAtBottom ? { position: 'absolute', bottom: 0, width: '100%' } : {}}>
+          <div className="bg-white rounded-2xl border border-navy/10 shadow-md p-6 flex flex-col gap-5">
+            {/* Category */}
+            {product.category && (
+              <span className="text-xs font-semibold text-copper uppercase tracking-widest">
+                {category ? localName(category, lang) : product.category}
+              </span>
+            )}
 
-          {fieldError && (
-            <p className="text-sm text-red-500 mb-4 px-3 py-2 bg-red-50 rounded-lg">{fieldError}</p>
-          )}
+            {/* Name */}
+            <h1 className="text-2xl font-semibold text-navy leading-tight tracking-tight">
+              {name}
+            </h1>
 
-          {/* Actions */}
-          <div className="flex gap-3 mt-auto">
-            <button
-              disabled={!product.in_stock}
-              onClick={() => {
-                const missing = (product.custom_fields ?? []).find(
-                  (f) => f.required && !fieldValues[f.id]?.trim()
-                );
-                if (missing) {
-                  const label = lang === "bs" ? (missing.label_bs || missing.label_en) : (missing.label_en || missing.label_bs);
-                  setFieldError(`Please fill in: ${label}`);
-                  return;
-                }
-                setFieldError(null);
-                const labeled: Record<string, string> = {};
-                (product.custom_fields ?? []).forEach((f) => {
-                  const val = fieldValues[f.id];
-                  if (val) {
-                    const label = lang === "bs" ? (f.label_bs || f.label_en) : (f.label_en || f.label_bs);
-                    if (label) labeled[label] = val;
+            {/* Price */}
+            <div className="flex flex-col gap-1">
+              {product.compare_price && product.compare_price > product.price && (
+                <p className="text-sm text-gray-400 line-through">{product.compare_price.toFixed(2)} KM</p>
+              )}
+              <p className="text-3xl font-bold text-navy">
+                {product.price.toFixed(2)} KM
+              </p>
+            </div>
+
+            {/* Stock */}
+            <div className="flex items-center gap-2">
+              {product.in_stock ? (
+                <>
+                  <CheckCircle className="w-4 h-4 text-green-500" strokeWidth={2} />
+                  <span className="text-sm font-medium text-green-600">{tr("product_in_stock")}</span>
+                </>
+              ) : (
+                <>
+                  <XCircle className="w-4 h-4 text-red-400" strokeWidth={2} />
+                  <span className="text-sm font-medium text-red-500">{tr("product_out_of_stock")}</span>
+                </>
+              )}
+            </div>
+
+            <div className="border-t border-navy/10" />
+
+            {/* Custom fields */}
+            <ProductCustomFields
+              fields={product.custom_fields ?? []}
+              lang={lang}
+              values={fieldValues}
+              onChange={(id, val) => { setFieldValues((prev) => ({ ...prev, [id]: val })); setFieldError(null); }}
+              has3DPreview={product.has_3d_preview}
+              model3dUrl={product.model_3d_url}
+              model3dMesh={product.model_texture_mesh}
+              onPreview3D={(url) => setPreview3DUrl(url)}
+            />
+
+            {fieldError && (
+              <p className="text-sm text-red-500 px-3 py-2 bg-red-50 rounded-lg">{fieldError}</p>
+            )}
+
+            {/* Actions */}
+            <div className="flex gap-3">
+              <button
+                disabled={!product.in_stock}
+                onClick={() => {
+                  const missing = (product.custom_fields ?? []).find(
+                    (f) => f.required && !fieldValues[f.id]?.trim()
+                  );
+                  if (missing) {
+                    const label = lang === "bs" ? (missing.label_bs || missing.label_en) : (missing.label_en || missing.label_bs);
+                    setFieldError(`Please fill in: ${label}`);
+                    return;
                   }
-                });
-                addItem(product, labeled);
-              }}
-              className="flex-1 flex items-center justify-center gap-2 px-6 py-3.5 bg-navy text-white font-semibold rounded-xl hover:bg-navy/90 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-            >
-              <ShoppingCart className="w-5 h-5" strokeWidth={2} />
-              {tr("product_add_to_cart")}
-            </button>
+                  setFieldError(null);
+                  const labeled: Record<string, string> = {};
+                  (product.custom_fields ?? []).forEach((f) => {
+                    const val = fieldValues[f.id];
+                    if (val) {
+                      const label = lang === "bs" ? (f.label_bs || f.label_en) : (f.label_en || f.label_bs);
+                      if (label) labeled[label] = val;
+                    }
+                  });
+                  addItem(product, labeled);
+                }}
+                className="flex-1 flex items-center justify-center gap-2 px-6 py-3.5 bg-navy text-white font-semibold rounded-xl hover:bg-navy/90 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                <ShoppingCart className="w-5 h-5" strokeWidth={2} />
+                {tr("product_add_to_cart")}
+              </button>
 
-            <button className="p-3.5 border border-navy/20 rounded-xl text-navy/50 hover:text-copper hover:border-copper transition-colors">
-              <Heart className="w-5 h-5" strokeWidth={1.5} />
-            </button>
+              <button className="p-3.5 border border-navy/20 rounded-xl text-navy/50 hover:text-copper hover:border-copper transition-colors">
+                <Heart className="w-5 h-5" strokeWidth={1.5} />
+              </button>
 
-            <button
-              onClick={() => navigator.share?.({ title: name, url: window.location.href })}
-              className="p-3.5 border border-navy/20 rounded-xl text-navy/50 hover:text-navy hover:border-navy/40 transition-colors"
-            >
-              <Share2 className="w-5 h-5" strokeWidth={1.5} />
-            </button>
+              <button
+                onClick={() => navigator.share?.({ title: name, url: window.location.href })}
+                className="p-3.5 border border-navy/20 rounded-xl text-navy/50 hover:text-navy hover:border-navy/40 transition-colors"
+              >
+                <Share2 className="w-5 h-5" strokeWidth={1.5} />
+              </button>
+            </div>
+          </div>
           </div>
         </div>
       </div>
@@ -694,7 +749,7 @@ function SimilarProductsSection({
 
 export default function ProductDetail() {
   return (
-    <div className="min-h-screen bg-cream font-sans text-navy flex flex-col overflow-x-hidden">
+    <div className="min-h-screen bg-cream font-sans text-navy">
       <Navbar />
       <CartDrawer />
       <AuthModal />

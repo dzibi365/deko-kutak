@@ -12,11 +12,11 @@ body {
   background-color: var(--color-cream);
   color: var(--color-navy);
   font-family: var(--font-sans);
-  overflow-x: hidden;
+  overflow-x: clip;
 }
 
 html {
-  overflow-x: hidden;
+  overflow-x: clip;
 }
 
 /* Prevent iOS auto-zoom on input focus */
