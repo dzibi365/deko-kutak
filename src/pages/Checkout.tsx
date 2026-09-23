@@ -84,7 +84,7 @@ export default function Checkout() {
     <div className="min-h-screen bg-cream font-sans text-navy">
       {/* Top bar */}
       <header className="bg-cream/95 backdrop-blur-sm border-b border-navy/10 px-4 py-5">
-        <div className="max-w-5xl mx-auto flex items-center justify-between">
+        <div className="max-w-7xl mx-auto flex items-center justify-between">
           <a href="/" className="text-lg font-semibold tracking-tight text-navy">Deko Kutak.</a>
           <button
             onClick={() => navigate(-1)}
@@ -96,7 +96,7 @@ export default function Checkout() {
         </div>
       </header>
 
-      <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
         <h1 className="text-2xl font-semibold text-navy mb-8">{tr("checkout_title")}</h1>
 
         <form onSubmit={handleSubmit}>

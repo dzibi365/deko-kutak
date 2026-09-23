@@ -171,7 +171,7 @@ function ProductDetailContent() {
 
   if (loading) {
     return (
-      <div className="max-w-5xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-20">
+      <div className="max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-20">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 animate-pulse">
           <div className="flex flex-col gap-3">
             <div className="aspect-square bg-cream/80 rounded-2xl" />
@@ -192,7 +192,7 @@ function ProductDetailContent() {
 
   if (notFound || !product) {
     return (
-      <div className="max-w-5xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-32 text-center">
+      <div className="max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-32 text-center">
         <p className="text-navy/50 mb-6">{tr("product_not_found")}</p>
         <button onClick={() => navigate("/")} className="text-sm font-semibold text-navy underline underline-offset-4">
           {tr("product_back")}
@@ -205,7 +205,7 @@ function ProductDetailContent() {
   const desc = localDesc(product, lang);
 
   return (
-    <div className="max-w-5xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-10">
+    <div className="max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-10">
       <SiteMeta title={name} description={desc || undefined} />
       {/* Back link */}
       <button

@@ -49,7 +49,7 @@ export function Hero() {
 
   return (
     <section className="bg-navy text-cream py-14 lg:py-32 relative overflow-hidden">
-      <div className="max-w-5xl mx-auto w-full px-4 sm:px-6 lg:px-8 relative z-10">
+      <div className="max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 relative z-10">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-8 items-center">
           <div className="flex flex-col items-start gap-5 lg:gap-6">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border-[0.5px] border-copper/40 bg-copper/10 text-copper text-xs font-semibold tracking-wide uppercase">
@@ -167,7 +167,7 @@ export function PromoBanner() {
 
   return (
     <section className="bg-navy text-cream py-12 md:py-16 border-y-[0.5px] border-copper/20">
-      <div className="max-w-5xl mx-auto w-full px-4 sm:px-6 lg:px-8 flex flex-col md:flex-row items-center justify-between gap-6 md:gap-8 text-center md:text-left">
+      <div className="max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 flex flex-col md:flex-row items-center justify-between gap-6 md:gap-8 text-center md:text-left">
         <div className="flex flex-col gap-2">
           <h2 className="text-xl md:text-3xl font-semibold tracking-tight text-white">
             {tr("promo_heading")}

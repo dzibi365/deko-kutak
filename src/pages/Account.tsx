@@ -72,7 +72,7 @@ function AccountContent() {
 
   if (!user) {
     return (
-      <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-32 text-center flex flex-col items-center gap-4">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-32 text-center flex flex-col items-center gap-4">
         <p className="text-navy/50">{lang === "bs" ? "Prijavite se za pristup svom računu." : "Sign in to access your account."}</p>
         <button onClick={openModal}
           className="px-5 py-2.5 bg-navy text-white text-sm font-semibold rounded-xl hover:bg-navy/90 transition-colors">
@@ -83,7 +83,7 @@ function AccountContent() {
   }
 
   return (
-    <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
       <button onClick={() => navigate("/")}
         className="flex items-center gap-2 text-sm text-navy/60 hover:text-navy transition-colors mb-8 group">
         <ArrowLeft className="w-4 h-4 group-hover:-translate-x-0.5 transition-transform" strokeWidth={2} />

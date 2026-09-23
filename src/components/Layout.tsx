@@ -22,7 +22,7 @@ export function TopBar() {
 
   return (
     <div className="bg-navy text-cream/80 text-xs">
-      <div className="max-w-5xl mx-auto w-full px-4 sm:px-6 lg:px-8">
+      <div className="max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8">
 
         {/* Mobile: phone, email, hours only — no promo text */}
         <div className="sm:hidden py-2 flex flex-wrap items-center gap-x-4 gap-y-1">
@@ -139,7 +139,7 @@ export function Navbar() {
     </a>
     <header className="sticky top-0 z-50 bg-cream/95 backdrop-blur-sm border-b-[0.5px] border-navy/10">
       <TopBar />
-      <div className="max-w-5xl mx-auto w-full px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
+      <div className="max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
         <div className="flex-shrink-0">
           <a href="/" className="flex items-center gap-2.5">
             {logo_url ? (
@@ -281,7 +281,7 @@ export function Navbar() {
       >
         <div className="overflow-hidden">
           <div className="border-t border-navy/10 bg-cream/98 backdrop-blur-sm">
-            <nav className="max-w-5xl mx-auto px-4 py-4 flex flex-col gap-1">
+            <nav className="max-w-7xl mx-auto px-4 py-4 flex flex-col gap-1">
               {[
                 { label: tr("nav_shop"),    bold: true,  delay: 60  },
                 { label: tr("nav_story"),   bold: false, delay: 100 },
@@ -374,7 +374,7 @@ export function Footer() {
 
   return (
     <footer className="bg-navy text-cream pt-16 pb-8 border-t-[0.5px] border-navy/80">
-      <div className="max-w-5xl mx-auto w-full px-4 sm:px-6 lg:px-8">
+      <div className="max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-12 mb-16">
           <div className="md:col-span-2 flex flex-col gap-6">
             {footer_logo_url ? (

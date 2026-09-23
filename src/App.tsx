@@ -48,11 +48,11 @@ function StoreFront() {
             <CartDrawer />
             <main className="flex-1 flex flex-col">
               <Hero />
-              <div id="shop" className="max-w-5xl mx-auto w-full px-3 sm:px-6 lg:px-8 py-8 md:py-12">
+              <div id="shop" className="max-w-7xl mx-auto w-full px-3 sm:px-6 lg:px-8 py-8 md:py-12">
                 <CategoryShowcase />
               </div>
               <PromoBanner />
-              <div id="testimonials" className="max-w-5xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-16">
+              <div id="testimonials" className="max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-16">
                 <Testimonials />
               </div>
             </main>
