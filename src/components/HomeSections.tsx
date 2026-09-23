@@ -251,7 +251,7 @@ function CategoryRow({ cat, products, lang, onNavigate, onCategoryClick }: RowPr
 
       {/* Category image panel — full width on mobile, 220px on desktop */}
       <div
-        className="w-full h-[180px] md:w-[220px] md:h-auto flex-shrink-0 relative bg-navy cursor-pointer group"
+        className="w-full h-[180px] md:w-[220px] md:h-auto flex-shrink-0 relative bg-navy cursor-pointer group overflow-hidden"
         onClick={() => onCategoryClick(catKey)}
       >
         {cat.image_url ? (
@@ -265,14 +265,9 @@ function CategoryRow({ cat, products, lang, onNavigate, onCategoryClick }: RowPr
             <span className="text-cream/20 text-6xl font-bold select-none">{catName.charAt(0)}</span>
           </div>
         )}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/20 to-transparent" />
-        <div className="absolute bottom-0 left-0 right-0 p-4 md:p-5">
+        <div className="absolute inset-0 bg-gradient-to-b from-black/75 via-black/20 to-transparent" />
+        <div className="absolute top-0 left-0 right-0 p-4 md:p-5">
           <p className="text-white font-semibold text-lg leading-snug">{catName}</p>
-          <p className="text-white/50 text-xs mt-1">
-            {products.length} {products.length === 1
-              ? (lang === "bs" ? "proizvod" : "product")
-              : (lang === "bs" ? "proizvoda" : "products")}
-          </p>
         </div>
       </div>
 
