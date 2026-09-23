@@ -260,7 +260,7 @@ function ProductDetailContent() {
       <div className="flex flex-col lg:flex-row gap-8 lg:gap-12" ref={rowRef}>
         {/* LEFT: Images + description */}
         <div className="min-w-0 lg:flex-1 flex flex-col gap-3">
-          {/* Main image */}
+          {/* Images: thumbnails left + main image right */}
           {(() => {
             const activeIdx = allImages.indexOf(activeImage ?? "");
             function navigateImage(url: string, dir: "left" | "right") {
@@ -270,88 +270,69 @@ function ProductDetailContent() {
             function goPrev() { if (activeIdx > 0) navigateImage(allImages[activeIdx - 1], "right"); }
             function goNext() { if (activeIdx < allImages.length - 1) navigateImage(allImages[activeIdx + 1], "left"); }
             return (
-              <div
-                className="relative aspect-square bg-cream/60 rounded-2xl overflow-hidden border-[0.5px] border-navy/10 select-none cursor-zoom-in group"
-                onClick={() => { if (activeImage) setLightboxOpen(true); }}
-                onTouchStart={(e) => { touchStartX.current = e.touches[0].clientX; }}
-                onTouchEnd={(e) => {
-                  const diff = touchStartX.current - e.changedTouches[0].clientX;
-                  if (Math.abs(diff) > 50) { e.preventDefault(); diff > 0 ? goNext() : goPrev(); }
-                }}
-              >
-                <AnimatePresence initial={false} custom={slideDir}>
-                  {activeImage ? (
-                    <motion.img
-                      key={activeImage}
-                      src={activeImage}
-                      alt={name}
-                      custom={slideDir}
-                      variants={{
-                        enter: (dir: string) => ({ x: dir === "left" ? "100%" : "-100%", opacity: 0.6 }),
-                        center: { x: 0, opacity: 1 },
-                        exit:  (dir: string) => ({ x: dir === "left" ? "-100%" : "100%", opacity: 0.6 }),
-                      }}
-                      initial="enter"
-                      animate="center"
-                      exit="exit"
-                      transition={{ type: "spring", stiffness: 320, damping: 32, mass: 0.8 }}
-                      className="absolute inset-0 w-full h-full object-cover"
-                    />
-                  ) : (
-                    <div className="absolute inset-0 flex items-center justify-center">
-                      <span className="text-navy/20 font-semibold tracking-widest uppercase text-sm">No Image</span>
-                    </div>
-                  )}
-                </AnimatePresence>
-
-                {/* Zoom hint */}
-                {activeImage && (
-                  <div className="absolute top-3 right-3 z-10 p-1.5 bg-black/30 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
-                    <ZoomIn className="w-4 h-4 text-white" strokeWidth={1.75} />
-                  </div>
-                )}
-
-                {/* Dot indicators */}
+              <div className="flex gap-3">
+                {/* Thumbnails — vertical strip on the left */}
                 {allImages.length > 1 && (
-                  <div className="absolute bottom-3 left-0 right-0 flex justify-center gap-1.5 z-10">
+                  <div className="flex flex-col gap-2 w-[72px] flex-shrink-0">
                     {allImages.map((url, idx) => (
                       <button
                         key={idx}
-                        onClick={(e) => { e.stopPropagation(); navigateImage(url, idx > activeIdx ? "left" : "right"); }}
-                        className={`rounded-full transition-all duration-200 ${
-                          activeImage === url
-                            ? "w-5 h-2 bg-white"
-                            : "w-2 h-2 bg-white/50 hover:bg-white/80"
+                        onClick={() => navigateImage(url, idx > activeIdx ? "left" : "right")}
+                        className={`aspect-square rounded-lg overflow-hidden border-2 transition-all ${
+                          activeImage === url ? "border-navy" : "border-transparent hover:border-navy/30"
                         }`}
-                      />
+                      >
+                        <img src={url} alt={`${name} ${idx + 1}`} className="w-full h-full object-cover" />
+                      </button>
                     ))}
                   </div>
                 )}
+
+                {/* Main image */}
+                <div
+                  className="relative flex-1 aspect-square bg-cream/60 rounded-2xl overflow-hidden border-[0.5px] border-navy/10 select-none cursor-zoom-in group"
+                  onClick={() => { if (activeImage) setLightboxOpen(true); }}
+                  onTouchStart={(e) => { touchStartX.current = e.touches[0].clientX; }}
+                  onTouchEnd={(e) => {
+                    const diff = touchStartX.current - e.changedTouches[0].clientX;
+                    if (Math.abs(diff) > 50) { e.preventDefault(); diff > 0 ? goNext() : goPrev(); }
+                  }}
+                >
+                  <AnimatePresence initial={false} custom={slideDir}>
+                    {activeImage ? (
+                      <motion.img
+                        key={activeImage}
+                        src={activeImage}
+                        alt={name}
+                        custom={slideDir}
+                        variants={{
+                          enter: (dir: string) => ({ x: dir === "left" ? "100%" : "-100%", opacity: 0.6 }),
+                          center: { x: 0, opacity: 1 },
+                          exit:  (dir: string) => ({ x: dir === "left" ? "-100%" : "100%", opacity: 0.6 }),
+                        }}
+                        initial="enter"
+                        animate="center"
+                        exit="exit"
+                        transition={{ type: "spring", stiffness: 320, damping: 32, mass: 0.8 }}
+                        className="absolute inset-0 w-full h-full object-cover"
+                      />
+                    ) : (
+                      <div className="absolute inset-0 flex items-center justify-center">
+                        <span className="text-navy/20 font-semibold tracking-widest uppercase text-sm">No Image</span>
+                      </div>
+                    )}
+                  </AnimatePresence>
+
+                  {/* Zoom hint */}
+                  {activeImage && (
+                    <div className="absolute top-3 right-3 z-10 p-1.5 bg-black/30 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+                      <ZoomIn className="w-4 h-4 text-white" strokeWidth={1.75} />
+                    </div>
+                  )}
+                </div>
               </div>
             );
           })()}
-
-          {/* Thumbnails */}
-          {allImages.length > 1 && (
-            <div className="grid grid-cols-4 gap-2">
-              {allImages.map((url, idx) => {
-                const activeIdx = allImages.indexOf(activeImage ?? "");
-                return (
-                  <button
-                    key={idx}
-                    onClick={() => { setSlideDir(idx > activeIdx ? "left" : "right"); setActiveImage(url); }}
-                    className={`aspect-square rounded-lg overflow-hidden border-2 transition-all ${
-                      activeImage === url
-                        ? "border-navy"
-                        : "border-transparent hover:border-navy/30"
-                    }`}
-                  >
-                    <img src={url} alt={`${name} ${idx + 1}`} className="w-full h-full object-cover" />
-                  </button>
-                );
-              })}
-            </div>
-          )}
 
           {/* Description below images */}
           {desc && (
