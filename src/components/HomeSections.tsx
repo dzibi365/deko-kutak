@@ -247,7 +247,7 @@ function CategoryRow({ cat, products, lang, onNavigate, onCategoryClick }: RowPr
   const now = Date.now();
 
   return (
-    <div className="flex flex-col md:flex-row rounded-2xl overflow-hidden border border-gray-100 shadow-sm md:h-[760px]">
+    <div className="flex flex-col md:flex-row rounded-2xl overflow-hidden border border-navy/10 md:h-[760px]" style={{ boxShadow: "0 4px 16px rgba(0,0,0,0.07), inset 4px 0 0 0 #c8813a" }}>
 
       {/* Category image panel — full width on mobile, 220px on desktop */}
       <div
@@ -265,14 +265,14 @@ function CategoryRow({ cat, products, lang, onNavigate, onCategoryClick }: RowPr
             <span className="text-cream/20 text-6xl font-bold select-none">{catName.charAt(0)}</span>
           </div>
         )}
-        <div className="absolute inset-0 bg-gradient-to-b from-black/75 via-black/20 to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-b from-black/85 via-black/30 to-transparent" />
         <div className="absolute top-0 left-0 right-0 p-4 md:p-5">
-          <p className="text-white font-semibold text-2xl leading-snug">{catName}</p>
+          <p className="text-white font-bold text-2xl leading-snug drop-shadow-[0_2px_6px_rgba(0,0,0,0.8)]">{catName}</p>
         </div>
       </div>
 
       {/* Product grid — 2 cols on mobile, 3×2 on desktop */}
-      <div className="flex-1 bg-white p-4 md:p-5 overflow-hidden">
+      <div className="flex-1 bg-gray-50 p-4 md:p-5 overflow-hidden">
         <div className="grid grid-cols-2 md:grid-cols-3 md:grid-rows-2 gap-3 md:gap-4 md:h-full">
           {products.map((product) => {
             const name = lang === "bs"
