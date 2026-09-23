@@ -1,5 +1,5 @@
 import { useRef, useEffect, useState } from "react";
-import { Search, User, ShoppingBag, Instagram, Facebook, Mail, LayoutDashboard, LogOut, Phone, ChevronDown, Check, MessageCircle } from "lucide-react";
+import { Search, User, ShoppingBag, Instagram, Facebook, Mail, LayoutDashboard, LogOut, Phone, ChevronDown, Check } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useLang } from "../context/LanguageContext";
 import { useCart } from "../context/CartContext";
@@ -114,9 +114,10 @@ export function Navbar() {
     <a
       href="viber://chat?number=38761498340"
       aria-label="Chat on Viber"
-      className="fixed bottom-[88px] right-6 z-50 w-14 h-14 bg-[#7360F2] text-white rounded-full flex items-center justify-center shadow-lg hover:scale-110 transition-transform duration-200"
+      className="fixed bottom-[88px] right-6 z-50 w-14 h-14 rounded-2xl flex items-center justify-center shadow-lg hover:scale-110 transition-transform duration-200"
+      style={{ background: "linear-gradient(145deg, #9b72f0 0%, #7360F2 60%, #5b4dd4 100%)" }}
     >
-      <MessageCircle className="w-7 h-7" strokeWidth={1.75} />
+      <Phone className="w-7 h-7" strokeWidth={1.75} />
     </a>
     {/* WhatsApp */}
     <a
