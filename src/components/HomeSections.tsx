@@ -1,5 +1,13 @@
 import { useEffect, useState } from "react";
-import { ArrowRight, Star, ChevronLeft, ChevronRight } from "lucide-react";
+import { ArrowRight, Instagram } from "lucide-react";
+
+declare module 'react' {
+  namespace JSX {
+    interface IntrinsicElements {
+      'behold-widget': { 'feed-id': string };
+    }
+  }
+}
 import { useNavigate } from "react-router-dom";
 import { useLang } from "../context/LanguageContext";
 import { supabase, type Category, type Product, localName } from "../lib/supabase";
@@ -325,142 +333,50 @@ function CategoryRow({ cat, products, lang, onNavigate, onCategoryClick }: RowPr
   );
 }
 
-type HomeReview = {
-  id: number;
-  user_name: string;
-  rating: number;
-  comment: string | null;
-  product_name: string;
-};
-
-const PER_PAGE = 2;
+// Replace this with your Behold.so feed ID (see setup instructions below)
+const BEHOLD_FEED_ID = "m2KrCKdTX812TiGr1ROw";
 
 export function Testimonials() {
-  const { tr, lang } = useLang();
-  const [reviews, setReviews] = useState<HomeReview[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [page, setPage] = useState(0);
-  const [animating, setAnimating] = useState(false);
-  const [direction, setDirection] = useState<"left" | "right">("right");
+  const { lang } = useLang();
 
   useEffect(() => {
-    async function load() {
-      const [reviewsRes, productsRes] = await Promise.all([
-        supabase
-          .from("reviews")
-          .select("id, user_name, rating, comment, product_id")
-          .eq("approved", true)
-          .order("created_at", { ascending: false })
-          .limit(5),
-        supabase.from("products").select("id, name, name_en, name_bs"),
-      ]);
-
-      const productMap = new Map(
-        (productsRes.data ?? []).map((p) => [p.id, p])
-      );
-
-      const mapped: HomeReview[] = (reviewsRes.data ?? [])
-        .filter((r) => r.comment)
-        .map((r) => {
-          const p = productMap.get(r.product_id);
-          const productName = p
-            ? (lang === "bs" ? (p.name_bs || p.name_en || p.name) : (p.name_en || p.name))
-            : "";
-          return { id: r.id, user_name: r.user_name, rating: r.rating, comment: r.comment, product_name: productName };
-        });
-
-      setReviews(mapped);
-      setLoading(false);
-    }
-    load();
-  }, [lang]);
-
-  const totalPages = Math.ceil(reviews.length / PER_PAGE);
-  const visible = reviews.slice(page * PER_PAGE, page * PER_PAGE + PER_PAGE);
-
-  function goTo(next: number, dir: "left" | "right") {
-    if (animating) return;
-    setDirection(dir);
-    setAnimating(true);
-    setTimeout(() => {
-      setPage(next);
-      setAnimating(false);
-    }, 220);
-  }
-
-  function prev() { if (page > 0) goTo(page - 1, "left"); }
-  function next() { if (page < totalPages - 1) goTo(page + 1, "right"); }
-
-  if (loading) return null;
-  if (reviews.length === 0) return null;
-
-  const slideClass = animating
-    ? direction === "right"
-      ? "opacity-0 translate-x-4"
-      : "opacity-0 -translate-x-4"
-    : "opacity-100 translate-x-0";
+    if (document.querySelector('script[src="https://w.behold.so/widget.js"]')) return;
+    const script = document.createElement("script");
+    script.type = "module";
+    script.src = "https://w.behold.so/widget.js";
+    document.head.appendChild(script);
+  }, []);
 
   return (
-    <section id="testimonials">
-      <div className="mb-10 text-center">
-        <h2 className="text-3xl font-semibold tracking-tight mb-4">{tr("test_heading")}</h2>
-        <p className="text-navy/70 max-w-xl mx-auto">{tr("test_sub")}</p>
+    <section id="testimonials" className="flex flex-col items-center gap-8">
+      <div className="text-center flex flex-col gap-3">
+        <h2 className="text-3xl font-semibold tracking-tight">
+          {lang === "bs" ? "Pratite nas na Instagramu" : "Follow us on Instagram"}
+        </h2>
+        <a
+          href="https://www.instagram.com/dekokutaksarajevo"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center justify-center gap-1.5 text-sm text-navy/50 hover:text-navy transition-colors"
+        >
+          <Instagram className="w-4 h-4" />
+          @dekokutaksarajevo
+        </a>
       </div>
 
-      <div className={`grid grid-cols-1 md:grid-cols-2 gap-6 transition-all duration-200 ${slideClass}`}>
-        {visible.map((r) => (
-          <div key={r.id} className="bg-white p-8 rounded-xl border-[0.5px] border-navy/20 flex flex-col gap-6">
-            <div className="flex items-center gap-1">
-              {Array.from({ length: 5 }).map((_, i) => (
-                <Star key={i} className={`w-5 h-5 ${i < r.rating ? "fill-amber-400 text-amber-400" : "fill-gray-200 text-gray-200"}`} strokeWidth={1} />
-              ))}
-            </div>
-            <p className="text-lg text-navy leading-relaxed flex-1">"{r.comment}"</p>
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-cream border-[0.5px] border-navy/20 flex items-center justify-center font-semibold text-navy/50">
-                {r.user_name.charAt(0).toUpperCase()}
-              </div>
-              <div className="flex flex-col">
-                <span className="font-semibold text-navy">{r.user_name}</span>
-                {r.product_name && (
-                  <span className="text-xs text-gray-400">{r.product_name}</span>
-                )}
-              </div>
-            </div>
-          </div>
-        ))}
+      <div className="w-full">
+        <behold-widget feed-id={BEHOLD_FEED_ID} />
       </div>
 
-      {/* Navigation */}
-      {totalPages > 1 && (
-        <div className="flex items-center justify-center gap-4 mt-8">
-          <button
-            onClick={prev}
-            disabled={page === 0}
-            className="p-2 rounded-full border border-navy/20 text-navy/50 hover:border-navy hover:text-navy transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
-          >
-            <ChevronLeft className="w-5 h-5" strokeWidth={1.75} />
-          </button>
-
-          <div className="flex gap-2">
-            {Array.from({ length: totalPages }).map((_, i) => (
-              <button
-                key={i}
-                onClick={() => goTo(i, i > page ? "right" : "left")}
-                className={`rounded-full transition-all duration-200 ${i === page ? "w-6 h-2.5 bg-navy" : "w-2.5 h-2.5 bg-navy/20 hover:bg-navy/40"}`}
-              />
-            ))}
-          </div>
-
-          <button
-            onClick={next}
-            disabled={page === totalPages - 1}
-            className="p-2 rounded-full border border-navy/20 text-navy/50 hover:border-navy hover:text-navy transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
-          >
-            <ChevronRight className="w-5 h-5" strokeWidth={1.75} />
-          </button>
-        </div>
-      )}
+      <a
+        href="https://www.instagram.com/dekokutaksarajevo"
+        target="_blank"
+        rel="noopener noreferrer"
+        className="inline-flex items-center gap-2 px-6 py-2.5 border border-navy/20 rounded-full text-sm font-semibold text-navy hover:border-navy/50 hover:bg-navy/5 transition-colors"
+      >
+        <Instagram className="w-4 h-4" />
+        {lang === "bs" ? "Pogledaj sve objave" : "View all posts"}
+      </a>
     </section>
   );
 }
