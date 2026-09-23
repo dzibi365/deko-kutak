@@ -114,10 +114,10 @@ export function Navbar() {
     <a
       href="viber://chat?number=38761498340"
       aria-label="Chat on Viber"
-      className="fixed bottom-[88px] right-6 z-50 w-14 h-14 rounded-2xl flex items-center justify-center shadow-lg hover:scale-110 transition-transform duration-200"
+      className="fixed bottom-[88px] right-6 z-50 w-14 h-14 rounded-full flex items-center justify-center shadow-lg hover:scale-110 transition-transform duration-200"
       style={{ background: "linear-gradient(145deg, #9b72f0 0%, #7360F2 60%, #5b4dd4 100%)" }}
     >
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="-94.79835 -166.597 821.5857 999.582" className="w-8 h-8">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="-94.79835 -166.597 821.5857 999.582" className="w-10 h-10">
         <path fill="white" d="M560.651 64.998c-16.56-15.28-83.48-63.86-232.54-64.52 0 0-175.78-10.6-261.47 68-47.7 47.71-64.48 117.52-66.25 204.07-1.77 86.55-4.06 248.75 152.29 292.73h.15l-.1 67.11s-1 27.17 16.89 32.71c21.64 6.72 34.34-13.93 55-36.19 11.34-12.22 27-30.17 38.8-43.89 106.93 9 189.17-11.57 198.51-14.61 21.59-7 143.76-22.65 163.63-184.84 20.51-167.17-9.92-272.91-64.91-320.57zm18.12 308.58c-16.77 135.42-115.86 143.93-134.13 149.79-7.77 2.5-80 20.47-170.83 14.54 0 0-67.68 81.65-88.82 102.88-3.3 3.32-7.18 4.66-9.77 4-3.64-.89-4.64-5.2-4.6-11.5.06-9 .58-111.52.58-111.52s-.08 0 0 0c-132.26-36.72-124.55-174.77-123.05-247.06 1.5-72.29 15.08-131.51 55.42-171.34 72.48-65.65 221.79-55.84 221.79-55.84 126.09.55 186.51 38.52 200.52 51.24 46.52 39.83 70.22 135.14 52.89 274.77z"/>
         <path fill="none" stroke="white" strokeLinecap="round" strokeLinejoin="round" strokeWidth="16.86" d="M389.471 268.768q-2.46-49.59-50.38-52.09"/>
         <path fill="none" stroke="white" strokeLinecap="round" strokeLinejoin="round" strokeWidth="16.86" d="M432.721 283.268q1-46.2-27.37-77.2c-19-20.74-45.3-32.16-79.05-34.63"/>
