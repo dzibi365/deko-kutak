@@ -11,6 +11,12 @@ export interface Feature {
   desc: string;
 }
 
+export interface GridData {
+  cardColor: string;
+  iconColor: string;
+  items: Feature[];
+}
+
 export const ICON_OPTIONS = [
   "Gift", "Star", "Heart", "Leaf", "Key", "KeyRound", "Package", "Truck",
   "Shield", "Award", "Sparkles", "Home", "Sun", "CheckCircle",
@@ -28,7 +34,24 @@ const BG_PRESETS = [
   { label: "Rose",        card: "#fdf0f0", icon: "#f5d8d8" },
 ];
 
-export const DEFAULT_BG = BG_PRESETS[0];
+export const DEFAULT_GRID: GridData = {
+  cardColor: BG_PRESETS[0].card,
+  iconColor: BG_PRESETS[0].icon,
+  items: [],
+};
+
+export function parseGridData(raw: string): GridData {
+  try {
+    const parsed = JSON.parse(raw);
+    // Support old format: plain array of features
+    if (Array.isArray(parsed)) {
+      return { ...DEFAULT_GRID, items: parsed };
+    }
+    return { ...DEFAULT_GRID, ...parsed };
+  } catch {
+    return { ...DEFAULT_GRID };
+  }
+}
 
 type AnyIconRecord = Record<string, React.ComponentType<{ className?: string; strokeWidth?: number }>>;
 
@@ -163,11 +186,11 @@ function FeatureCard({ feature, onChange, onDelete }: {
 }
 
 function FeatureGridNodeView({ node, updateAttributes }: NodeViewProps) {
-  const features: Feature[] = (node.attrs.features as Feature[]) || [];
-  const cardColor: string = node.attrs.cardColor || DEFAULT_BG.card;
-  const iconColor: string = node.attrs.iconColor || DEFAULT_BG.icon;
+  const grid: GridData = parseGridData(node.attrs.grid as string);
+  const { items, cardColor, iconColor } = grid;
 
-  const update = (next: Feature[]) => updateAttributes({ features: next });
+  const setGrid = (next: Partial<GridData>) =>
+    updateAttributes({ grid: JSON.stringify({ ...grid, ...next }) });
 
   return (
     <NodeViewWrapper>
@@ -181,11 +204,11 @@ function FeatureGridNodeView({ node, updateAttributes }: NodeViewProps) {
             <BgColorPicker
               cardColor={cardColor}
               iconColor={iconColor}
-              onChange={(card, icon) => updateAttributes({ cardColor: card, iconColor: icon })}
+              onChange={(card, icon) => setGrid({ cardColor: card, iconColor: icon })}
             />
             <button
               type="button"
-              onClick={() => update([...features, { icon: "Star", title: "", desc: "" }])}
+              onClick={() => setGrid({ items: [...items, { icon: "Star", title: "", desc: "" }] })}
               className="flex items-center gap-1 text-[11px] font-medium text-copper hover:text-copper/70 transition-colors"
             >
               <Plus className="w-3.5 h-3.5" />
@@ -195,9 +218,9 @@ function FeatureGridNodeView({ node, updateAttributes }: NodeViewProps) {
         </div>
 
         {/* Preview strip */}
-        {features.length > 0 && (
+        {items.length > 0 && (
           <div className="flex gap-2 mb-2 overflow-hidden rounded-lg p-2" style={{ backgroundColor: cardColor }}>
-            {features.slice(0, 2).map((f, i) => (
+            {items.slice(0, 2).map((f, i) => (
               <div key={i} className="flex items-center gap-2 flex-1 min-w-0">
                 <div className="w-7 h-7 flex-shrink-0 rounded-full flex items-center justify-center" style={{ backgroundColor: iconColor }}>
                   <LucideIcon name={f.icon} className="w-3.5 h-3.5 text-copper" />
@@ -208,22 +231,22 @@ function FeatureGridNodeView({ node, updateAttributes }: NodeViewProps) {
           </div>
         )}
 
-        {features.length === 0 ? (
+        {items.length === 0 ? (
           <p className="text-xs text-gray-400 text-center py-3">
             No features yet — click "Add feature" to start.
           </p>
         ) : (
           <div className="flex flex-col gap-2">
-            {features.map((f, i) => (
+            {items.map((f, i) => (
               <FeatureCard
                 key={i}
                 feature={f}
                 onChange={(updated) => {
-                  const next = [...features];
+                  const next = [...items];
                   next[i] = updated;
-                  update(next);
+                  setGrid({ items: next });
                 }}
-                onDelete={() => update(features.filter((_, j) => j !== i))}
+                onDelete={() => setGrid({ items: items.filter((_, j) => j !== i) })}
               />
             ))}
           </div>
@@ -242,23 +265,10 @@ export const FeatureGridExtension = Node.create({
 
   addAttributes() {
     return {
-      features: {
-        default: [],
-        parseHTML: (el) => {
-          try { return JSON.parse(el.getAttribute("data-features") || "[]"); }
-          catch { return []; }
-        },
-        renderHTML: (attrs) => ({ "data-features": JSON.stringify(attrs.features ?? []) }),
-      },
-      cardColor: {
-        default: DEFAULT_BG.card,
-        parseHTML: (el) => el.getAttribute("data-card-color") || DEFAULT_BG.card,
-        renderHTML: (attrs) => ({ "data-card-color": attrs.cardColor }),
-      },
-      iconColor: {
-        default: DEFAULT_BG.icon,
-        parseHTML: (el) => el.getAttribute("data-icon-color") || DEFAULT_BG.icon,
-        renderHTML: (attrs) => ({ "data-icon-color": attrs.iconColor }),
+      grid: {
+        default: JSON.stringify(DEFAULT_GRID),
+        parseHTML: (el) => el.getAttribute("data-grid") || JSON.stringify(DEFAULT_GRID),
+        renderHTML: (attrs) => ({ "data-grid": attrs.grid }),
       },
     };
   },
