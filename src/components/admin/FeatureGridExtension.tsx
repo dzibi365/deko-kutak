@@ -19,6 +19,17 @@ export const ICON_OPTIONS = [
   "Palette", "Lock", "MapPin", "PanelTop", "TreePine",
 ] as const;
 
+const BG_PRESETS = [
+  { label: "Warm beige",  card: "#faf7f4", icon: "#ede5db" },
+  { label: "Slate",       card: "#f1f5f9", icon: "#e2e8f0" },
+  { label: "Navy tint",   card: "#eef0f6", icon: "#dce0ee" },
+  { label: "Copper tint", card: "#fdf4ec", icon: "#f5e0c8" },
+  { label: "Sage",        card: "#f0f5f0", icon: "#d8ebd8" },
+  { label: "Rose",        card: "#fdf0f0", icon: "#f5d8d8" },
+];
+
+export const DEFAULT_BG = BG_PRESETS[0];
+
 type AnyIconRecord = Record<string, React.ComponentType<{ className?: string; strokeWidth?: number }>>;
 
 function LucideIcon({ name, className }: { name: string; className?: string }) {
@@ -31,7 +42,6 @@ function IconPicker({ value, onChange }: { value: string; onChange: (name: strin
 
   return (
     <div className="relative">
-      {/* Trigger */}
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
@@ -41,10 +51,8 @@ function IconPicker({ value, onChange }: { value: string; onChange: (name: strin
         <LucideIcon name={value} className="w-5 h-5 text-copper" />
       </button>
 
-      {/* Popover grid */}
       {open && (
         <>
-          {/* Backdrop */}
           <div className="fixed inset-0 z-10" onClick={() => setOpen(false)} />
           <div className="absolute left-0 top-12 z-20 bg-white border border-gray-200 rounded-xl shadow-lg p-2 w-[220px]">
             <div className="grid grid-cols-6 gap-1">
@@ -55,9 +63,7 @@ function IconPicker({ value, onChange }: { value: string; onChange: (name: strin
                   title={name}
                   onClick={() => { onChange(name); setOpen(false); }}
                   className={`w-8 h-8 flex items-center justify-center rounded-lg transition-colors ${
-                    value === name
-                      ? "bg-copper text-white"
-                      : "text-gray-500 hover:bg-gray-100 hover:text-navy"
+                    value === name ? "bg-copper text-white" : "text-gray-500 hover:bg-gray-100 hover:text-navy"
                   }`}
                 >
                   <LucideIcon name={name} className="w-4 h-4" />
@@ -71,9 +77,56 @@ function IconPicker({ value, onChange }: { value: string; onChange: (name: strin
   );
 }
 
-function FeatureCard({
-  feature, onChange, onDelete,
-}: {
+function BgColorPicker({ cardColor, iconColor, onChange }: {
+  cardColor: string;
+  iconColor: string;
+  onChange: (card: string, icon: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+
+  return (
+    <div className="relative">
+      <button
+        type="button"
+        title="Card background color"
+        onClick={() => setOpen((o) => !o)}
+        className="flex items-center gap-1.5 px-2 py-1 rounded-lg border border-gray-200 bg-white hover:border-copper/40 transition-colors text-[11px] text-gray-500"
+      >
+        <div className="w-3.5 h-3.5 rounded-full border border-gray-300" style={{ backgroundColor: cardColor }} />
+        Card color
+      </button>
+
+      {open && (
+        <>
+          <div className="fixed inset-0 z-10" onClick={() => setOpen(false)} />
+          <div className="absolute right-0 top-8 z-20 bg-white border border-gray-200 rounded-xl shadow-lg p-3 min-w-[180px]">
+            <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-2">Background</p>
+            <div className="flex flex-col gap-1.5">
+              {BG_PRESETS.map((p) => (
+                <button
+                  key={p.card}
+                  type="button"
+                  onClick={() => { onChange(p.card, p.icon); setOpen(false); }}
+                  className={`flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg text-xs transition-colors hover:bg-gray-50 ${
+                    cardColor === p.card ? "ring-1 ring-copper bg-copper/5" : ""
+                  }`}
+                >
+                  <div className="flex gap-1 flex-shrink-0">
+                    <div className="w-4 h-4 rounded-full" style={{ backgroundColor: p.card, border: "1px solid rgba(0,0,0,0.08)" }} />
+                    <div className="w-4 h-4 rounded-full" style={{ backgroundColor: p.icon, border: "1px solid rgba(0,0,0,0.08)" }} />
+                  </div>
+                  <span className="text-gray-600">{p.label}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+function FeatureCard({ feature, onChange, onDelete }: {
   feature: Feature;
   onChange: (f: Feature) => void;
   onDelete: () => void;
@@ -111,6 +164,8 @@ function FeatureCard({
 
 function FeatureGridNodeView({ node, updateAttributes }: NodeViewProps) {
   const features: Feature[] = (node.attrs.features as Feature[]) || [];
+  const cardColor: string = node.attrs.cardColor || DEFAULT_BG.card;
+  const iconColor: string = node.attrs.iconColor || DEFAULT_BG.icon;
 
   const update = (next: Feature[]) => updateAttributes({ features: next });
 
@@ -122,15 +177,36 @@ function FeatureGridNodeView({ node, updateAttributes }: NodeViewProps) {
             <LayoutGrid className="w-3.5 h-3.5 text-copper" strokeWidth={1.75} />
             <span className="text-[11px] font-semibold text-copper uppercase tracking-widest">Feature Grid</span>
           </div>
-          <button
-            type="button"
-            onClick={() => update([...features, { icon: "Star", title: "", desc: "" }])}
-            className="flex items-center gap-1 text-[11px] font-medium text-copper hover:text-copper/70 transition-colors"
-          >
-            <Plus className="w-3.5 h-3.5" />
-            Add feature
-          </button>
+          <div className="flex items-center gap-2">
+            <BgColorPicker
+              cardColor={cardColor}
+              iconColor={iconColor}
+              onChange={(card, icon) => updateAttributes({ cardColor: card, iconColor: icon })}
+            />
+            <button
+              type="button"
+              onClick={() => update([...features, { icon: "Star", title: "", desc: "" }])}
+              className="flex items-center gap-1 text-[11px] font-medium text-copper hover:text-copper/70 transition-colors"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              Add feature
+            </button>
+          </div>
         </div>
+
+        {/* Preview strip */}
+        {features.length > 0 && (
+          <div className="flex gap-2 mb-2 overflow-hidden rounded-lg p-2" style={{ backgroundColor: cardColor }}>
+            {features.slice(0, 2).map((f, i) => (
+              <div key={i} className="flex items-center gap-2 flex-1 min-w-0">
+                <div className="w-7 h-7 flex-shrink-0 rounded-full flex items-center justify-center" style={{ backgroundColor: iconColor }}>
+                  <LucideIcon name={f.icon} className="w-3.5 h-3.5 text-copper" />
+                </div>
+                <span className="text-xs font-semibold text-navy truncate">{f.title || "Title"}</span>
+              </div>
+            ))}
+          </div>
+        )}
 
         {features.length === 0 ? (
           <p className="text-xs text-gray-400 text-center py-3">
@@ -169,15 +245,20 @@ export const FeatureGridExtension = Node.create({
       features: {
         default: [],
         parseHTML: (el) => {
-          try {
-            return JSON.parse(el.getAttribute("data-features") || "[]");
-          } catch {
-            return [];
-          }
+          try { return JSON.parse(el.getAttribute("data-features") || "[]"); }
+          catch { return []; }
         },
-        renderHTML: (attrs) => ({
-          "data-features": JSON.stringify(attrs.features ?? []),
-        }),
+        renderHTML: (attrs) => ({ "data-features": JSON.stringify(attrs.features ?? []) }),
+      },
+      cardColor: {
+        default: DEFAULT_BG.card,
+        parseHTML: (el) => el.getAttribute("data-card-color") || DEFAULT_BG.card,
+        renderHTML: (attrs) => ({ "data-card-color": attrs.cardColor }),
+      },
+      iconColor: {
+        default: DEFAULT_BG.icon,
+        parseHTML: (el) => el.getAttribute("data-icon-color") || DEFAULT_BG.icon,
+        renderHTML: (attrs) => ({ "data-icon-color": attrs.iconColor }),
       },
     };
   },
