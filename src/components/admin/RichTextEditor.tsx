@@ -4,19 +4,104 @@ import Image from "@tiptap/extension-image";
 import Youtube from "@tiptap/extension-youtube";
 import Link from "@tiptap/extension-link";
 import Placeholder from "@tiptap/extension-placeholder";
-import { useEffect, useRef } from "react";
+import { TextStyle } from "@tiptap/extension-text-style";
+import Color from "@tiptap/extension-color";
+import { useEffect, useRef, useState } from "react";
 import { supabase } from "../../lib/supabase";
 import {
   Bold, Italic, Heading1, Heading2, Heading3, List, ListOrdered,
   Link as LinkIcon, Image as ImageIcon, Youtube as YoutubeIcon,
-  Minus, Undo, Redo, Unlink, LayoutGrid,
+  Minus, Undo, Redo, Unlink, LayoutGrid, Baseline,
 } from "lucide-react";
 import { FeatureGridExtension } from "./FeatureGridExtension";
+
+const PRESET_COLORS = [
+  { label: "Default",  value: "" },
+  { label: "Navy",     value: "#1a1a2e" },
+  { label: "Copper",   value: "#c8813a" },
+  { label: "Gray",     value: "#6b7280" },
+  { label: "Red",      value: "#dc2626" },
+  { label: "Green",    value: "#16a34a" },
+  { label: "Blue",     value: "#2563eb" },
+  { label: "Purple",   value: "#7c3aed" },
+  { label: "White",    value: "#ffffff" },
+];
 
 interface Props {
   value: string;
   onChange: (html: string) => void;
   placeholder?: string;
+}
+
+function ColorPicker({ currentColor, onSet, onUnset }: {
+  currentColor: string;
+  onSet: (color: string) => void;
+  onUnset: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handler(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    }
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
+
+  return (
+    <div className="relative" ref={ref}>
+      <button
+        type="button"
+        title="Text color"
+        onClick={() => setOpen((o) => !o)}
+        className="flex flex-col items-center gap-0.5 p-1.5 rounded hover:bg-gray-100 transition-colors"
+      >
+        <Baseline className="w-4 h-4 text-gray-500" />
+        <div
+          className="w-4 h-1 rounded-full"
+          style={{ backgroundColor: currentColor || "#1a1a2e" }}
+        />
+      </button>
+
+      {open && (
+        <div className="absolute left-0 top-10 z-30 bg-white border border-gray-200 rounded-xl shadow-lg p-2.5 min-w-[140px]">
+          <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-2 px-0.5">Text color</p>
+          <div className="flex flex-wrap gap-1.5 mb-2">
+            {PRESET_COLORS.filter(c => c.value).map((c) => (
+              <button
+                key={c.value}
+                type="button"
+                title={c.label}
+                onClick={() => { onSet(c.value); setOpen(false); }}
+                className={`w-6 h-6 rounded-full border-2 transition-all hover:scale-110 ${
+                  currentColor === c.value ? "border-navy" : "border-transparent"
+                }`}
+                style={{ backgroundColor: c.value, boxShadow: c.value === "#ffffff" ? "inset 0 0 0 1px #e5e7eb" : undefined }}
+              />
+            ))}
+          </div>
+          <div className="border-t border-gray-100 pt-2 flex items-center gap-2">
+            <input
+              type="color"
+              defaultValue={currentColor || "#1a1a2e"}
+              onChange={(e) => onSet(e.target.value)}
+              className="w-6 h-6 rounded cursor-pointer border-0 bg-transparent p-0"
+              title="Custom color"
+            />
+            <span className="text-[11px] text-gray-400">Custom</span>
+            <button
+              type="button"
+              onClick={() => { onUnset(); setOpen(false); }}
+              className="ml-auto text-[11px] text-gray-400 hover:text-navy transition-colors"
+            >
+              Reset
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
 }
 
 export function RichTextEditor({ value, onChange, placeholder }: Props) {
@@ -25,6 +110,8 @@ export function RichTextEditor({ value, onChange, placeholder }: Props) {
   const editor = useEditor({
     extensions: [
       StarterKit,
+      TextStyle,
+      Color,
       Image.configure({ inline: false, allowBase64: false }),
       Youtube.configure({ width: 640, height: 360, nocookie: true }),
       Link.configure({ openOnClick: false, HTMLAttributes: { class: "text-copper underline" } }),
@@ -35,7 +122,6 @@ export function RichTextEditor({ value, onChange, placeholder }: Props) {
     onUpdate: ({ editor }) => onChange(editor.getHTML()),
   });
 
-  // Sync external value changes (e.g. switching language tabs)
   useEffect(() => {
     if (!editor) return;
     if (editor.getHTML() !== value) {
@@ -77,6 +163,8 @@ export function RichTextEditor({ value, onChange, placeholder }: Props) {
     editor.chain().focus().setLink({ href: url }).run();
   };
 
+  const currentColor = editor.getAttributes("textStyle").color ?? "";
+
   return (
     <div className="border border-gray-200 rounded-xl overflow-hidden focus-within:ring-2 focus-within:ring-navy/20 focus-within:border-navy transition">
       {/* Toolbar */}
@@ -86,6 +174,11 @@ export function RichTextEditor({ value, onChange, placeholder }: Props) {
         <div className="w-px h-5 bg-gray-200 mx-1" />
         {btn(editor.isActive("bold"), "Bold", () => editor.chain().focus().toggleBold().run(), <Bold className="w-4 h-4" />)}
         {btn(editor.isActive("italic"), "Italic", () => editor.chain().focus().toggleItalic().run(), <Italic className="w-4 h-4" />)}
+        <ColorPicker
+          currentColor={currentColor}
+          onSet={(color) => editor.chain().focus().setColor(color).run()}
+          onUnset={() => editor.chain().focus().unsetColor().run()}
+        />
         <div className="w-px h-5 bg-gray-200 mx-1" />
         {btn(editor.isActive("heading", { level: 1 }), "Heading 1", () => editor.chain().focus().toggleHeading({ level: 1 }).run(), <Heading1 className="w-4 h-4" />)}
         {btn(editor.isActive("heading", { level: 2 }), "Heading 2", () => editor.chain().focus().toggleHeading({ level: 2 }).run(), <Heading2 className="w-4 h-4" />)}
