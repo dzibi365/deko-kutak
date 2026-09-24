@@ -3,6 +3,7 @@ import { AnimatePresence, motion } from "motion/react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { ShoppingCart, Heart, ArrowLeft, CheckCircle, XCircle, Share2, Upload, X as XIcon, ChevronRight, ChevronLeft, Box, ZoomIn } from "lucide-react";
 import { supabase, type Product, type Category, type CustomField, localName, localDesc } from "../lib/supabase";
+import { RichDescription } from "../components/RichDescription";
 import { Navbar, Footer } from "../components/Layout";
 import { CartDrawer } from "../components/CartDrawer";
 import { AuthModal } from "../components/AuthModal";
@@ -335,18 +336,12 @@ function ProductDetailContent() {
           })()}
 
           {/* Description below images */}
-          {desc && (
+          {desc && desc.replace(/<[^>]*>/g, "").trim() && (
             <div className="mt-4 pt-6 border-t border-navy/10">
               <h2 className="text-sm font-semibold text-navy uppercase tracking-widest mb-3">
                 {lang === "bs" ? "Opis proizvoda" : "Product Details"}
               </h2>
-              <div className="text-navy/70 leading-relaxed text-base">
-                {desc.split('\n').map((line, i) =>
-                  line.trim() === ''
-                    ? <br key={i} />
-                    : <p key={i} className="mb-1">{line}</p>
-                )}
-              </div>
+              <RichDescription html={desc} />
             </div>
           )}
         </div>

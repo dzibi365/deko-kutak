@@ -3,6 +3,7 @@ import { X, Upload, Trash2, Plus, Search, Box } from "lucide-react";
 import { MeshPickerCanvas } from "./MeshPickerCanvas";
 import { supabase, type Product, type Category, type CustomField, type FieldGroup, localName } from "../../lib/supabase";
 import { CustomFieldsList, newField } from "./CustomFieldsEditor";
+import { RichTextEditor } from "./RichTextEditor";
 
 type Props = {
   product?: Product | null;
@@ -242,9 +243,8 @@ export function ProductForm({ product, onClose, onSaved }: Props) {
                   <CharCount value={form.name_en} min={20} max={70} />
                 </Field>
                 <Field label="Description (EN)">
-                  <textarea value={form.description_en} onChange={(e) => set("description_en", e.target.value)}
-                    rows={3} placeholder="Short product description…" className={`${inputCls} resize-none`} />
-                  <CharCount value={form.description_en} min={80} max={500} />
+                  <RichTextEditor value={form.description_en} onChange={(v) => set("description_en", v)} placeholder="Short product description…" />
+                  <CharCount value={form.description_en.replace(/<[^>]*>/g, "")} min={80} max={500} />
                 </Field>
               </>
             ) : (
@@ -255,9 +255,8 @@ export function ProductForm({ product, onClose, onSaved }: Props) {
                   <CharCount value={form.name_bs} min={20} max={70} />
                 </Field>
                 <Field label="Opis (BS)">
-                  <textarea value={form.description_bs} onChange={(e) => set("description_bs", e.target.value)}
-                    rows={3} placeholder="Kratki opis proizvoda…" className={`${inputCls} resize-none`} />
-                  <CharCount value={form.description_bs} min={80} max={500} />
+                  <RichTextEditor value={form.description_bs} onChange={(v) => set("description_bs", v)} placeholder="Kratki opis proizvoda…" />
+                  <CharCount value={form.description_bs.replace(/<[^>]*>/g, "")} min={80} max={500} />
                 </Field>
               </>
             )}
@@ -534,7 +533,7 @@ function SeoPanel({ form, checks, score, total }: { form: typeof empty; checks: 
   const good = checks.filter((c) => c.status === "pass");
 
   const titleText = form.name_en.trim() || form.name_bs.trim() || "Product Title";
-  const descText = form.description_en.trim() || form.description_bs.trim() || "";
+  const descText = (form.description_en || form.description_bs || "").replace(/<[^>]*>/g, "").trim();
   const slug = toSlug(form.name_en.trim() || form.name_bs.trim());
 
   return (
