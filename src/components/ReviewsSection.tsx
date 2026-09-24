@@ -68,7 +68,7 @@ export function ReviewsSection({ productId }: { productId: number }) {
   }
 
   return (
-    <div className="mt-16 border-t border-navy/10 pt-12">
+    <div className="mt-8 border-t border-navy/10 pt-8">
       {/* Header */}
       <div className="flex items-center justify-between mb-8">
         <div className="flex flex-col gap-1">
