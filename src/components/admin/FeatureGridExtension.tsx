@@ -23,7 +23,7 @@ export const ICON_OPTIONS = [
   "Shield", "Award", "Sparkles", "Home", "Sun", "CheckCircle",
   "Box", "Tag", "Zap", "Clock", "Users", "Scissors", "Wrench",
   "Flame", "Layers", "Feather", "Droplets", "Ruler", "Ribbon",
-  "Palette", "Lock", "MapPin", "PanelTop", "TreePine",
+  "Palette", "Lock", "MapPin", "PanelTop", "TreePine", "Compass", "Plane",
 ] as const;
 
 const BG_PRESETS = [
