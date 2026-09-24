@@ -12,7 +12,7 @@ function LucideIcon({ name }: { name: string }) {
 function FeatureGrid({ features }: { features: Feature[] }) {
   if (!features.length) return null;
   return (
-    <div className="grid grid-cols-2 gap-4 my-6">
+    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 my-6">
       {features.map((f, i) => (
         <div key={i} className="flex gap-4 p-5 bg-[#faf7f4] rounded-2xl">
           <div className="flex-shrink-0 w-12 h-12 flex items-center justify-center bg-[#ede5db] rounded-full">
