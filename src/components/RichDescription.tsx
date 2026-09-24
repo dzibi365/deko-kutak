@@ -3,21 +3,27 @@ import * as Icons from "lucide-react";
 import { DEFAULT_GRID, parseGridData } from "./admin/FeatureGridExtension";
 import type { Feature } from "./admin/FeatureGridExtension";
 
-type AnyIconRecord = Record<string, React.ComponentType<{ className?: string; strokeWidth?: number }>>;
+type AnyIconRecord = Record<string, React.ComponentType<{ className?: string; strokeWidth?: number; style?: React.CSSProperties }>>;
 
-function LucideIcon({ name }: { name: string }) {
+function LucideIcon({ name, color }: { name: string; color: string }) {
   const Comp = (Icons as unknown as AnyIconRecord)[name];
-  return Comp ? <Comp className="w-6 h-6 text-copper" strokeWidth={1.75} /> : <Icons.Star className="w-6 h-6 text-copper" strokeWidth={1.75} />;
+  const props = { className: "w-6 h-6", strokeWidth: 1.75, style: { color } };
+  return Comp ? <Comp {...props} /> : <Icons.Star {...props} />;
 }
 
-function FeatureGrid({ items, cardColor, iconColor }: { items: Feature[]; cardColor: string; iconColor: string }) {
+function FeatureGrid({ items, cardColor, iconColor, iconTextColor }: {
+  items: Feature[];
+  cardColor: string;
+  iconColor: string;
+  iconTextColor: string;
+}) {
   if (!items.length) return null;
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 my-6">
       {items.map((f, i) => (
         <div key={i} className="flex gap-4 p-5 rounded-2xl" style={{ backgroundColor: cardColor }}>
           <div className="flex-shrink-0 w-12 h-12 flex items-center justify-center rounded-full" style={{ backgroundColor: iconColor }}>
-            <LucideIcon name={f.icon} />
+            <LucideIcon name={f.icon} color={iconTextColor} />
           </div>
           <div className="min-w-0">
             <p className="text-base font-bold text-navy leading-snug">{f.title}</p>
@@ -31,7 +37,7 @@ function FeatureGrid({ items, cardColor, iconColor }: { items: Feature[]; cardCo
 
 type Part =
   | { type: "html"; content: string }
-  | { type: "features"; items: Feature[]; cardColor: string; iconColor: string };
+  | { type: "features"; items: Feature[]; cardColor: string; iconColor: string; iconTextColor: string };
 
 function parseRichHtml(html: string): Part[] {
   const parser = new DOMParser();
@@ -45,7 +51,7 @@ function parseRichHtml(html: string): Part[] {
       if (htmlBuf) { parts.push({ type: "html", content: htmlBuf }); htmlBuf = ""; }
       const raw = el.getAttribute("data-grid") || "";
       const grid = raw ? parseGridData(raw) : { ...DEFAULT_GRID };
-      parts.push({ type: "features", items: grid.items, cardColor: grid.cardColor, iconColor: grid.iconColor });
+      parts.push({ type: "features", items: grid.items, cardColor: grid.cardColor, iconColor: grid.iconColor, iconTextColor: grid.iconTextColor });
     } else {
       htmlBuf += (el.outerHTML ?? el.textContent ?? "");
     }
@@ -67,7 +73,7 @@ export function RichDescription({ html, className }: Props) {
     <div className={className}>
       {parts.map((part, i) =>
         part.type === "features" ? (
-          <FeatureGrid key={i} items={part.items} cardColor={part.cardColor} iconColor={part.iconColor} />
+          <FeatureGrid key={i} items={part.items} cardColor={part.cardColor} iconColor={part.iconColor} iconTextColor={part.iconTextColor} />
         ) : (
           <div
             key={i}

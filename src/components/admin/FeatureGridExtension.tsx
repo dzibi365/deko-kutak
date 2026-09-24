@@ -14,6 +14,7 @@ export interface Feature {
 export interface GridData {
   cardColor: string;
   iconColor: string;
+  iconTextColor: string;
   items: Feature[];
 }
 
@@ -26,17 +27,18 @@ export const ICON_OPTIONS = [
 ] as const;
 
 const BG_PRESETS = [
-  { label: "Warm beige",  card: "#faf7f4", icon: "#ede5db" },
-  { label: "Slate",       card: "#f1f5f9", icon: "#e2e8f0" },
-  { label: "Navy tint",   card: "#eef0f6", icon: "#dce0ee" },
-  { label: "Copper tint", card: "#fdf4ec", icon: "#f5e0c8" },
-  { label: "Sage",        card: "#f0f5f0", icon: "#d8ebd8" },
-  { label: "Rose",        card: "#fdf0f0", icon: "#f5d8d8" },
+  { label: "Warm beige",  card: "#faf7f4", icon: "#ede5db", text: "#7a5c3a" },
+  { label: "Slate",       card: "#f1f5f9", icon: "#e2e8f0", text: "#374151" },
+  { label: "Navy tint",   card: "#eef0f6", icon: "#dce0ee", text: "#1a1a2e" },
+  { label: "Copper tint", card: "#fdf4ec", icon: "#f5e0c8", text: "#92430a" },
+  { label: "Sage",        card: "#f0f5f0", icon: "#d8ebd8", text: "#2d6a2d" },
+  { label: "Rose",        card: "#fdf0f0", icon: "#f5d8d8", text: "#8b2020" },
 ];
 
 export const DEFAULT_GRID: GridData = {
   cardColor: BG_PRESETS[0].card,
   iconColor: BG_PRESETS[0].icon,
+  iconTextColor: BG_PRESETS[0].text,
   items: [],
 };
 
@@ -53,11 +55,11 @@ export function parseGridData(raw: string): GridData {
   }
 }
 
-type AnyIconRecord = Record<string, React.ComponentType<{ className?: string; strokeWidth?: number }>>;
+type AnyIconRecord = Record<string, React.ComponentType<{ className?: string; strokeWidth?: number; style?: React.CSSProperties }>>;
 
-function LucideIcon({ name, className }: { name: string; className?: string }) {
+function LucideIcon({ name, className, style }: { name: string; className?: string; style?: React.CSSProperties }) {
   const Comp = (Icons as unknown as AnyIconRecord)[name];
-  return Comp ? <Comp className={className} strokeWidth={1.75} /> : <Icons.Star className={className} strokeWidth={1.75} />;
+  return Comp ? <Comp className={className} style={style} strokeWidth={1.75} /> : <Icons.Star className={className} style={style} strokeWidth={1.75} />;
 }
 
 function IconPicker({ value, onChange }: { value: string; onChange: (name: string) => void }) {
@@ -103,7 +105,7 @@ function IconPicker({ value, onChange }: { value: string; onChange: (name: strin
 function BgColorPicker({ cardColor, iconColor, onChange }: {
   cardColor: string;
   iconColor: string;
-  onChange: (card: string, icon: string) => void;
+  onChange: (card: string, icon: string, text: string) => void;
 }) {
   const [open, setOpen] = useState(false);
 
@@ -129,7 +131,7 @@ function BgColorPicker({ cardColor, iconColor, onChange }: {
                 <button
                   key={p.card}
                   type="button"
-                  onClick={() => { onChange(p.card, p.icon); setOpen(false); }}
+                  onClick={() => { onChange(p.card, p.icon, p.text); setOpen(false); }}
                   className={`flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg text-xs transition-colors hover:bg-gray-50 ${
                     cardColor === p.card ? "ring-1 ring-copper bg-copper/5" : ""
                   }`}
@@ -187,7 +189,7 @@ function FeatureCard({ feature, onChange, onDelete }: {
 
 function FeatureGridNodeView({ node, updateAttributes }: NodeViewProps) {
   const grid: GridData = parseGridData(node.attrs.grid as string);
-  const { items, cardColor, iconColor } = grid;
+  const { items, cardColor, iconColor, iconTextColor } = grid;
 
   const setGrid = (next: Partial<GridData>) =>
     updateAttributes({ grid: JSON.stringify({ ...grid, ...next }) });
@@ -204,7 +206,7 @@ function FeatureGridNodeView({ node, updateAttributes }: NodeViewProps) {
             <BgColorPicker
               cardColor={cardColor}
               iconColor={iconColor}
-              onChange={(card, icon) => setGrid({ cardColor: card, iconColor: icon })}
+              onChange={(card, icon, text) => setGrid({ cardColor: card, iconColor: icon, iconTextColor: text })}
             />
             <button
               type="button"
@@ -223,7 +225,7 @@ function FeatureGridNodeView({ node, updateAttributes }: NodeViewProps) {
             {items.slice(0, 2).map((f, i) => (
               <div key={i} className="flex items-center gap-2 flex-1 min-w-0">
                 <div className="w-7 h-7 flex-shrink-0 rounded-full flex items-center justify-center" style={{ backgroundColor: iconColor }}>
-                  <LucideIcon name={f.icon} className="w-3.5 h-3.5 text-copper" />
+                  <LucideIcon name={f.icon} className="w-3.5 h-3.5" style={{ color: iconTextColor }} />
                 </div>
                 <span className="text-xs font-semibold text-navy truncate">{f.title || "Title"}</span>
               </div>
