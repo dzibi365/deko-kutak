@@ -373,21 +373,6 @@ function ProductDetailContent() {
               </p>
             </div>
 
-            {/* Stock */}
-            <div className="flex items-center gap-2">
-              {product.in_stock ? (
-                <>
-                  <CheckCircle className="w-4 h-4 text-green-500" strokeWidth={2} />
-                  <span className="text-sm font-medium text-green-600">{tr("product_in_stock")}</span>
-                </>
-              ) : (
-                <>
-                  <XCircle className="w-4 h-4 text-red-400" strokeWidth={2} />
-                  <span className="text-sm font-medium text-red-500">{tr("product_out_of_stock")}</span>
-                </>
-              )}
-            </div>
-
             <div className="border-t border-navy/10" />
 
             {/* Custom fields */}
