@@ -335,9 +335,9 @@ function ProductDetailContent() {
             );
           })()}
 
-          {/* Description below images */}
+          {/* Description below images — desktop only */}
           {desc && desc.replace(/<[^>]*>/g, "").trim() && (
-            <div className="mt-4 pt-6 border-t border-navy/10">
+            <div className="hidden lg:block mt-4 pt-6 border-t border-navy/10">
               <h2 className="text-sm font-semibold text-navy uppercase tracking-widest mb-3">
                 {lang === "bs" ? "Opis proizvoda" : "Product Details"}
               </h2>
@@ -451,6 +451,16 @@ function ProductDetailContent() {
           </div>
         </div>
       </div>
+
+      {/* Description — mobile only (shown below price card) */}
+      {desc && desc.replace(/<[^>]*>/g, "").trim() && (
+        <div className="lg:hidden mt-6 pt-6 border-t border-navy/10">
+          <h2 className="text-sm font-semibold text-navy uppercase tracking-widest mb-3">
+            {lang === "bs" ? "Opis proizvoda" : "Product Details"}
+          </h2>
+          <RichDescription html={desc} />
+        </div>
+      )}
 
       {/* Reviews */}
       <ReviewsSection productId={product.id} />
