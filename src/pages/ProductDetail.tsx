@@ -271,27 +271,10 @@ function ProductDetailContent() {
             function goPrev() { if (activeIdx > 0) navigateImage(allImages[activeIdx - 1], "right"); }
             function goNext() { if (activeIdx < allImages.length - 1) navigateImage(allImages[activeIdx + 1], "left"); }
             return (
-              <div className="flex gap-3">
-                {/* Thumbnails — vertical strip on the left */}
-                {allImages.length > 1 && (
-                  <div className="flex flex-col gap-2 w-[72px] flex-shrink-0">
-                    {allImages.map((url, idx) => (
-                      <button
-                        key={idx}
-                        onClick={() => navigateImage(url, idx > activeIdx ? "left" : "right")}
-                        className={`aspect-square rounded-lg overflow-hidden border-2 transition-all ${
-                          activeImage === url ? "border-navy" : "border-transparent hover:border-navy/30"
-                        }`}
-                      >
-                        <img src={url} alt={`${name} ${idx + 1}`} className="w-full h-full object-cover" />
-                      </button>
-                    ))}
-                  </div>
-                )}
-
-                {/* Main image */}
+              <div className="flex flex-col lg:flex-row gap-3">
+                {/* Main image — order-1 on mobile, order-2 on desktop */}
                 <div
-                  className="relative flex-1 aspect-square bg-cream/60 rounded-2xl overflow-hidden border-[0.5px] border-navy/10 select-none cursor-zoom-in group"
+                  className="relative order-1 lg:order-2 flex-1 aspect-square bg-cream/60 rounded-2xl overflow-hidden border-[0.5px] border-navy/10 select-none cursor-zoom-in group"
                   onClick={() => { if (activeImage) setLightboxOpen(true); }}
                   onTouchStart={(e) => { touchStartX.current = e.touches[0].clientX; }}
                   onTouchEnd={(e) => {
@@ -331,6 +314,23 @@ function ProductDetailContent() {
                     </div>
                   )}
                 </div>
+
+                {/* Thumbnails — horizontal below on mobile, vertical left on desktop */}
+                {allImages.length > 1 && (
+                  <div className="order-2 lg:order-1 flex lg:flex-col gap-2 lg:w-[72px] lg:flex-shrink-0 overflow-x-auto scrollbar-hide">
+                    {allImages.map((url, idx) => (
+                      <button
+                        key={idx}
+                        onClick={() => navigateImage(url, idx > activeIdx ? "left" : "right")}
+                        className={`flex-shrink-0 w-16 h-16 lg:w-auto lg:h-auto lg:aspect-square rounded-lg overflow-hidden border-2 transition-all ${
+                          activeImage === url ? "border-navy" : "border-transparent hover:border-navy/30"
+                        }`}
+                      >
+                        <img src={url} alt={`${name} ${idx + 1}`} className="w-full h-full object-cover" />
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
             );
           })()}
