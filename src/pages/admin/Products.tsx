@@ -1,18 +1,24 @@
 import { useEffect, useState } from "react";
 import { Plus, Pencil, Trash2, CheckCircle, XCircle } from "lucide-react";
-import { supabase, type Product } from "../../lib/supabase";
+import { supabase, type Product, type Category } from "../../lib/supabase";
 import { ProductForm } from "../../components/admin/ProductForm";
 
 export default function Products() {
   const [products, setProducts] = useState<Product[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<Product | null>(null);
   const [deletingId, setDeletingId] = useState<number | null>(null);
 
   async function load() {
-    const { data } = await supabase.from("products").select("*").order("created_at", { ascending: false });
-    setProducts(data ?? []);
+    const [{ data: prods }, { data: cats }] = await Promise.all([
+      supabase.from("products").select("*").order("created_at", { ascending: false }),
+      supabase.from("categories").select("*").order("name_en"),
+    ]);
+    setProducts(prods ?? []);
+    setCategories(cats ?? []);
     setLoading(false);
   }
 
@@ -31,12 +37,18 @@ export default function Products() {
     load();
   }
 
+  const filtered = selectedCategory
+    ? products.filter((p) => p.category === selectedCategory)
+    : products;
+
   return (
     <div className="p-8">
-      <div className="flex items-center justify-between mb-8">
+      <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-2xl font-semibold text-navy mb-1">Products</h1>
-          <p className="text-sm text-gray-400">{products.length} product{products.length !== 1 ? "s" : ""} total</p>
+          <p className="text-sm text-gray-400">
+            {filtered.length} of {products.length} product{products.length !== 1 ? "s" : ""}
+          </p>
         </div>
         <button
           onClick={openAdd}
@@ -47,13 +59,48 @@ export default function Products() {
         </button>
       </div>
 
+      {/* Category filter chips */}
+      {categories.length > 0 && (
+        <div className="flex flex-wrap gap-2 mb-5">
+          <button
+            onClick={() => setSelectedCategory(null)}
+            className={`px-3.5 py-1.5 rounded-full text-xs font-semibold transition-colors ${
+              selectedCategory === null
+                ? "bg-navy text-white"
+                : "bg-gray-100 text-gray-500 hover:bg-gray-200"
+            }`}
+          >
+            All
+          </button>
+          {categories.map((cat) => (
+            <button
+              key={cat.id}
+              onClick={() => setSelectedCategory(cat.name_en === selectedCategory ? null : cat.name_en)}
+              className={`px-3.5 py-1.5 rounded-full text-xs font-semibold transition-colors ${
+                selectedCategory === cat.name_en
+                  ? "bg-copper text-white"
+                  : "bg-gray-100 text-gray-500 hover:bg-gray-200"
+              }`}
+            >
+              {cat.name_en}
+            </button>
+          ))}
+        </div>
+      )}
+
       <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
         {loading ? (
           <div className="p-6 text-sm text-gray-400">Loading…</div>
-        ) : products.length === 0 ? (
+        ) : filtered.length === 0 ? (
           <div className="p-10 text-center">
-            <p className="text-sm text-gray-400 mb-3">No products yet.</p>
-            <button onClick={openAdd} className="text-sm font-semibold text-navy underline underline-offset-2">Add your first product</button>
+            <p className="text-sm text-gray-400 mb-3">
+              {selectedCategory ? `No products in "${selectedCategory}".` : "No products yet."}
+            </p>
+            {!selectedCategory && (
+              <button onClick={openAdd} className="text-sm font-semibold text-navy underline underline-offset-2">
+                Add your first product
+              </button>
+            )}
           </div>
         ) : (
           <table className="w-full text-sm">
@@ -67,7 +114,7 @@ export default function Products() {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
-              {products.map((p) => (
+              {filtered.map((p) => (
                 <tr key={p.id} className="hover:bg-gray-50 transition-colors">
                   <td className="px-5 py-4">
                     <div className="flex items-center gap-3">
@@ -84,7 +131,12 @@ export default function Products() {
                   </td>
                   <td className="px-5 py-4">
                     {p.category ? (
-                      <span className="inline-block px-2 py-0.5 bg-copper/10 text-copper text-xs font-semibold rounded-full">{p.category}</span>
+                      <button
+                        onClick={() => setSelectedCategory(p.category === selectedCategory ? null : p.category)}
+                        className="inline-block px-2 py-0.5 bg-copper/10 text-copper text-xs font-semibold rounded-full hover:bg-copper/20 transition-colors"
+                      >
+                        {p.category}
+                      </button>
                     ) : (
                       <span className="text-gray-300">—</span>
                     )}
