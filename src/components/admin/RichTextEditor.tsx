@@ -232,8 +232,9 @@ export function RichTextEditor({ value, onChange, placeholder }: Props) {
           [&_.ProseMirror_h1]:text-2xl [&_.ProseMirror_h1]:font-bold [&_.ProseMirror_h1]:mt-4 [&_.ProseMirror_h1]:mb-2
           [&_.ProseMirror_h2]:text-lg [&_.ProseMirror_h2]:font-semibold [&_.ProseMirror_h2]:mt-3 [&_.ProseMirror_h2]:mb-1
           [&_.ProseMirror_h3]:text-base [&_.ProseMirror_h3]:font-semibold [&_.ProseMirror_h3]:mt-2 [&_.ProseMirror_h3]:mb-1
-          [&_.ProseMirror_ul]:list-disc [&_.ProseMirror_ul]:pl-5
-          [&_.ProseMirror_ol]:list-decimal [&_.ProseMirror_ol]:pl-5
+          [&_.ProseMirror_p]:mb-3 [&_.ProseMirror_p:last-child]:mb-0
+          [&_.ProseMirror_ul]:list-disc [&_.ProseMirror_ul]:pl-5 [&_.ProseMirror_ul]:mb-3
+          [&_.ProseMirror_ol]:list-decimal [&_.ProseMirror_ol]:pl-5 [&_.ProseMirror_ol]:mb-3
           [&_.ProseMirror_li]:my-0.5
           [&_.ProseMirror_hr]:border-navy/20 [&_.ProseMirror_hr]:my-3"
       />
