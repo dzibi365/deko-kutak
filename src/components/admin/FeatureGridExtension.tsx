@@ -25,6 +25,7 @@ export const ICON_OPTIONS = [
   "Flame", "Layers", "Feather", "Droplets", "Ruler", "Ribbon",
   "Palette", "Lock", "MapPin", "PanelTop", "TreePine", "Compass", "Plane",
   "UserRoundPen", "Baby", "PackageOpen", "Camera", "Video", "Aperture",
+  "Calendar", "CalendarDays", "Usb",
 ] as const;
 
 const BG_PRESETS = [
