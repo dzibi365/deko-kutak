@@ -111,7 +111,7 @@ export function ProductGrid({ category }: ProductGridProps) {
                   {localName(product, lang)}
                 </h3>
                 {localDesc(product, lang) && (
-                  <p className="text-sm text-navy/60 mb-4 leading-relaxed line-clamp-2">{localDesc(product, lang)}</p>
+                  <p className="text-sm text-navy/60 mb-4 leading-relaxed line-clamp-2">{localDesc(product, lang)?.replace(/<[^>]*>/g, "")}</p>
                 )}
                 <div className="flex items-center justify-between mt-auto pt-4 border-t-[0.5px] border-navy/10">
                   <span className="text-lg font-semibold text-navy">{product.price.toFixed(2)} KM</span>

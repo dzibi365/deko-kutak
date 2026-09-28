@@ -125,7 +125,7 @@ export default function Products() {
                       )}
                       <div>
                         <p className="font-medium text-navy">{p.name}</p>
-                        {p.description && <p className="text-xs text-gray-400 line-clamp-1 max-w-xs">{p.description}</p>}
+                        {p.description && <p className="text-xs text-gray-400 line-clamp-1 max-w-xs">{p.description.replace(/<[^>]*>/g, "")}</p>}
                       </div>
                     </div>
                   </td>
