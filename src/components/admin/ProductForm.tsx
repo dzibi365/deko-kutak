@@ -19,6 +19,7 @@ const empty = {
   image_url: "",
   gallery_images: [] as string[],
   in_stock: true,
+  requires_personalization: false,
   has_3d_preview: false,
   model_3d_url: "",
   model_texture_mesh: "",
@@ -70,6 +71,7 @@ export function ProductForm({ product, onClose, onSaved }: Props) {
         image_url: product.image_url ?? "",
         gallery_images: product.gallery_images ?? [],
         in_stock: product.in_stock,
+        requires_personalization: product.requires_personalization ?? false,
         has_3d_preview: product.has_3d_preview ?? false,
         model_3d_url: product.model_3d_url ?? "",
         model_texture_mesh: product.model_texture_mesh ?? "",
@@ -183,6 +185,7 @@ export function ProductForm({ product, onClose, onSaved }: Props) {
       image_url: form.image_url.trim() || null,
       gallery_images: form.gallery_images.length > 0 ? form.gallery_images : [],
       in_stock: form.in_stock,
+      requires_personalization: form.requires_personalization,
       has_3d_preview: form.has_3d_preview,
       model_3d_url: form.model_3d_url.trim() || null,
       model_texture_mesh: form.model_texture_mesh.trim() || null,
@@ -343,6 +346,18 @@ export function ProductForm({ product, onClose, onSaved }: Props) {
                 <div className={`w-4 h-4 rounded-full bg-white shadow transition-transform ${form.in_stock ? "translate-x-4" : "translate-x-0"}`} />
               </div>
               <span className="text-sm font-medium text-navy">In Stock</span>
+            </label>
+
+            {/* Requires personalization */}
+            <label className="flex items-center gap-3 cursor-pointer select-none">
+              <div onClick={() => set("requires_personalization", !form.requires_personalization)}
+                className={`w-10 h-6 rounded-full transition-colors flex items-center px-1 ${form.requires_personalization ? "bg-navy" : "bg-gray-200"}`}>
+                <div className={`w-4 h-4 rounded-full bg-white shadow transition-transform ${form.requires_personalization ? "translate-x-4" : "translate-x-0"}`} />
+              </div>
+              <div>
+                <span className="text-sm font-medium text-navy">Requires Personalization</span>
+                <p className="text-xs text-gray-400">Customers must visit the product page before ordering.</p>
+              </div>
             </label>
 
             {/* 3D Preview */}

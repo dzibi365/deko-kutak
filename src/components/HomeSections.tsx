@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import { ArrowRight, Instagram } from "lucide-react";
+import { PersonalizationModal } from "./PersonalizationModal";
+import { ArrowRight, Instagram, Users, Hand, ShoppingBag } from "lucide-react";
 
 declare module 'react' {
   namespace JSX {
@@ -35,6 +36,9 @@ export function Hero() {
     });
   }, []);
 
+  // Personalized Wooden Wedding USB & Calendar Gift Set — warm wood tones, personalized
+  const heroImageUrl = "https://smlaoqjushalotduuhcx.supabase.co/storage/v1/object/public/product-images/1789044812034-3850160wbvw.webp";
+
   const badge    = cfg ? (lang === "bs" ? cfg.badge_bs    : cfg.badge_en)    : tr("hero_badge");
   const heading  = cfg ? (lang === "bs" ? cfg.heading_bs  : cfg.heading_en)  : tr("hero_heading");
   const subtext  = cfg ? (lang === "bs" ? cfg.subtext_bs  : cfg.subtext_en)  : tr("hero_sub");
@@ -48,7 +52,7 @@ export function Hero() {
   const stat2Lbl = cfg ? (lang === "bs" ? cfg.stat2_label_bs : cfg.stat2_label_en) : tr("hero_stat_quality");
 
   return (
-    <section className="bg-navy text-cream py-14 lg:py-32 relative overflow-hidden">
+    <section className="bg-navy text-cream py-14 lg:py-12 relative overflow-hidden">
       <div className="max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 relative z-10">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-8 items-center">
           <div className="flex flex-col items-start gap-5 lg:gap-6">
@@ -84,24 +88,30 @@ export function Hero() {
           </div>
 
           <div className="relative h-[400px] w-full hidden lg:block">
-            <div className="absolute inset-0 rounded-2xl overflow-hidden border-[0.5px] border-cream/10">
-              {cfg?.image_url ? (
-                <img src={cfg.image_url} alt="hero" className="w-full h-full object-cover" />
-              ) : (
-                <div className="w-full h-full bg-cream/5 flex items-center justify-center">
-                  <span className="text-cream/20 font-semibold text-lg tracking-widest uppercase">Hero Imagery</span>
-                </div>
-              )}
+            <div className="absolute inset-0 rounded-3xl overflow-hidden">
+              <img
+                src={heroImageUrl}
+                alt="Personalized wooden gift set by Deko Kutak"
+                className="absolute inset-0 w-full h-full object-cover"
+              />
             </div>
 
-            <div className="absolute -left-8 top-16 bg-white text-navy p-4 rounded-xl border-[0.5px] border-navy/10 flex flex-col gap-1 shadow-sm">
-              <span className="text-2xl font-semibold text-copper">{stat1Val}</span>
-              <span className="text-xs font-semibold uppercase tracking-wider text-navy/60">{stat1Lbl}</span>
+            {/* Badge 1 — top-left, sitting at the image edge */}
+            <div className="absolute top-4 left-10 bg-white text-navy px-4 py-3 rounded-2xl border-[0.5px] border-navy/10 flex items-center gap-3 shadow-md">
+              <Users className="w-8 h-8 text-copper flex-shrink-0" strokeWidth={1.5} />
+              <div className="flex flex-col gap-0.5">
+                <span className="text-2xl font-bold text-navy leading-none">{stat1Val}</span>
+                <span className="text-[10px] font-semibold uppercase tracking-widest text-navy/50">{stat1Lbl}</span>
+              </div>
             </div>
 
-            <div className="absolute -right-6 bottom-24 bg-white text-navy p-4 rounded-xl border-[0.5px] border-navy/10 flex flex-col gap-1 shadow-sm">
-              <span className="text-2xl font-semibold text-copper">{stat2Val}</span>
-              <span className="text-xs font-semibold uppercase tracking-wider text-navy/60">{stat2Lbl}</span>
+            {/* Badge 2 — bottom-right, slightly inset */}
+            <div className="absolute bottom-4 right-6 bg-white text-navy px-4 py-3 rounded-2xl border-[0.5px] border-navy/10 flex items-center gap-3 shadow-md">
+              <Hand className="w-8 h-8 text-copper flex-shrink-0" strokeWidth={1.5} />
+              <div className="flex flex-col gap-0.5">
+                <span className="text-2xl font-bold text-navy leading-none">{stat2Val}</span>
+                <span className="text-[10px] font-semibold uppercase tracking-widest text-navy/50">{stat2Lbl}</span>
+              </div>
             </div>
           </div>
         </div>
@@ -194,6 +204,7 @@ export function CategoryShowcase() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
+  const [modalProduct, setModalProduct] = useState<Product | null>(null);
 
   useEffect(() => {
     Promise.all([
@@ -216,20 +227,29 @@ export function CategoryShowcase() {
   if (loading || rows.length === 0) return null;
 
   return (
-    <section className="flex flex-col gap-4">
-      <div className="flex flex-col gap-4">
-        {rows.map(({ cat, products: catProducts }) => (
-          <CategoryRow
-            key={cat.id}
-            cat={cat}
-            products={catProducts.slice(0, 6)}
-            lang={lang}
-            onNavigate={(id) => navigate(`/products/${id}`)}
-            onCategoryClick={(catName) => navigate(`/shop?category=${encodeURIComponent(catName)}`)}
-          />
-        ))}
-      </div>
-    </section>
+    <>
+      <section className="flex flex-col gap-4">
+        <div className="flex flex-col gap-4">
+          {rows.map(({ cat, products: catProducts }) => (
+            <CategoryRow
+              key={cat.id}
+              cat={cat}
+              products={catProducts.slice(0, 3)}
+              lang={lang}
+              onNavigate={(id) => navigate(`/products/${id}`)}
+              onCategoryClick={(catName) => navigate(`/shop?category=${encodeURIComponent(catName)}`)}
+              onPersonalize={(product) => setModalProduct(product)}
+            />
+          ))}
+        </div>
+      </section>
+      {modalProduct && (
+        <PersonalizationModal
+          product={modalProduct}
+          onClose={() => setModalProduct(null)}
+        />
+      )}
+    </>
   );
 }
 
@@ -239,15 +259,16 @@ type RowProps = {
   lang: string;
   onNavigate: (id: number) => void;
   onCategoryClick: (catName: string) => void;
+  onPersonalize: (product: Product) => void;
 };
 
-function CategoryRow({ cat, products, lang, onNavigate, onCategoryClick }: RowProps) {
+function CategoryRow({ cat, products, lang, onNavigate, onCategoryClick, onPersonalize }: RowProps) {
   const catName = lang === "bs" ? (cat.name_bs || cat.name_en || cat.name) : (cat.name_en || cat.name);
   const catKey = cat.name_en ?? cat.name;
   const now = Date.now();
 
   return (
-    <div className="flex flex-col md:flex-row rounded-2xl overflow-hidden border border-navy/10 md:h-[760px]" style={{ boxShadow: "0 4px 16px rgba(0,0,0,0.07), inset 4px 0 0 0 #c8813a" }}>
+    <div className="flex flex-col md:flex-row rounded-2xl overflow-hidden border border-navy/10" style={{ boxShadow: "0 4px 16px rgba(0,0,0,0.07), inset 4px 0 0 0 #c8813a" }}>
 
       {/* Category image panel — full width on mobile, 220px on desktop */}
       <div
@@ -265,15 +286,24 @@ function CategoryRow({ cat, products, lang, onNavigate, onCategoryClick }: RowPr
             <span className="text-cream/20 text-6xl font-bold select-none">{catName.charAt(0)}</span>
           </div>
         )}
-        <div className="absolute inset-0 bg-gradient-to-b from-black/85 via-black/30 to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-b from-black/85 via-black/30 to-black/50" />
         <div className="absolute top-0 left-0 right-0 p-4 md:p-5">
           <p className="text-white font-bold text-2xl leading-snug drop-shadow-[0_2px_6px_rgba(0,0,0,0.8)]">{catName}</p>
         </div>
+        <div className="absolute bottom-0 left-0 right-0 p-4 md:p-5">
+          <button
+            type="button"
+            className="inline-flex items-center gap-1.5 px-4 py-2.5 bg-copper hover:bg-copper/90 text-white text-sm font-semibold rounded-lg transition-colors"
+          >
+            {lang === "bs" ? "Pogledaj sve" : "View all"}
+            <ArrowRight className="w-3 h-3" strokeWidth={2.5} />
+          </button>
+        </div>
       </div>
 
-      {/* Product grid — 2 cols on mobile, 3×2 on desktop */}
-      <div className="flex-1 bg-gray-50 p-4 md:p-5 overflow-hidden">
-        <div className="grid grid-cols-2 md:grid-cols-3 md:grid-rows-2 gap-3 md:gap-4 md:h-full">
+      {/* Product grid — 2 cols on mobile, 3 cols on desktop */}
+      <div className="flex-1 bg-gray-50 p-4 md:p-5">
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-3 md:gap-4">
           {products.map((product) => {
             const name = lang === "bs"
               ? (product.name_bs || product.name_en || product.name)
@@ -285,10 +315,10 @@ function CategoryRow({ cat, products, lang, onNavigate, onCategoryClick }: RowPr
               <div
                 key={product.id}
                 onClick={() => onNavigate(product.id)}
-                className="group cursor-pointer flex flex-col"
+                className="group cursor-pointer flex flex-col bg-white rounded-xl overflow-hidden border border-navy/[0.07] shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200"
               >
                 {/* Image */}
-                <div className="relative aspect-square md:aspect-auto md:flex-1 rounded-xl overflow-hidden bg-cream/60 border-[0.5px] border-navy/8">
+                <div className="relative aspect-square bg-gray-50">
                   {product.image_url ? (
                     <img
                       src={product.image_url}
@@ -302,22 +332,43 @@ function CategoryRow({ cat, products, lang, onNavigate, onCategoryClick }: RowPr
                   )}
                   {isNew && (
                     <span className="absolute top-2 right-2 bg-copper text-white text-[9px] font-bold px-1.5 py-0.5 rounded tracking-widest uppercase">
-                      New
+                      {lang === "bs" ? "Novo" : "New"}
                     </span>
                   )}
                 </div>
 
-                {/* Name + price */}
-                <div className="mt-2 px-0.5 flex flex-col gap-0.5">
+                {/* Info */}
+                <div className="p-3 flex flex-col flex-1">
                   <p className="text-xs font-medium text-navy line-clamp-2 leading-snug">{name}</p>
-                  {hasDiscount && (
-                    <p className="text-[11px] text-gray-400 line-through leading-none">
-                      {product.compare_price!.toFixed(2)} KM
-                    </p>
-                  )}
-                  <p className={`text-xs font-semibold leading-none ${hasDiscount ? "text-red-500" : "text-navy"}`}>
-                    {product.price.toFixed(2)} KM
-                  </p>
+                  <div className="mt-auto pt-2 flex items-center justify-between gap-2">
+                    <div className="flex flex-col gap-0.5">
+                      {hasDiscount && (
+                        <p className="text-[10px] text-gray-400 line-through leading-none">
+                          {product.compare_price!.toFixed(2).replace('.', ',')} KM
+                        </p>
+                      )}
+                      <p className={`text-sm font-semibold leading-none ${hasDiscount ? "text-red-500" : "text-navy"}`}>
+                        {product.price.toFixed(2).replace('.', ',')} KM
+                      </p>
+                    </div>
+                    {product.requires_personalization ? (
+                      <button
+                        type="button"
+                        onClick={(e) => { e.stopPropagation(); onPersonalize(product); }}
+                        className="flex-shrink-0 flex items-center h-9 px-3 rounded-lg border border-copper text-copper text-xs font-semibold hover:bg-copper hover:text-white transition-colors duration-200 whitespace-nowrap"
+                      >
+                        {lang === "bs" ? "Personalizuj →" : "Personalize →"}
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={(e) => e.stopPropagation()}
+                        className="w-9 h-9 flex-shrink-0 flex items-center justify-center rounded-lg border border-copper text-copper bg-white hover:bg-copper hover:text-white transition-colors duration-200"
+                      >
+                        <ShoppingBag className="w-4 h-4" strokeWidth={1.75} />
+                      </button>
+                    )}
+                  </div>
                 </div>
               </div>
             );

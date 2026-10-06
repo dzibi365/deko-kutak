@@ -9,6 +9,7 @@ import { CartDrawer } from "../components/CartDrawer";
 import { AuthModal } from "../components/AuthModal";
 import { ReviewsSection } from "../components/ReviewsSection";
 import { ThreeDPreviewModal } from "../components/ThreeDPreviewModal";
+import { PersonalizationModal } from "../components/PersonalizationModal";
 import { useLang } from "../context/LanguageContext";
 import { useCart } from "../context/CartContext";
 import { SiteMeta } from "../components/SiteMeta";
@@ -128,6 +129,7 @@ function ProductDetailContent() {
   const [similarProducts, setSimilarProducts] = useState<Product[]>([]);
   const [preview3DUrl, setPreview3DUrl] = useState<string | null>(null);
   const [lightboxOpen, setLightboxOpen] = useState(false);
+  const [personalizationOpen, setPersonalizationOpen] = useState(false);
   const touchStartX = useRef(0);
   const colRef = useRef<HTMLDivElement>(null);
   const cardRef = useRef<HTMLDivElement>(null);
@@ -373,65 +375,92 @@ function ProductDetailContent() {
               </p>
             </div>
 
-            <div className="border-t border-navy/10" />
+            {product.requires_personalization ? (
+              /* Personalized product — modal trigger */
+              <div className="flex flex-col gap-3">
+                <button
+                  disabled={!product.in_stock}
+                  onClick={() => setPersonalizationOpen(true)}
+                  className="w-full flex items-center justify-center gap-2 px-6 py-3.5 bg-navy text-white font-semibold rounded-xl hover:bg-navy/90 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  <ShoppingCart className="w-5 h-5" strokeWidth={2} />
+                  {tr("modal_personalize_and_add")}
+                </button>
 
-            {/* Custom fields */}
-            <ProductCustomFields
-              fields={product.custom_fields ?? []}
-              lang={lang}
-              values={fieldValues}
-              onChange={(id, val) => { setFieldValues((prev) => ({ ...prev, [id]: val })); setFieldError(null); }}
-              has3DPreview={product.has_3d_preview}
-              model3dUrl={product.model_3d_url}
-              model3dMesh={product.model_texture_mesh}
-              onPreview3D={(url) => setPreview3DUrl(url)}
-            />
+                <div className="flex gap-3">
+                  <button className="flex-1 flex items-center justify-center py-3.5 border border-navy/20 rounded-xl text-navy/50 hover:text-copper hover:border-copper transition-colors">
+                    <Heart className="w-5 h-5" strokeWidth={1.5} />
+                  </button>
+                  <button
+                    onClick={() => navigator.share?.({ title: name, url: window.location.href })}
+                    className="flex-1 flex items-center justify-center py-3.5 border border-navy/20 rounded-xl text-navy/50 hover:text-navy hover:border-navy/40 transition-colors"
+                  >
+                    <Share2 className="w-5 h-5" strokeWidth={1.5} />
+                  </button>
+                </div>
+              </div>
+            ) : (
+              /* Normal product — inline fields + direct add to cart */
+              <>
+                <div className="border-t border-navy/10" />
 
-            {fieldError && (
-              <p className="text-sm text-red-500 px-3 py-2 bg-red-50 rounded-lg">{fieldError}</p>
+                <ProductCustomFields
+                  fields={product.custom_fields ?? []}
+                  lang={lang}
+                  values={fieldValues}
+                  onChange={(id, val) => { setFieldValues((prev) => ({ ...prev, [id]: val })); setFieldError(null); }}
+                  has3DPreview={product.has_3d_preview}
+                  model3dUrl={product.model_3d_url}
+                  model3dMesh={product.model_texture_mesh}
+                  onPreview3D={(url) => setPreview3DUrl(url)}
+                />
+
+                {fieldError && (
+                  <p className="text-sm text-red-500 px-3 py-2 bg-red-50 rounded-lg">{fieldError}</p>
+                )}
+
+                <div className="flex gap-3">
+                  <button
+                    disabled={!product.in_stock}
+                    onClick={() => {
+                      const missing = (product.custom_fields ?? []).find(
+                        (f) => f.required && !fieldValues[f.id]?.trim()
+                      );
+                      if (missing) {
+                        const label = lang === "bs" ? (missing.label_bs || missing.label_en) : (missing.label_en || missing.label_bs);
+                        setFieldError(`Please fill in: ${label}`);
+                        return;
+                      }
+                      setFieldError(null);
+                      const labeled: Record<string, string> = {};
+                      (product.custom_fields ?? []).forEach((f) => {
+                        const val = fieldValues[f.id];
+                        if (val) {
+                          const label = lang === "bs" ? (f.label_bs || f.label_en) : (f.label_en || f.label_bs);
+                          if (label) labeled[label] = val;
+                        }
+                      });
+                      addItem(product, labeled);
+                    }}
+                    className="flex-1 flex items-center justify-center gap-2 px-6 py-3.5 bg-navy text-white font-semibold rounded-xl hover:bg-navy/90 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                  >
+                    <ShoppingCart className="w-5 h-5" strokeWidth={2} />
+                    {tr("product_add_to_cart")}
+                  </button>
+
+                  <button className="p-3.5 border border-navy/20 rounded-xl text-navy/50 hover:text-copper hover:border-copper transition-colors">
+                    <Heart className="w-5 h-5" strokeWidth={1.5} />
+                  </button>
+
+                  <button
+                    onClick={() => navigator.share?.({ title: name, url: window.location.href })}
+                    className="p-3.5 border border-navy/20 rounded-xl text-navy/50 hover:text-navy hover:border-navy/40 transition-colors"
+                  >
+                    <Share2 className="w-5 h-5" strokeWidth={1.5} />
+                  </button>
+                </div>
+              </>
             )}
-
-            {/* Actions */}
-            <div className="flex gap-3">
-              <button
-                disabled={!product.in_stock}
-                onClick={() => {
-                  const missing = (product.custom_fields ?? []).find(
-                    (f) => f.required && !fieldValues[f.id]?.trim()
-                  );
-                  if (missing) {
-                    const label = lang === "bs" ? (missing.label_bs || missing.label_en) : (missing.label_en || missing.label_bs);
-                    setFieldError(`Please fill in: ${label}`);
-                    return;
-                  }
-                  setFieldError(null);
-                  const labeled: Record<string, string> = {};
-                  (product.custom_fields ?? []).forEach((f) => {
-                    const val = fieldValues[f.id];
-                    if (val) {
-                      const label = lang === "bs" ? (f.label_bs || f.label_en) : (f.label_en || f.label_bs);
-                      if (label) labeled[label] = val;
-                    }
-                  });
-                  addItem(product, labeled);
-                }}
-                className="flex-1 flex items-center justify-center gap-2 px-6 py-3.5 bg-navy text-white font-semibold rounded-xl hover:bg-navy/90 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-              >
-                <ShoppingCart className="w-5 h-5" strokeWidth={2} />
-                {tr("product_add_to_cart")}
-              </button>
-
-              <button className="p-3.5 border border-navy/20 rounded-xl text-navy/50 hover:text-copper hover:border-copper transition-colors">
-                <Heart className="w-5 h-5" strokeWidth={1.5} />
-              </button>
-
-              <button
-                onClick={() => navigator.share?.({ title: name, url: window.location.href })}
-                className="p-3.5 border border-navy/20 rounded-xl text-navy/50 hover:text-navy hover:border-navy/40 transition-colors"
-              >
-                <Share2 className="w-5 h-5" strokeWidth={1.5} />
-              </button>
-            </div>
           </div>
           </div>
         </div>
@@ -453,6 +482,14 @@ function ProductDetailContent() {
       {/* Similar Products */}
       {similarProducts.length > 0 && (
         <SimilarProductsSection products={similarProducts} lang={lang} tr={tr} />
+      )}
+
+      {/* Personalization Modal */}
+      {personalizationOpen && (
+        <PersonalizationModal
+          product={product}
+          onClose={() => setPersonalizationOpen(false)}
+        />
       )}
 
       {/* 3D Preview Modal */}

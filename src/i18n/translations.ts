@@ -131,6 +131,29 @@ export const t = {
     reviews_signout: "Sign out",
     reviews_no_reviews: "No reviews yet. Be the first to share your thoughts!",
 
+    // Personalization modal
+    modal_personalize_title: "Personalize product",
+    modal_personalize_and_add: "Personalize & add to cart",
+    modal_required_field: "Required field",
+    modal_close: "Close",
+
+    // Sorting
+    sort_label: "Sort by",
+    sort_newest: "Newest",
+    sort_price_asc: "Price: Low to High",
+    sort_price_desc: "Price: High to Low",
+    sort_name_az: "Name: A–Z",
+
+    // Search
+    search_placeholder: "Search products...",
+    search_label: "Search products",
+    search_clear: "Clear search",
+    search_no_results_title: "No products found",
+    search_no_results_sub: "Try searching for something else.",
+
+    // Load more
+    load_more: "Load more products",
+
     // Footer
     footer_desc: "Handmade wooden gifts and home decor, crafted with precision and love in Bosnia and Herzegovina.",
     footer_shop: "Shop",
@@ -276,6 +299,29 @@ export const t = {
     reviews_delete: "Obriši",
     reviews_signout: "Odjava",
     reviews_no_reviews: "Još nema recenzija. Budite prvi koji dijele mišljenje!",
+
+    // Personalization modal
+    modal_personalize_title: "Personalizuj proizvod",
+    modal_personalize_and_add: "Personalizuj i dodaj u korpu",
+    modal_required_field: "Obavezno polje",
+    modal_close: "Zatvori",
+
+    // Sorting
+    sort_label: "Sortiraj po",
+    sort_newest: "Najnovije",
+    sort_price_asc: "Cijena: Rastuće",
+    sort_price_desc: "Cijena: Padajuće",
+    sort_name_az: "Naziv: A–Ž",
+
+    // Search
+    search_placeholder: "Pretraži proizvode...",
+    search_label: "Pretraži proizvode",
+    search_clear: "Očisti pretragu",
+    search_no_results_title: "Nema pronađenih proizvoda",
+    search_no_results_sub: "Pokušajte s drugim pojmom za pretragu.",
+
+    // Load more
+    load_more: "Učitaj još proizvoda",
 
     // Footer
     footer_desc: "Ručno rađeni drveni pokloni i dekoracija doma, izrađeni s preciznošću i ljubavlju u Bosni i Hercegovini.",

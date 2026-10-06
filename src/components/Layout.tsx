@@ -149,25 +149,25 @@ export function Navbar() {
     </a>
     <header className="relative z-50 bg-cream/95 backdrop-blur-sm border-b-[0.5px] border-navy/10">
       <TopBar />
-      <div className="max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 flex items-center justify-between h-20">
+      <div className="max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 flex items-center justify-between h-20 md:h-16">
         <div className="flex-shrink-0">
           <a href="/" className="flex items-center gap-2.5">
             {logo_url ? (
-              <img src={logo_url} alt={store_name} className="h-20 w-auto object-contain" />
+              <img src={logo_url} alt={store_name} className="h-16 md:h-12 w-auto object-contain" />
             ) : (
               <span className="text-xl font-semibold tracking-tight text-navy">{store_name}.</span>
             )}
           </a>
         </div>
 
-        <nav className="hidden md:flex items-center gap-8">
+        <nav className="hidden md:flex items-center gap-7">
           <a href="#" className="text-sm font-semibold text-navy">{tr("nav_shop")}</a>
           <a href="#" className="text-sm text-navy/70 hover:text-navy transition-colors">{tr("nav_story")}</a>
           <a href="#" className="text-sm text-navy/70 hover:text-navy transition-colors">{tr("nav_journal")}</a>
           <a href="#" className="text-sm text-navy/70 hover:text-navy transition-colors">{tr("nav_contact")}</a>
         </nav>
 
-        <div className="flex items-center gap-5 text-navy">
+        <div className="flex items-center gap-4 text-navy">
           {/* Language dropdown — desktop only */}
           <div className="relative hidden md:block" ref={langRef}>
             <button
