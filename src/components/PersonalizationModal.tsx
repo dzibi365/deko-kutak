@@ -126,10 +126,10 @@ export function PersonalizationModal({ product, onClose }: Props) {
       onClick={onClose}
     >
       <div
-        className="bg-white rounded-2xl w-full max-w-[540px] shadow-xl max-h-[90vh] flex flex-col"
+        className="bg-white rounded-2xl w-full max-w-[540px] shadow-xl max-h-[90dvh] flex flex-col"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Header */}
+        {/* Header — non-scrolling */}
         <div className="flex items-center justify-between px-6 py-5 border-b border-gray-100 flex-shrink-0">
           <h2 className="font-semibold text-navy text-base">{tr("modal_personalize_title")}</h2>
           <button
@@ -141,7 +141,7 @@ export function PersonalizationModal({ product, onClose }: Props) {
           </button>
         </div>
 
-        {/* Product summary */}
+        {/* Product summary — non-scrolling */}
         <div className="flex items-center gap-4 px-6 py-4 bg-gray-50/60 border-b border-gray-100 flex-shrink-0">
           {product.image_url && (
             <img
@@ -156,13 +156,15 @@ export function PersonalizationModal({ product, onClose }: Props) {
           </div>
         </div>
 
-        {/* Fields */}
-        <div className="relative flex-1 min-h-0">
-        <div
-          ref={scrollRef}
-          onScroll={checkScroll}
-          className="h-full overflow-y-auto px-6 py-5 flex flex-col gap-5"
-        >
+        {/* Fields — flex-1 min-h-0 so this section fills remaining modal height;
+            scroll container uses absolute inset-0 to fill its flex-parent reliably */}
+        <div className="flex-1 min-h-0 relative">
+          <div
+            ref={scrollRef}
+            onScroll={checkScroll}
+            className="absolute inset-0 overflow-y-auto px-6 py-5"
+          >
+            <div className="flex flex-col gap-5">
           {fields.map((field) => {
             const label = lang === "bs"
               ? (field.label_bs || field.label_en)
@@ -295,22 +297,23 @@ export function PersonalizationModal({ product, onClose }: Props) {
               </div>
             );
           })}
-        </div>
+            </div>{/* end flex flex-col gap-5 */}
+          </div>{/* end scroll container */}
 
-        {/* Mobile scroll indicator — shown only when more content is below */}
-        {hasMoreBelow && (
-          <div className="md:hidden absolute bottom-0 left-0 right-0 h-16 pointer-events-none">
-            <div className="absolute inset-0 bg-gradient-to-t from-white to-transparent" />
-            <div className="absolute bottom-2 left-0 right-0 flex justify-center">
-              <span className="text-xs text-navy/40 font-medium">
-                {tr("modal_more_options")} ↓
-              </span>
+          {/* Scroll indicator — gradient + label, shown when more content is below */}
+          {hasMoreBelow && (
+            <div className="absolute bottom-0 left-0 right-0 h-16 pointer-events-none">
+              <div className="absolute inset-0 bg-gradient-to-t from-white to-transparent" />
+              <div className="absolute bottom-2 left-0 right-0 flex justify-center">
+                <span className="text-xs text-navy/40 font-medium">
+                  {tr("modal_more_options")} ↓
+                </span>
+              </div>
             </div>
-          </div>
-        )}
-        </div>
+          )}
+        </div>{/* end fields flex-1 min-h-0 */}
 
-        {/* Footer */}
+        {/* Footer — non-scrolling */}
         <div className="px-6 py-4 border-t border-gray-100 flex-shrink-0">
           <button
             onClick={handleSubmit}
