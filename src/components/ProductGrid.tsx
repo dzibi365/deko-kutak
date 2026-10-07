@@ -241,7 +241,7 @@ export function ProductGrid({ category, searchQuery = "", onClearSearch }: Produ
                     >
                       {name}
                     </h3>
-                    <div className="mt-auto pt-3 flex items-center justify-between gap-2">
+                    <div className={`mt-auto pt-3 gap-2 ${product.requires_personalization ? "flex flex-col sm:flex-row sm:items-center sm:justify-between" : "flex items-center justify-between"}`}>
                       <div className="flex flex-col gap-0.5">
                         {hasDiscount && (
                           <p className="text-[10px] text-gray-400 line-through leading-none">
@@ -257,7 +257,7 @@ export function ProductGrid({ category, searchQuery = "", onClearSearch }: Produ
                         <button
                           type="button"
                           onClick={(e) => { e.stopPropagation(); setModalProduct(product); }}
-                          className="flex-shrink-0 flex items-center h-9 px-3 rounded-lg border border-copper text-copper text-xs font-semibold hover:bg-copper hover:text-white transition-colors duration-200 whitespace-nowrap"
+                          className="w-full sm:w-auto sm:flex-shrink-0 flex items-center justify-center h-9 px-3 rounded-lg border border-copper text-copper text-xs font-semibold hover:bg-copper hover:text-white transition-colors duration-200"
                         >
                           {lang === "bs" ? "Personalizuj →" : "Personalize →"}
                         </button>
