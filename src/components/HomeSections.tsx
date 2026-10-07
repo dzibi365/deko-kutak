@@ -137,8 +137,29 @@ export function CategoryStrip({ selected, onSelect }: CategoryStripProps) {
 
   return (
     <div className="w-full">
-      <div className="flex items-center gap-3 overflow-x-auto scrollbar-hide pb-2">
-        {/* All button */}
+      {/* Mobile: compact dropdown — hidden on md+ */}
+      <div className="flex items-center gap-3 md:hidden">
+        <span className="text-sm font-medium text-navy/60 whitespace-nowrap flex-shrink-0">
+          {tr("cat_categories_label")}
+        </span>
+        <select
+          value={selected ?? ""}
+          onChange={(e) => onSelect(e.target.value === "" ? null : e.target.value)}
+          className="flex-1 text-sm text-navy border border-navy/15 rounded-xl px-3 py-2.5 bg-white focus:outline-none focus:ring-2 focus:ring-navy/20 focus:border-navy cursor-pointer"
+        >
+          <option value="">{tr("cat_all")}</option>
+          {categories.map((cat) => {
+            const label = localName(cat, lang);
+            const value = cat.name_en ?? cat.name;
+            return (
+              <option key={cat.id} value={value}>{label}</option>
+            );
+          })}
+        </select>
+      </div>
+
+      {/* Desktop: horizontal scrollable pills — hidden below md */}
+      <div className="hidden md:flex items-center gap-3 overflow-x-auto scrollbar-hide pb-2">
         <button
           onClick={() => onSelect(null)}
           className={`whitespace-nowrap px-5 py-2.5 rounded-full text-sm font-semibold transition-colors border-[0.5px] ${

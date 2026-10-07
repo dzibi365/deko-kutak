@@ -18,6 +18,7 @@ export const t = {
     hero_stat_quality: "Handmade Quality",
 
     // Category strip
+    cat_categories_label: "Categories",
     cat_all: "All Products",
     cat_decor: "Home Decor",
     cat_wooden: "Wooden Gifts",
@@ -187,6 +188,7 @@ export const t = {
     hero_stat_quality: "Ručna izrada",
 
     // Category strip
+    cat_categories_label: "Kategorije",
     cat_all: "Svi proizvodi",
     cat_decor: "Dekoracija doma",
     cat_wooden: "Drveni pokloni",
