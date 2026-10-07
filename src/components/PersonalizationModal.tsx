@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { X, ShoppingBag, Upload } from "lucide-react";
 import { useLang } from "../context/LanguageContext";
 import { useCart } from "../context/CartContext";
@@ -27,6 +27,8 @@ export function PersonalizationModal({ product, onClose }: Props) {
   const [uploadErrors, setUploadErrors] = useState<Record<string, string>>({});
   const [errors, setErrors] = useState<Record<string, boolean>>({});
   const fileRefs = useRef<Record<string, HTMLInputElement | null>>({});
+  const scrollRef = useRef<HTMLDivElement | null>(null);
+  const [hasMoreBelow, setHasMoreBelow] = useState(false);
 
   const name = localName(product, lang);
   const price = `${product.price.toFixed(2).replace(".", ",")} KM`;
@@ -38,6 +40,18 @@ export function PersonalizationModal({ product, onClose }: Props) {
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [onClose]);
+
+  const checkScroll = useCallback(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    // More content below when scrollable height exceeds visible height by > 24px
+    setHasMoreBelow(el.scrollHeight - el.scrollTop - el.clientHeight > 24);
+  }, []);
+
+  // Check on mount and whenever fields change
+  useEffect(() => {
+    checkScroll();
+  }, [fields, checkScroll]);
 
   function setVal(id: string, value: string) {
     setValues((prev) => ({ ...prev, [id]: value }));
@@ -143,7 +157,12 @@ export function PersonalizationModal({ product, onClose }: Props) {
         </div>
 
         {/* Fields */}
-        <div className="flex-1 overflow-y-auto px-6 py-5 flex flex-col gap-5">
+        <div className="relative flex-1 min-h-0">
+        <div
+          ref={scrollRef}
+          onScroll={checkScroll}
+          className="h-full overflow-y-auto px-6 py-5 flex flex-col gap-5"
+        >
           {fields.map((field) => {
             const label = lang === "bs"
               ? (field.label_bs || field.label_en)
@@ -276,6 +295,19 @@ export function PersonalizationModal({ product, onClose }: Props) {
               </div>
             );
           })}
+        </div>
+
+        {/* Mobile scroll indicator — shown only when more content is below */}
+        {hasMoreBelow && (
+          <div className="md:hidden absolute bottom-0 left-0 right-0 h-16 pointer-events-none">
+            <div className="absolute inset-0 bg-gradient-to-t from-white to-transparent" />
+            <div className="absolute bottom-2 left-0 right-0 flex justify-center">
+              <span className="text-xs text-navy/40 font-medium">
+                {tr("modal_more_options")} ↓
+              </span>
+            </div>
+          </div>
+        )}
         </div>
 
         {/* Footer */}

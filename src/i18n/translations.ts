@@ -137,6 +137,7 @@ export const t = {
     modal_personalize_and_add: "Personalize & add to cart",
     modal_required_field: "Required field",
     modal_close: "Close",
+    modal_more_options: "More options",
 
     // Sorting
     sort_label: "Sort by",
@@ -307,6 +308,7 @@ export const t = {
     modal_personalize_and_add: "Personalizuj i dodaj u korpu",
     modal_required_field: "Obavezno polje",
     modal_close: "Zatvori",
+    modal_more_options: "Još opcija",
 
     // Sorting
     sort_label: "Sortiraj po",
