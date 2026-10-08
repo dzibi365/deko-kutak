@@ -177,7 +177,7 @@ export function PersonalizationModal({ product, onClose }: Props) {
             onScroll={checkScroll}
             className="flex-1 min-h-0 overflow-y-auto px-6 py-5"
           >
-            <div className="flex flex-col gap-5">
+            <div className="flex flex-col gap-5 pb-16">
           {fields.map((field) => {
             const label = lang === "bs"
               ? (field.label_bs || field.label_en)
@@ -315,9 +315,9 @@ export function PersonalizationModal({ product, onClose }: Props) {
 
           {/* Scroll indicator — gradient + pill button at bottom of scroll area */}
           {hasMoreBelow && (
-            <div className="absolute bottom-0 left-0 right-0 h-16 pointer-events-none">
-              <div className="absolute inset-0 bg-gradient-to-t from-white via-white/70 to-transparent" />
-              <div className="absolute bottom-3 left-0 right-0 flex justify-center pointer-events-auto">
+            <div className="absolute bottom-0 left-0 right-0 h-12 pointer-events-none">
+              <div className="absolute inset-0 bg-gradient-to-t from-white/90 via-white/40 to-transparent" />
+              <div className="absolute bottom-2 left-0 right-0 flex justify-center pointer-events-auto">
                 <button
                   type="button"
                   onClick={handleScrollDown}
