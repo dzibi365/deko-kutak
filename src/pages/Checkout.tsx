@@ -52,6 +52,7 @@ export default function Checkout() {
       subtotal: total,
       note: form.note.trim() || null,
       status: "pending",
+      lang,
     });
 
     setPlacing(false);

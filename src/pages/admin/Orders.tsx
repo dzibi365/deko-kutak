@@ -42,6 +42,7 @@ export default function Orders() {
   const [loading, setLoading] = useState(true);
   const [expanded, setExpanded] = useState<number | null>(null);
   const [updatingId, setUpdatingId] = useState<number | null>(null);
+  const [notifyingId, setNotifyingId] = useState<number | null>(null);
 
   async function load() {
     const { data } = await supabase
@@ -54,11 +55,22 @@ export default function Orders() {
 
   useEffect(() => { load(); }, []);
 
-  async function updateStatus(id: number, status: string) {
-    setUpdatingId(id);
-    await supabase.from("orders").update({ status }).eq("id", id);
+  async function updateStatus(order: Order, newStatus: string) {
+    if (order.status === newStatus) return;
+    setUpdatingId(order.id);
+    await supabase.from("orders").update({ status: newStatus }).eq("id", order.id);
     setUpdatingId(null);
     load();
+
+    // Fire status notification — server-side, fire-and-forget
+    if (newStatus === "shipped" || newStatus === "delivered") {
+      setNotifyingId(order.id);
+      supabase.functions
+        .invoke("send-status-email", {
+          body: { orderId: order.id, notificationType: newStatus },
+        })
+        .finally(() => setNotifyingId(null));
+    }
   }
 
   function formatDate(iso: string) {
@@ -91,6 +103,12 @@ export default function Orders() {
                     <span className={`text-xs font-semibold px-2 py-0.5 rounded-full border ${STATUS_STYLES[order.status] ?? "bg-gray-100 text-gray-500"}`}>
                       {order.status}
                     </span>
+                    {notifyingId === order.id && (
+                      <span className="text-xs text-gray-400 flex items-center gap-1">
+                        <span className="inline-block w-2.5 h-2.5 border-2 border-gray-300 border-t-copper rounded-full animate-spin" />
+                        Sending email…
+                      </span>
+                    )}
                     <span className="text-xs text-gray-400 capitalize">
                       {order.payment_method === "cod" ? "Cash on Delivery" : "Bank Transfer"}
                     </span>
@@ -122,7 +140,7 @@ export default function Orders() {
                         <select
                           value={order.status}
                           disabled={updatingId === order.id}
-                          onChange={(e) => updateStatus(order.id, e.target.value)}
+                          onChange={(e) => updateStatus(order, e.target.value)}
                           className="px-3 py-2 border border-gray-200 rounded-lg text-sm text-navy focus:outline-none focus:ring-2 focus:ring-navy/20 focus:border-navy transition w-full disabled:opacity-60"
                         >
                           {STATUS_OPTIONS.map((s) => (
