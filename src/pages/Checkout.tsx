@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Truck, Building2 } from "lucide-react";
+import { ArrowLeft, Truck, Building2, ChevronDown } from "lucide-react";
 import { supabase } from "../lib/supabase";
 import { useCart } from "../context/CartContext";
 import { useLang } from "../context/LanguageContext";
@@ -27,6 +27,7 @@ export default function Checkout() {
   const [payment, setPayment] = useState<PaymentMethod>("cod");
   const [placing, setPlacing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [expandedItems, setExpandedItems] = useState<Record<string, boolean>>({});
 
   function set(key: string, value: string) {
     setForm((f) => ({ ...f, [key]: value }));
@@ -193,21 +194,80 @@ export default function Checkout() {
                 <ul className="flex flex-col gap-4">
                   {items.map((item) => {
                     const name = localName({ name: item.name, name_en: item.name_en, name_bs: item.name_bs }, lang);
+                    const customEntries = item.customizations
+                      ? Object.entries(item.customizations).filter(([, v]) => v)
+                      : [];
+                    const isExpanded = !!expandedItems[item.cartKey];
                     return (
-                      <li key={item.id} className="flex items-center gap-3">
-                        <div className="w-14 h-14 flex-shrink-0 rounded-lg overflow-hidden bg-cream/60 border border-gray-100">
-                          {item.image_url
-                            ? <img src={item.image_url} alt={name} className="w-full h-full object-cover" />
-                            : <div className="w-full h-full" />
-                          }
+                      <li key={item.cartKey} className="flex flex-col">
+                        {/* Product row */}
+                        <div className="flex items-center gap-3">
+                          <div className="w-14 h-14 flex-shrink-0 rounded-lg overflow-hidden bg-cream/60 border border-gray-100">
+                            {item.image_url
+                              ? <img src={item.image_url} alt={name} className="w-full h-full object-cover" />
+                              : <div className="w-full h-full" />
+                            }
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium text-navy line-clamp-1">{name}</p>
+                            <p className="text-xs text-gray-400">× {item.quantity}</p>
+                          </div>
+                          <span className="text-sm font-semibold text-navy flex-shrink-0">
+                            {(item.price * item.quantity).toFixed(2)} KM
+                          </span>
                         </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium text-navy line-clamp-1">{name}</p>
-                          <p className="text-xs text-gray-400">× {item.quantity}</p>
-                        </div>
-                        <span className="text-sm font-semibold text-navy flex-shrink-0">
-                          {(item.price * item.quantity).toFixed(2)} KM
-                        </span>
+
+                        {/* Personalization toggle — only for personalized items */}
+                        {customEntries.length > 0 && (
+                          <>
+                            <button
+                              type="button"
+                              onClick={() => setExpandedItems((prev) => ({ ...prev, [item.cartKey]: !prev[item.cartKey] }))}
+                              className="flex items-center gap-1 mt-2 text-xs text-gray-400 hover:text-navy transition-colors self-start"
+                            >
+                              <ChevronDown
+                                className={`w-3 h-3 transition-transform duration-200 motion-reduce:transition-none ${isExpanded ? "rotate-180" : ""}`}
+                                strokeWidth={2}
+                              />
+                              {isExpanded ? tr("checkout_hide_personalization") : tr("checkout_view_personalization")}
+                            </button>
+
+                            {/* Animated expand using CSS grid-rows trick */}
+                            <div
+                              className="grid transition-[grid-template-rows] duration-200 ease-in-out motion-reduce:transition-none"
+                              style={{ gridTemplateRows: isExpanded ? "1fr" : "0fr" }}
+                            >
+                              <div className="overflow-hidden">
+                                <div className="mt-2 pt-2 border-t border-gray-100">
+                                  <ul className="flex flex-col gap-1.5">
+                                    {customEntries.map(([label, value]) => {
+                                      const isImage = value.startsWith("http") && /\.(jpg|jpeg|png|webp)(\?|$)/i.test(value);
+                                      return (
+                                        <li key={label} className="text-xs leading-snug">
+                                          {isImage ? (
+                                            <div className="flex flex-col gap-1">
+                                              <span className="font-medium text-gray-500">{label}:</span>
+                                              <a href={value} target="_blank" rel="noreferrer" className="inline-block">
+                                                <div className="w-20 h-20 rounded-lg border border-gray-200 bg-gray-50 overflow-hidden flex items-center justify-center">
+                                                  <img src={value} alt={label} className="w-full h-full object-contain" />
+                                                </div>
+                                              </a>
+                                            </div>
+                                          ) : (
+                                            <span className="text-gray-500 break-words">
+                                              <span className="font-medium">{label}:</span>{" "}
+                                              <span className="text-gray-700">{value}</span>
+                                            </span>
+                                          )}
+                                        </li>
+                                      );
+                                    })}
+                                  </ul>
+                                </div>
+                              </div>
+                            </div>
+                          </>
+                        )}
                       </li>
                     );
                   })}

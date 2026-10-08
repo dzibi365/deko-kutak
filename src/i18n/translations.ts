@@ -72,6 +72,8 @@ export const t = {
     // Cart
     cart_personalization_title: "Personalization details",
     cart_title: "Your Cart",
+    checkout_view_personalization: "View personalization",
+    checkout_hide_personalization: "Hide personalization",
     cart_empty: "Your cart is empty",
     cart_empty_sub: "Add some handmade goods to get started.",
     cart_subtotal: "Subtotal",
@@ -244,6 +246,8 @@ export const t = {
     // Cart
     cart_personalization_title: "Detalji personalizacije",
     cart_title: "Vaša korpa",
+    checkout_view_personalization: "Prikaži personalizaciju",
+    checkout_hide_personalization: "Sakrij personalizaciju",
     cart_empty: "Vaša korpa je prazna",
     cart_empty_sub: "Dodajte neke ručno rađene proizvode za početak.",
     cart_subtotal: "Ukupno",
