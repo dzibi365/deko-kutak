@@ -59,7 +59,7 @@ export default function Checkout() {
 
     // Fire invoice emails (non-blocking — don't wait or fail order if this errors)
     supabase.functions.invoke("send-order-email", {
-      body: { orderNumber },
+      body: { orderNumber, lang },
     }).catch(() => {/* silent — order already placed */});
 
     clearCart();

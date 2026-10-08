@@ -18,7 +18,9 @@ serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
 
   try {
-    const { orderNumber } = await req.json();
+    const { orderNumber, lang: rawLang } = await req.json();
+    // Validate lang — default to Bosnian
+    const lang: "en" | "bs" = rawLang === "en" ? "en" : "bs";
 
     const supabase = createClient(
       Deno.env.get("SUPABASE_URL")!,
@@ -41,21 +43,22 @@ serve(async (req) => {
     });
 
     const storeName = settings.store_name ?? "Deko Kutak";
+    const t = emailT[lang];
 
     // Send to customer
     await transporter.sendMail({
       from: `"${SMTP_FROM_NAME}" <${SMTP_FROM_EMAIL}>`,
       to: order.customer_email,
-      subject: `Order confirmed — ${order.order_number}`,
-      html: customerEmail(order, settings, storeName),
+      subject: `${t.subject} ${order.order_number}`,
+      html: customerEmail(order, settings, storeName, lang),
     });
 
-    // Send to owner
+    // Send to owner (always in Bosnian)
     if (settings.owner_email) {
       await transporter.sendMail({
         from: `"${SMTP_FROM_NAME}" <${SMTP_FROM_EMAIL}>`,
         to: settings.owner_email,
-        subject: `New order — ${order.order_number} (${order.customer_name})`,
+        subject: `Nova narudžba — ${order.order_number} (${order.customer_name})`,
         html: ownerEmail(order, storeName),
       });
     }
@@ -67,11 +70,55 @@ serve(async (req) => {
   }
 });
 
+// ─── Bilingual email strings ───────────────────────────────────────────────────
+
+const emailT = {
+  en: {
+    subject: "DEKO KUTAK – Order Confirmation",
+    heading: "Order Confirmed!",
+    greeting: (name: string) => `Thank you, ${name}! We'll be in touch shortly.`,
+    orderNumber: "Order Number",
+    product: "Product",
+    qty: "Qty",
+    price: "Price",
+    total: "Total",
+    codTitle: "Cash on Delivery",
+    codNote: "You will pay when your order arrives. No action needed now.",
+    bankTitle: "Bank Transfer Details",
+    bankHolder: "Account Holder",
+    bankName: "Bank",
+    bankIban: "IBAN",
+    delivery: "Delivery Address",
+    note: "Note",
+    rights: "All rights reserved.",
+  },
+  bs: {
+    subject: "DEKO KUTAK – Potvrda narudžbe",
+    heading: "Narudžba potvrđena!",
+    greeting: (name: string) => `Hvala vam, ${name}! Uskoro ćemo vas kontaktirati.`,
+    orderNumber: "Broj narudžbe",
+    product: "Proizvod",
+    qty: "Kol.",
+    price: "Cijena",
+    total: "Ukupno",
+    codTitle: "Plaćanje pouzećem",
+    codNote: "Plaćanje se vrši prilikom preuzimanja narudžbe. Trenutno nije potrebno ništa dodatno poduzimati.",
+    bankTitle: "Podaci za uplatu",
+    bankHolder: "Nositelj računa",
+    bankName: "Banka",
+    bankIban: "IBAN",
+    delivery: "Adresa dostave",
+    note: "Napomena",
+    rights: "Sva prava zadržana.",
+  },
+} as const;
+
 // ─── Email templates ──────────────────────────────────────────────────────────
 
 type OrderItem = {
   name: string;
-  name_en?: string;
+  name_en?: string | null;
+  name_bs?: string | null;
   quantity: number;
   price: number;
   customizations?: Record<string, string>;
@@ -93,49 +140,57 @@ function customizationsHtml(customizations: Record<string, string>) {
   return `<table style="border-collapse:collapse;margin-top:6px;">${rows}</table>`;
 }
 
-function itemsTable(items: OrderItem[]) {
-  const rows = items.map((item) => `
+function itemsTable(items: OrderItem[], lang: "en" | "bs") {
+  const t = emailT[lang];
+  const rows = items.map((item) => {
+    const name = lang === "bs"
+      ? (item.name_bs ?? item.name_en ?? item.name)
+      : (item.name_en ?? item.name);
+    return `
     <tr>
       <td style="padding:10px 0;border-bottom:1px solid #f0efe8;font-size:14px;color:#1a2744;vertical-align:top;">
-        ${item.name_en ?? item.name}
+        ${name}
         ${item.customizations ? customizationsHtml(item.customizations) : ""}
       </td>
       <td style="padding:10px 0;border-bottom:1px solid #f0efe8;font-size:14px;color:#888;text-align:center;vertical-align:top;">×${item.quantity}</td>
       <td style="padding:10px 0;border-bottom:1px solid #f0efe8;font-size:14px;color:#1a2744;text-align:right;font-weight:600;vertical-align:top;">${(item.price * item.quantity).toFixed(2)} KM</td>
-    </tr>`).join("");
+    </tr>`;
+  }).join("");
 
   return `
     <table style="width:100%;border-collapse:collapse;">
       <thead>
         <tr>
-          <th style="font-size:11px;color:#aaa;text-transform:uppercase;letter-spacing:.05em;padding-bottom:8px;text-align:left;font-weight:600;">Product</th>
-          <th style="font-size:11px;color:#aaa;text-transform:uppercase;letter-spacing:.05em;padding-bottom:8px;text-align:center;font-weight:600;">Qty</th>
-          <th style="font-size:11px;color:#aaa;text-transform:uppercase;letter-spacing:.05em;padding-bottom:8px;text-align:right;font-weight:600;">Price</th>
+          <th style="font-size:11px;color:#aaa;text-transform:uppercase;letter-spacing:.05em;padding-bottom:8px;text-align:left;font-weight:600;">${t.product}</th>
+          <th style="font-size:11px;color:#aaa;text-transform:uppercase;letter-spacing:.05em;padding-bottom:8px;text-align:center;font-weight:600;">${t.qty}</th>
+          <th style="font-size:11px;color:#aaa;text-transform:uppercase;letter-spacing:.05em;padding-bottom:8px;text-align:right;font-weight:600;">${t.price}</th>
         </tr>
       </thead>
       <tbody>${rows}</tbody>
     </table>`;
 }
 
-function paymentBlock(order: Record<string, unknown>, settings: Record<string, unknown>) {
+function paymentBlock(order: Record<string, unknown>, settings: Record<string, unknown>, lang: "en" | "bs") {
+  const t = emailT[lang];
   if (order.payment_method === "bank_transfer") {
     return `
       <div style="background:#fffbf5;border:1px solid #f0e6d3;border-radius:12px;padding:20px;margin-top:24px;">
-        <p style="margin:0 0 12px;font-size:13px;font-weight:700;color:#1a2744;text-transform:uppercase;letter-spacing:.05em;">Bank Transfer Details</p>
-        ${settings.bank_account_holder ? `<p style="margin:4px 0;font-size:14px;color:#555;"><strong style="color:#1a2744;">Account Holder:</strong> ${settings.bank_account_holder}</p>` : ""}
-        ${settings.bank_name ? `<p style="margin:4px 0;font-size:14px;color:#555;"><strong style="color:#1a2744;">Bank:</strong> ${settings.bank_name}</p>` : ""}
-        ${settings.bank_iban ? `<p style="margin:8px 0 4px;font-size:14px;color:#555;"><strong style="color:#1a2744;">IBAN:</strong></p><p style="margin:0;font-size:16px;font-weight:700;color:#1a2744;font-family:monospace;letter-spacing:.05em;">${settings.bank_iban}</p>` : ""}
+        <p style="margin:0 0 12px;font-size:13px;font-weight:700;color:#1a2744;text-transform:uppercase;letter-spacing:.05em;">${t.bankTitle}</p>
+        ${settings.bank_account_holder ? `<p style="margin:4px 0;font-size:14px;color:#555;"><strong style="color:#1a2744;">${t.bankHolder}:</strong> ${settings.bank_account_holder}</p>` : ""}
+        ${settings.bank_name ? `<p style="margin:4px 0;font-size:14px;color:#555;"><strong style="color:#1a2744;">${t.bankName}:</strong> ${settings.bank_name}</p>` : ""}
+        ${settings.bank_iban ? `<p style="margin:8px 0 4px;font-size:14px;color:#555;"><strong style="color:#1a2744;">${t.bankIban}:</strong></p><p style="margin:0;font-size:16px;font-weight:700;color:#1a2744;font-family:monospace;letter-spacing:.05em;">${settings.bank_iban}</p>` : ""}
         ${settings.bank_note ? `<p style="margin:12px 0 0;font-size:13px;color:#888;">${settings.bank_note}</p>` : ""}
       </div>`;
   }
   return `
     <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:12px;padding:20px;margin-top:24px;">
-      <p style="margin:0;font-size:14px;color:#15803d;font-weight:600;">Cash on Delivery</p>
-      <p style="margin:6px 0 0;font-size:13px;color:#555;">You will pay when your order arrives. No action needed now.</p>
+      <p style="margin:0;font-size:14px;color:#15803d;font-weight:600;">${t.codTitle}</p>
+      <p style="margin:6px 0 0;font-size:13px;color:#555;">${t.codNote}</p>
     </div>`;
 }
 
-function emailWrapper(storeName: string, content: string) {
+function emailWrapper(storeName: string, content: string, lang: "en" | "bs") {
+  const t = emailT[lang];
   return `<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
   <body style="margin:0;padding:0;background:#f5f5f0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
     <table style="width:100%;border-collapse:collapse;padding:40px 20px;" cellpadding="0" cellspacing="0">
@@ -148,7 +203,7 @@ function emailWrapper(storeName: string, content: string) {
             ${content}
           </td></tr>
           <tr><td style="padding:20px 0;text-align:center;">
-            <p style="margin:0;font-size:12px;color:#aaa;">&copy; ${new Date().getFullYear()} ${storeName}. All rights reserved.</p>
+            <p style="margin:0;font-size:12px;color:#aaa;">&copy; ${new Date().getFullYear()} ${storeName}. ${t.rights}</p>
           </td></tr>
         </table>
       </td></tr>
@@ -156,50 +211,53 @@ function emailWrapper(storeName: string, content: string) {
   </body></html>`;
 }
 
-function customerEmail(order: Record<string, unknown>, settings: Record<string, unknown>, storeName: string) {
+function customerEmail(order: Record<string, unknown>, settings: Record<string, unknown>, storeName: string, lang: "en" | "bs") {
+  const t = emailT[lang];
   const items = order.items as OrderItem[];
+  const firstName = (order.customer_name as string).split(" ")[0];
   return emailWrapper(storeName, `
-    <h1 style="margin:0 0 6px;font-size:24px;color:#1a2744;font-weight:700;">Order Confirmed!</h1>
-    <p style="margin:0 0 28px;font-size:15px;color:#666;">Thank you, ${(order.customer_name as string).split(" ")[0]}! We'll be in touch shortly.</p>
+    <h1 style="margin:0 0 6px;font-size:24px;color:#1a2744;font-weight:700;">${t.heading}</h1>
+    <p style="margin:0 0 28px;font-size:15px;color:#666;">${t.greeting(firstName)}</p>
 
     <div style="background:#f5f5f0;border-radius:10px;padding:16px 20px;margin-bottom:28px;display:inline-block;">
-      <p style="margin:0;font-size:11px;color:#aaa;text-transform:uppercase;letter-spacing:.08em;font-weight:600;">Order Number</p>
+      <p style="margin:0;font-size:11px;color:#aaa;text-transform:uppercase;letter-spacing:.08em;font-weight:600;">${t.orderNumber}</p>
       <p style="margin:4px 0 0;font-size:20px;font-weight:700;color:#1a2744;letter-spacing:.02em;">${order.order_number}</p>
     </div>
 
-    ${itemsTable(items)}
+    ${itemsTable(items, lang)}
 
     <table style="width:100%;border-collapse:collapse;margin-top:16px;">
       <tr>
-        <td style="font-size:15px;color:#888;padding:12px 0 0;">Total</td>
+        <td style="font-size:15px;color:#888;padding:12px 0 0;">${t.total}</td>
         <td style="font-size:20px;font-weight:700;color:#1a2744;padding:12px 0 0;text-align:right;">${(order.subtotal as number).toFixed(2)} KM</td>
       </tr>
     </table>
 
-    ${paymentBlock(order, settings)}
+    ${paymentBlock(order, settings, lang)}
 
     <div style="border-top:1px solid #f0efe8;margin-top:28px;padding-top:20px;">
-      <p style="margin:0 0 4px;font-size:13px;font-weight:700;color:#1a2744;text-transform:uppercase;letter-spacing:.05em;">Delivery Address</p>
+      <p style="margin:0 0 4px;font-size:13px;font-weight:700;color:#1a2744;text-transform:uppercase;letter-spacing:.05em;">${t.delivery}</p>
       <p style="margin:0;font-size:14px;color:#555;line-height:1.6;">${order.customer_address}<br>${order.customer_city}${order.customer_postal ? ` ${order.customer_postal}` : ""}</p>
     </div>
 
-    ${order.note ? `<div style="margin-top:20px;"><p style="margin:0 0 4px;font-size:13px;font-weight:700;color:#1a2744;text-transform:uppercase;letter-spacing:.05em;">Note</p><p style="margin:0;font-size:14px;color:#555;">${order.note}</p></div>` : ""}
-  `);
+    ${order.note ? `<div style="margin-top:20px;"><p style="margin:0 0 4px;font-size:13px;font-weight:700;color:#1a2744;text-transform:uppercase;letter-spacing:.05em;">${t.note}</p><p style="margin:0;font-size:14px;color:#555;">${order.note}</p></div>` : ""}
+  `, lang);
 }
 
 function ownerEmail(order: Record<string, unknown>, storeName: string) {
   const items = order.items as OrderItem[];
+  // Owner email stays in Bosnian
   return emailWrapper(storeName, `
-    <h1 style="margin:0 0 6px;font-size:22px;color:#1a2744;font-weight:700;">New Order Received</h1>
-    <p style="margin:0 0 28px;font-size:15px;color:#666;">A new order has been placed on your store.</p>
+    <h1 style="margin:0 0 6px;font-size:22px;color:#1a2744;font-weight:700;">Nova narudžba primljena</h1>
+    <p style="margin:0 0 28px;font-size:15px;color:#666;">Nova narudžba je zaprimljena u vašoj prodavnici.</p>
 
     <div style="background:#f5f5f0;border-radius:10px;padding:16px 20px;margin-bottom:24px;">
-      <p style="margin:0;font-size:11px;color:#aaa;text-transform:uppercase;letter-spacing:.08em;font-weight:600;">Order Number</p>
+      <p style="margin:0;font-size:11px;color:#aaa;text-transform:uppercase;letter-spacing:.08em;font-weight:600;">Broj narudžbe</p>
       <p style="margin:4px 0 0;font-size:20px;font-weight:700;color:#1a2744;">${order.order_number}</p>
     </div>
 
     <div style="margin-bottom:24px;">
-      <p style="margin:0 0 10px;font-size:13px;font-weight:700;color:#1a2744;text-transform:uppercase;letter-spacing:.05em;">Customer</p>
+      <p style="margin:0 0 10px;font-size:13px;font-weight:700;color:#1a2744;text-transform:uppercase;letter-spacing:.05em;">Kupac</p>
       <p style="margin:0;font-size:14px;color:#555;line-height:1.8;">
         <strong>${order.customer_name}</strong><br>
         ${order.customer_email}<br>
@@ -208,21 +266,21 @@ function ownerEmail(order: Record<string, unknown>, storeName: string) {
       </p>
     </div>
 
-    <p style="margin:0 0 10px;font-size:13px;font-weight:700;color:#1a2744;text-transform:uppercase;letter-spacing:.05em;">Items</p>
-    ${itemsTable(items)}
+    <p style="margin:0 0 10px;font-size:13px;font-weight:700;color:#1a2744;text-transform:uppercase;letter-spacing:.05em;">Stavke</p>
+    ${itemsTable(items, "bs")}
 
     <table style="width:100%;border-collapse:collapse;margin-top:16px;">
       <tr>
-        <td style="font-size:15px;color:#888;padding:12px 0 0;">Total</td>
+        <td style="font-size:15px;color:#888;padding:12px 0 0;">Ukupno</td>
         <td style="font-size:20px;font-weight:700;color:#1a2744;padding:12px 0 0;text-align:right;">${(order.subtotal as number).toFixed(2)} KM</td>
       </tr>
     </table>
 
     <div style="border-top:1px solid #f0efe8;margin-top:20px;padding-top:16px;">
       <p style="margin:0;font-size:14px;color:#555;">
-        <strong>Payment:</strong> ${order.payment_method === "cod" ? "Cash on Delivery" : "Bank Transfer"}
+        <strong>Plaćanje:</strong> ${order.payment_method === "cod" ? "Pouzećem" : "Uplata na račun"}
       </p>
-      ${order.note ? `<p style="margin:8px 0 0;font-size:14px;color:#555;"><strong>Note:</strong> ${order.note}</p>` : ""}
+      ${order.note ? `<p style="margin:8px 0 0;font-size:14px;color:#555;"><strong>Napomena:</strong> ${order.note}</p>` : ""}
     </div>
-  `);
+  `, "bs");
 }
