@@ -43,6 +43,8 @@ export default function Orders() {
   const [expanded, setExpanded] = useState<number | null>(null);
   const [updatingId, setUpdatingId] = useState<number | null>(null);
   const [notifyingId, setNotifyingId] = useState<number | null>(null);
+  // Pending status per order — holds an unsaved dropdown selection
+  const [pendingStatuses, setPendingStatuses] = useState<Record<number, string>>({});
 
   async function load() {
     const { data } = await supabase
@@ -55,11 +57,15 @@ export default function Orders() {
 
   useEffect(() => { load(); }, []);
 
-  async function updateStatus(order: Order, newStatus: string) {
-    if (order.status === newStatus) return;
+  async function saveStatus(order: Order) {
+    const newStatus = pendingStatuses[order.id] ?? order.status;
+    if (newStatus === order.status) return;
+
     setUpdatingId(order.id);
     await supabase.from("orders").update({ status: newStatus }).eq("id", order.id);
     setUpdatingId(null);
+    // Clear pending selection
+    setPendingStatuses((prev) => { const next = { ...prev }; delete next[order.id]; return next; });
     load();
 
     // Fire status notification — server-side, fire-and-forget
@@ -138,15 +144,24 @@ export default function Orders() {
                       <div>
                         <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Status</p>
                         <select
-                          value={order.status}
+                          value={pendingStatuses[order.id] ?? order.status}
                           disabled={updatingId === order.id}
-                          onChange={(e) => updateStatus(order, e.target.value)}
+                          onChange={(e) => setPendingStatuses((prev) => ({ ...prev, [order.id]: e.target.value }))}
                           className="px-3 py-2 border border-gray-200 rounded-lg text-sm text-navy focus:outline-none focus:ring-2 focus:ring-navy/20 focus:border-navy transition w-full disabled:opacity-60"
                         >
                           {STATUS_OPTIONS.map((s) => (
                             <option key={s} value={s}>{s.charAt(0).toUpperCase() + s.slice(1)}</option>
                           ))}
                         </select>
+                        {pendingStatuses[order.id] && pendingStatuses[order.id] !== order.status && (
+                          <button
+                            onClick={() => saveStatus(order)}
+                            disabled={updatingId === order.id}
+                            className="mt-2 w-full py-2 bg-navy text-white text-sm font-semibold rounded-lg hover:bg-navy/90 transition-colors disabled:opacity-60"
+                          >
+                            {updatingId === order.id ? "Saving…" : "Save status"}
+                          </button>
+                        )}
                       </div>
                       {order.note && (
                         <div>
