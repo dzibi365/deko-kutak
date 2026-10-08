@@ -41,6 +41,23 @@ export function PersonalizationModal({ product, onClose }: Props) {
     return () => window.removeEventListener("keydown", onKey);
   }, [onClose]);
 
+  // Lock body scroll while modal is open. iOS Safari ignores overflow:hidden on
+  // body, so we use position:fixed + top offset to prevent page scroll entirely.
+  useEffect(() => {
+    const y = window.scrollY;
+    document.body.style.overflow = "hidden";
+    document.body.style.position = "fixed";
+    document.body.style.top = `-${y}px`;
+    document.body.style.width = "100%";
+    return () => {
+      document.body.style.overflow = "";
+      document.body.style.position = "";
+      document.body.style.top = "";
+      document.body.style.width = "";
+      window.scrollTo(0, y);
+    };
+  }, []);
+
   const checkScroll = useCallback(() => {
     const el = scrollRef.current;
     if (!el) return;
