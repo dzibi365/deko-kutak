@@ -125,12 +125,17 @@ export function PersonalizationModal({ product, onClose }: Props) {
       className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
       onClick={onClose}
     >
+      {/*
+        overflow-hidden is required: it makes max-h-[90dvh] a definite size
+        so the flex algorithm can correctly distribute space to flex-auto children.
+        Without it, flex items see the modal as unconstrained and flex-auto collapses.
+      */}
       <div
-        className="bg-white rounded-2xl w-full max-w-[540px] shadow-xl max-h-[90dvh] flex flex-col"
+        className="bg-white rounded-2xl w-full max-w-[540px] shadow-xl max-h-[90dvh] overflow-hidden flex flex-col"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header — non-scrolling */}
-        <div className="flex items-center justify-between px-6 py-5 border-b border-gray-100 flex-shrink-0">
+        <div className="flex-shrink-0 flex items-center justify-between px-6 py-5 border-b border-gray-100">
           <h2 className="font-semibold text-navy text-base">{tr("modal_personalize_title")}</h2>
           <button
             onClick={onClose}
@@ -142,7 +147,7 @@ export function PersonalizationModal({ product, onClose }: Props) {
         </div>
 
         {/* Product summary — non-scrolling */}
-        <div className="flex items-center gap-4 px-6 py-4 bg-gray-50/60 border-b border-gray-100 flex-shrink-0">
+        <div className="flex-shrink-0 flex items-center gap-4 px-6 py-4 bg-gray-50/60 border-b border-gray-100">
           {product.image_url && (
             <img
               src={product.image_url}
@@ -156,13 +161,17 @@ export function PersonalizationModal({ product, onClose }: Props) {
           </div>
         </div>
 
-        {/* Fields — flex-1 min-h-0 so this section fills remaining modal height;
-            scroll container uses absolute inset-0 to fill its flex-parent reliably */}
-        <div className="flex-1 min-h-0 relative">
+        {/*
+          Fields wrapper: flex-auto (flex-basis:auto, can grow+shrink) + min-h-0 (can shrink below content).
+          flex flex-col makes it a flex container so the inner scroll div can use flex-1 reliably.
+          relative positions the indicator overlay.
+          No overflow-hidden here — that would hide the scrollbar.
+        */}
+        <div className="relative flex-auto min-h-0 flex flex-col">
           <div
             ref={scrollRef}
             onScroll={checkScroll}
-            className="absolute inset-0 overflow-y-auto px-6 py-5"
+            className="flex-1 min-h-0 overflow-y-auto px-6 py-5"
           >
             <div className="flex flex-col gap-5">
           {fields.map((field) => {
@@ -298,11 +307,11 @@ export function PersonalizationModal({ product, onClose }: Props) {
             );
           })}
             </div>{/* end flex flex-col gap-5 */}
-          </div>{/* end scroll container */}
+          </div>{/* end scroll div */}
 
-          {/* Scroll indicator — gradient + label, shown when more content is below */}
+          {/* Scroll indicator — overlays bottom of the scroll area */}
           {hasMoreBelow && (
-            <div className="absolute bottom-0 left-0 right-0 h-16 pointer-events-none">
+            <div className="absolute bottom-0 left-0 right-0 h-14 pointer-events-none">
               <div className="absolute inset-0 bg-gradient-to-t from-white to-transparent" />
               <div className="absolute bottom-2 left-0 right-0 flex justify-center">
                 <span className="text-xs text-navy/40 font-medium">
@@ -311,7 +320,7 @@ export function PersonalizationModal({ product, onClose }: Props) {
               </div>
             </div>
           )}
-        </div>{/* end fields flex-1 min-h-0 */}
+        </div>{/* end fields wrapper */}
 
         {/* Footer — non-scrolling */}
         <div className="px-6 py-4 border-t border-gray-100 flex-shrink-0">
