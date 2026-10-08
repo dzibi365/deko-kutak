@@ -70,6 +70,7 @@ export const t = {
     confirm_continue: "Continue Shopping",
 
     // Cart
+    cart_personalization_title: "Personalization details",
     cart_title: "Your Cart",
     cart_empty: "Your cart is empty",
     cart_empty_sub: "Add some handmade goods to get started.",
@@ -241,6 +242,7 @@ export const t = {
     confirm_continue: "Nastavite kupovinu",
 
     // Cart
+    cart_personalization_title: "Detalji personalizacije",
     cart_title: "Vaša korpa",
     cart_empty: "Vaša korpa je prazna",
     cart_empty_sub: "Dodajte neke ručno rađene proizvode za početak.",

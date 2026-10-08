@@ -76,25 +76,35 @@ export function CartDrawer() {
 
                       {/* Customizations */}
                       {customEntries.length > 0 && (
-                        <ul className="flex flex-col gap-2 mt-1">
-                          {customEntries.map(([label, value]) => {
-                            const isImage = value.startsWith("http") && /\.(jpg|jpeg|png|webp)(\?|$)/i.test(value);
-                            return (
-                              <li key={label} className="flex flex-col gap-0.5">
-                                <span className="text-xs font-medium text-gray-400">{label}</span>
-                                {isImage ? (
-                                  <a href={value} target="_blank" rel="noreferrer" className="inline-block">
-                                    <div className="w-20 h-20 rounded-lg border border-gray-200 bg-gray-50 overflow-hidden flex items-center justify-center">
-                                      <img src={value} alt={label} className="w-full h-full object-contain" />
+                        <div className="mt-2 pt-2 border-t border-gray-100">
+                          <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-1.5">
+                            {tr("cart_personalization_title")}
+                          </p>
+                          <ul className="flex flex-col gap-1.5">
+                            {customEntries.map(([label, value]) => {
+                              const isImage = value.startsWith("http") && /\.(jpg|jpeg|png|webp)(\?|$)/i.test(value);
+                              return (
+                                <li key={label} className="text-xs leading-snug">
+                                  {isImage ? (
+                                    <div className="flex flex-col gap-1">
+                                      <span className="font-medium text-gray-500">{label}:</span>
+                                      <a href={value} target="_blank" rel="noreferrer" className="inline-block">
+                                        <div className="w-20 h-20 rounded-lg border border-gray-200 bg-gray-50 overflow-hidden flex items-center justify-center">
+                                          <img src={value} alt={label} className="w-full h-full object-contain" />
+                                        </div>
+                                      </a>
                                     </div>
-                                  </a>
-                                ) : (
-                                  <span className="text-xs text-gray-600 break-words">{value}</span>
-                                )}
-                              </li>
-                            );
-                          })}
-                        </ul>
+                                  ) : (
+                                    <span className="text-gray-500 break-words">
+                                      <span className="font-medium">{label}:</span>{" "}
+                                      <span className="text-gray-700">{value}</span>
+                                    </span>
+                                  )}
+                                </li>
+                              );
+                            })}
+                          </ul>
+                        </div>
                       )}
 
                       {/* Qty controls */}
