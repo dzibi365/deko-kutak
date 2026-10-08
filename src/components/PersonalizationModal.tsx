@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { X, ShoppingBag, Upload } from "lucide-react";
+import { X, ShoppingBag, Upload, ChevronDown } from "lucide-react";
 import { useLang } from "../context/LanguageContext";
 import { useCart } from "../context/CartContext";
 import { supabase, localName, type Product } from "../lib/supabase";
@@ -97,6 +97,10 @@ export function PersonalizationModal({ product, onClose }: Props) {
     });
     setErrors(next);
     return Object.keys(next).length === 0;
+  }
+
+  function handleScrollDown() {
+    scrollRef.current?.scrollBy({ top: 200, behavior: "smooth" });
   }
 
   function handleSubmit() {
@@ -309,14 +313,19 @@ export function PersonalizationModal({ product, onClose }: Props) {
             </div>{/* end flex flex-col gap-5 */}
           </div>{/* end scroll div */}
 
-          {/* Scroll indicator — overlays bottom of the scroll area */}
+          {/* Scroll indicator — gradient + pill button at bottom of scroll area */}
           {hasMoreBelow && (
-            <div className="absolute bottom-0 left-0 right-0 h-14 pointer-events-none">
-              <div className="absolute inset-0 bg-gradient-to-t from-white to-transparent" />
-              <div className="absolute bottom-2 left-0 right-0 flex justify-center">
-                <span className="text-xs text-navy/40 font-medium">
-                  {tr("modal_more_options")} ↓
-                </span>
+            <div className="absolute bottom-0 left-0 right-0 h-16 pointer-events-none">
+              <div className="absolute inset-0 bg-gradient-to-t from-white via-white/70 to-transparent" />
+              <div className="absolute bottom-3 left-0 right-0 flex justify-center pointer-events-auto">
+                <button
+                  type="button"
+                  onClick={handleScrollDown}
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-copper hover:bg-copper/90 text-white text-xs font-semibold rounded-full shadow-sm transition-colors"
+                >
+                  {tr("modal_more_options")}
+                  <ChevronDown className="w-3.5 h-3.5" strokeWidth={2.5} />
+                </button>
               </div>
             </div>
           )}
