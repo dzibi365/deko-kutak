@@ -76,18 +76,20 @@ export function CartDrawer() {
 
                       {/* Customizations */}
                       {customEntries.length > 0 && (
-                        <ul className="flex flex-col gap-1 mt-0.5">
+                        <ul className="flex flex-col gap-2 mt-1">
                           {customEntries.map(([label, value]) => {
                             const isImage = value.startsWith("http") && /\.(jpg|jpeg|png|webp)(\?|$)/i.test(value);
                             return (
-                              <li key={label} className="text-xs text-gray-500 leading-snug">
+                              <li key={label} className="flex flex-col gap-0.5">
+                                <span className="text-xs font-medium text-gray-400">{label}</span>
                                 {isImage ? (
-                                  <div className="flex flex-col gap-1">
-                                    <span className="font-medium">{label}:</span>
-                                    <img src={value} alt={label} className="w-20 h-20 object-cover rounded-lg border border-gray-200" />
-                                  </div>
+                                  <a href={value} target="_blank" rel="noreferrer" className="inline-block">
+                                    <div className="w-20 h-20 rounded-lg border border-gray-200 bg-gray-50 overflow-hidden flex items-center justify-center">
+                                      <img src={value} alt={label} className="w-full h-full object-contain" />
+                                    </div>
+                                  </a>
                                 ) : (
-                                  <><span className="font-medium">{label}:</span> {value}</>
+                                  <span className="text-xs text-gray-600 break-words">{value}</span>
                                 )}
                               </li>
                             );
