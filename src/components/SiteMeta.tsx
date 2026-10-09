@@ -9,6 +9,12 @@ type Props = {
   description?: string;
 };
 
+// Resolved at Vite build time. VITE_ALLOW_INDEXING=true is set only on the
+// production Vercel project; staging (and local dev) defaults to noindex.
+const ROBOTS = import.meta.env.VITE_ALLOW_INDEXING === "true"
+  ? "index,follow"
+  : "noindex,nofollow";
+
 export function SiteMeta({ title, description }: Props) {
   const { store_name, seo_title, seo_description_en, seo_description_bs, og_image, logo_url } = useSiteSettings();
   const { lang } = useLang();
@@ -23,6 +29,7 @@ export function SiteMeta({ title, description }: Props) {
   return (
     <Helmet>
       <title>{pageTitle}</title>
+      <meta name="robots" content={ROBOTS} />
       {seoDesc && <meta name="description" content={seoDesc} />}
 
       {/* Open Graph */}
