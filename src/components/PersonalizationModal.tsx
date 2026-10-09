@@ -185,16 +185,15 @@ export function PersonalizationModal({ product, onClose }: Props) {
         {/*
           Fields wrapper: flex-auto (flex-basis:auto, can grow+shrink) + min-h-0 (can shrink below content).
           flex flex-col makes it a flex container so the inner scroll div can use flex-1 reliably.
-          relative positions the indicator overlay.
           No overflow-hidden here — that would hide the scrollbar.
         */}
-        <div className="relative flex-auto min-h-0 flex flex-col">
+        <div className="flex-auto min-h-0 flex flex-col">
           <div
             ref={scrollRef}
             onScroll={checkScroll}
             className="flex-1 min-h-0 overflow-y-auto px-6 py-5"
           >
-            <div className="flex flex-col gap-5 pb-16">
+            <div className="flex flex-col gap-5">
           {fields.map((field) => {
             const label = lang === "bs"
               ? (field.label_bs || field.label_en)
@@ -330,22 +329,19 @@ export function PersonalizationModal({ product, onClose }: Props) {
             </div>{/* end flex flex-col gap-5 */}
           </div>{/* end scroll div */}
 
-          {/* Scroll indicator — gradient + pill button at bottom of scroll area */}
-          {hasMoreBelow && (
-            <div className="absolute bottom-0 left-0 right-0 h-12 pointer-events-none">
-              <div className="absolute inset-0 bg-gradient-to-t from-white/90 via-white/40 to-transparent" />
-              <div className="absolute bottom-2 left-0 right-0 flex justify-center pointer-events-auto">
-                <button
-                  type="button"
-                  onClick={handleScrollDown}
-                  className="flex items-center gap-1.5 px-3 py-1.5 bg-copper hover:bg-copper/90 text-white text-xs font-semibold rounded-full shadow-sm transition-colors"
-                >
-                  {tr("modal_more_options")}
-                  <ChevronDown className="w-3.5 h-3.5" strokeWidth={2.5} />
-                </button>
-              </div>
-            </div>
-          )}
+          {/* Reserved indicator strip — in-flow, never overlaps fields */}
+          <div className="flex-shrink-0 h-10 flex items-center justify-center border-t border-gray-100">
+            {hasMoreBelow && (
+              <button
+                type="button"
+                onClick={handleScrollDown}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-copper hover:bg-copper/90 text-white text-xs font-semibold rounded-full shadow-sm transition-colors"
+              >
+                {tr("modal_more_options")}
+                <ChevronDown className="w-3.5 h-3.5" strokeWidth={2.5} />
+              </button>
+            )}
+          </div>
         </div>{/* end fields wrapper */}
 
         {/* Footer — non-scrolling */}
