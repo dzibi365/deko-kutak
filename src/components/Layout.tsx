@@ -1,6 +1,6 @@
 import { useRef, useEffect, useState } from "react";
 import { Search, User, ShoppingBag, Instagram, Facebook, Mail, LayoutDashboard, LogOut, Phone, ChevronDown, Check } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useLang } from "../context/LanguageContext";
 import { useCart } from "../context/CartContext";
 import { useSiteSettings } from "../context/SiteSettingsContext";
@@ -167,10 +167,7 @@ export function Navbar() {
         </div>
 
         <nav className="hidden md:flex items-center gap-7">
-          <a href="#" className="text-sm font-semibold text-navy">{tr("nav_shop")}</a>
-          <a href="#" className="text-sm text-navy/70 hover:text-navy transition-colors">{tr("nav_story")}</a>
-          <a href="#" className="text-sm text-navy/70 hover:text-navy transition-colors">{tr("nav_journal")}</a>
-          <a href="#" className="text-sm text-navy/70 hover:text-navy transition-colors">{tr("nav_contact")}</a>
+          <Link to="/shop" className="text-sm font-semibold text-navy hover:text-copper transition-colors">{tr("nav_shop")}</Link>
         </nav>
 
         <div className="flex items-center gap-4 text-navy">
@@ -298,22 +295,14 @@ export function Navbar() {
         <div className="overflow-hidden">
           <div className="border-t border-navy/10 bg-cream/98 backdrop-blur-sm">
             <nav className="max-w-7xl mx-auto px-4 py-4 flex flex-col gap-1">
-              {[
-                { label: tr("nav_shop"),    bold: true,  delay: 60  },
-                { label: tr("nav_story"),   bold: false, delay: 100 },
-                { label: tr("nav_journal"), bold: false, delay: 140 },
-                { label: tr("nav_contact"), bold: false, delay: 180 },
-              ].map(({ label, bold, delay }) => (
-                <a
-                  key={label}
-                  href="#"
-                  onClick={() => setMenuOpen(false)}
-                  className={`px-3 py-3 text-sm rounded-lg hover:bg-navy/5 transition-all duration-200 ${bold ? "font-semibold text-navy" : "text-navy/70"} ${menuOpen ? "opacity-100 translate-y-0" : "opacity-0 -translate-y-1"}`}
-                  style={{ transitionDelay: menuOpen ? `${delay}ms` : "0ms" }}
-                >
-                  {label}
-                </a>
-              ))}
+              <Link
+                to="/shop"
+                onClick={() => setMenuOpen(false)}
+                className={`px-3 py-3 text-sm rounded-lg hover:bg-navy/5 transition-all duration-200 font-semibold text-navy ${menuOpen ? "opacity-100 translate-y-0" : "opacity-0 -translate-y-1"}`}
+                style={{ transitionDelay: menuOpen ? "60ms" : "0ms" }}
+              >
+                {tr("nav_shop")}
+              </Link>
 
               {/* Language selector */}
               <div
@@ -426,27 +415,19 @@ export function Footer() {
 
           <div className="flex flex-col gap-4">
             <h4 className="font-semibold text-white tracking-wide">{tr("footer_shop")}</h4>
-            <a href="#" className="text-cream/70 hover:text-white transition-colors">{tr("footer_all")}</a>
-            <a href="#" className="text-cream/70 hover:text-white transition-colors">{tr("footer_arrivals")}</a>
-            <a href="#" className="text-cream/70 hover:text-white transition-colors">{tr("footer_custom")}</a>
-            <a href="#" className="text-cream/70 hover:text-white transition-colors">{tr("footer_gift")}</a>
+            <Link to="/shop" className="text-cream/70 hover:text-white transition-colors">{tr("footer_all")}</Link>
           </div>
 
-          <div className="flex flex-col gap-4">
-            <h4 className="font-semibold text-white tracking-wide">{tr("footer_support")}</h4>
-            <a href="#" className="text-cream/70 hover:text-white transition-colors">{tr("footer_faq")}</a>
-            <a href="#" className="text-cream/70 hover:text-white transition-colors">{tr("footer_shipping")}</a>
-            <a href="#" className="text-cream/70 hover:text-white transition-colors">{tr("footer_care")}</a>
-            <a href="#" className="text-cream/70 hover:text-white transition-colors">{tr("footer_contact_us")}</a>
-          </div>
+          {social_email && (
+            <div className="flex flex-col gap-4">
+              <h4 className="font-semibold text-white tracking-wide">{tr("footer_support")}</h4>
+              <a href={`mailto:${social_email}`} className="text-cream/70 hover:text-white transition-colors">{tr("footer_contact_us")}</a>
+            </div>
+          )}
         </div>
 
-        <div className="flex flex-col md:flex-row items-center justify-between pt-8 border-t-[0.5px] border-cream/10 text-sm text-cream/50 gap-4">
+        <div className="pt-8 border-t-[0.5px] border-cream/10 text-sm text-cream/50">
           <p>&copy; {new Date().getFullYear()} {store_name}. {tr("footer_rights")}</p>
-          <div className="flex gap-6">
-            <a href="#" className="hover:text-cream transition-colors">{tr("footer_privacy")}</a>
-            <a href="#" className="hover:text-cream transition-colors">{tr("footer_terms")}</a>
-          </div>
         </div>
       </div>
     </footer>
