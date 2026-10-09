@@ -1,6 +1,7 @@
 import { useRef, useEffect, useState } from "react";
 import { Search, User, ShoppingBag, Instagram, Facebook, Mail, LayoutDashboard, LogOut, Phone, ChevronDown, Check } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
+import { supabase } from "../lib/supabase";
 import { useLang } from "../context/LanguageContext";
 import { useCart } from "../context/CartContext";
 import { useSiteSettings } from "../context/SiteSettingsContext";
@@ -380,6 +381,17 @@ export function Footer() {
   const { tr, lang } = useLang();
   const { store_name, logo_url, footer_logo_url, social_facebook, social_instagram, social_email, footer_desc_en, footer_desc_bs } = useSiteSettings();
   const footerDesc = lang === "bs" ? (footer_desc_bs || footer_desc_en) : (footer_desc_en || footer_desc_bs);
+  const [publishedSlugs, setPublishedSlugs] = useState<Set<string>>(new Set());
+
+  useEffect(() => {
+    supabase
+      .from("pages")
+      .select("slug")
+      .eq("is_published", true)
+      .then(({ data }) => {
+        setPublishedSlugs(new Set((data ?? []).map((r: { slug: string }) => r.slug)));
+      });
+  }, []);
 
   return (
     <footer className="bg-navy text-cream pt-16 pb-8 border-t-[0.5px] border-navy/80">
@@ -418,16 +430,34 @@ export function Footer() {
             <Link to="/shop" className="text-cream/70 hover:text-white transition-colors">{tr("footer_all")}</Link>
           </div>
 
-          {social_email && (
+          {(social_email || publishedSlugs.has("faq") || publishedSlugs.has("shipping")) && (
             <div className="flex flex-col gap-4">
               <h4 className="font-semibold text-white tracking-wide">{tr("footer_support")}</h4>
-              <a href={`mailto:${social_email}`} className="text-cream/70 hover:text-white transition-colors">{tr("footer_contact_us")}</a>
+              {publishedSlugs.has("faq") && (
+                <Link to="/faq" className="text-cream/70 hover:text-white transition-colors">{tr("footer_faq")}</Link>
+              )}
+              {publishedSlugs.has("shipping") && (
+                <Link to="/shipping" className="text-cream/70 hover:text-white transition-colors">{tr("footer_shipping")}</Link>
+              )}
+              {social_email && (
+                <a href={`mailto:${social_email}`} className="text-cream/70 hover:text-white transition-colors">{tr("footer_contact_us")}</a>
+              )}
             </div>
           )}
         </div>
 
-        <div className="pt-8 border-t-[0.5px] border-cream/10 text-sm text-cream/50">
+        <div className="pt-8 border-t-[0.5px] border-cream/10 text-sm text-cream/50 flex flex-wrap items-center justify-between gap-4">
           <p>&copy; {new Date().getFullYear()} {store_name}. {tr("footer_rights")}</p>
+          {(publishedSlugs.has("privacy") || publishedSlugs.has("terms")) && (
+            <div className="flex gap-4">
+              {publishedSlugs.has("privacy") && (
+                <Link to="/privacy" className="hover:text-cream/80 transition-colors">{tr("footer_privacy")}</Link>
+              )}
+              {publishedSlugs.has("terms") && (
+                <Link to="/terms" className="hover:text-cream/80 transition-colors">{tr("footer_terms")}</Link>
+              )}
+            </div>
+          )}
         </div>
       </div>
     </footer>

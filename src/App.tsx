@@ -23,6 +23,8 @@ import StoreSettings from "./pages/admin/StoreSettings";
 import AdminReviews from "./pages/admin/Reviews";
 import FieldGroups from "./pages/admin/FieldGroups";
 import ImageTools from "./pages/admin/ImageTools";
+import AdminPages from "./pages/admin/Pages";
+import InfoPage from "./pages/InfoPage";
 import ProductDetail from "./pages/ProductDetail";
 import Checkout from "./pages/Checkout";
 import OrderConfirmation from "./pages/OrderConfirmation";
@@ -106,6 +108,18 @@ function ConfirmationPage() {
   );
 }
 
+function InfoPageWrapper({ slug }: { slug?: string }) {
+  return (
+    <LanguageProvider>
+      <CartProvider>
+        <CustomerAuthProvider>
+          <InfoPage slug={slug} />
+        </CustomerAuthProvider>
+      </CartProvider>
+    </LanguageProvider>
+  );
+}
+
 export default function App() {
   return (
     <HelmetProvider>
@@ -131,6 +145,12 @@ export default function App() {
           <Route path="/checkout" element={<CheckoutPage />} />
           <Route path="/order-confirmation/:orderNumber" element={<ConfirmationPage />} />
 
+          <Route path="/privacy"  element={<InfoPageWrapper slug="privacy"  />} />
+          <Route path="/terms"    element={<InfoPageWrapper slug="terms"    />} />
+          <Route path="/faq"      element={<InfoPageWrapper slug="faq"      />} />
+          <Route path="/shipping" element={<InfoPageWrapper slug="shipping" />} />
+          <Route path="/page/:slug" element={<InfoPageWrapper />} />
+
           <Route path="/admin/login" element={<Login />} />
 
           <Route
@@ -150,6 +170,7 @@ export default function App() {
             <Route path="field-groups" element={<FieldGroups />} />
             <Route path="settings" element={<StoreSettings />} />
             <Route path="image-tools" element={<ImageTools />} />
+            <Route path="pages" element={<AdminPages />} />
           </Route>
 
           <Route path="*" element={<Navigate to="/" replace />} />
