@@ -12,6 +12,7 @@ declare module 'react' {
 }
 import { useNavigate } from "react-router-dom";
 import { useLang } from "../context/LanguageContext";
+import { useSiteSettings } from "../context/SiteSettingsContext";
 import { supabase, type Category, type Product, localName } from "../lib/supabase";
 
 type HeroConfig = {
@@ -194,14 +195,21 @@ export function CategoryStrip({ selected, onSelect }: CategoryStripProps) {
 }
 
 export function PromoBanner() {
-  const { tr } = useLang();
+  const { tr, lang } = useLang();
+  const { promo_banner_en, promo_banner_bs, promo_banner_enabled } = useSiteSettings();
+
+  if (!promo_banner_enabled) return null;
+
+  const heading = lang === "bs"
+    ? (promo_banner_bs || promo_banner_en || tr("promo_heading"))
+    : (promo_banner_en || promo_banner_bs || tr("promo_heading"));
 
   return (
     <section className="bg-navy text-cream py-12 md:py-16 border-y-[0.5px] border-copper/20">
       <div className="max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 flex flex-col md:flex-row items-center justify-between gap-6 md:gap-8 text-center md:text-left">
         <div className="flex flex-col gap-2">
           <h2 className="text-xl md:text-3xl font-semibold tracking-tight text-white">
-            {tr("promo_heading")}
+            {heading}
           </h2>
           <p className="text-cream/70 text-base md:text-lg">{tr("promo_sub")}</p>
         </div>

@@ -32,6 +32,9 @@ type Settings = {
   topbar_right_text_bs: string;
   contact_viber: string;
   contact_whatsapp: string;
+  promo_banner_en: string;
+  promo_banner_bs: string;
+  promo_banner_enabled: boolean;
 };
 
 const empty: Settings = {
@@ -49,6 +52,7 @@ const empty: Settings = {
   topbar_hours_en: "", topbar_hours_bs: "",
   topbar_right_text_en: "", topbar_right_text_bs: "",
   contact_viber: "", contact_whatsapp: "",
+  promo_banner_en: "", promo_banner_bs: "", promo_banner_enabled: true,
 };
 
 export default function StoreSettings() {
@@ -105,6 +109,9 @@ export default function StoreSettings() {
           topbar_right_text_bs: data.topbar_right_text_bs ?? "",
           contact_viber: data.contact_viber ?? "",
           contact_whatsapp: data.contact_whatsapp ?? "",
+          promo_banner_en: data.promo_banner_en ?? "",
+          promo_banner_bs: data.promo_banner_bs ?? "",
+          promo_banner_enabled: data.promo_banner_enabled ?? true,
         });
       }
       setLoading(false);
@@ -191,6 +198,9 @@ export default function StoreSettings() {
       topbar_right_text_bs: form.topbar_right_text_bs || null,
       contact_viber: form.contact_viber || null,
       contact_whatsapp: form.contact_whatsapp || null,
+      promo_banner_en: form.promo_banner_en || null,
+      promo_banner_bs: form.promo_banner_bs || null,
+      promo_banner_enabled: form.promo_banner_enabled,
       updated_at: new Date().toISOString(),
     });
     setSaving(false);
@@ -606,6 +616,63 @@ export default function StoreSettings() {
           </div>
           <p className="text-xs text-gray-400">International format recommended, e.g. +387 61 498 340. Spaces and formatting are stripped automatically.</p>
         </Field>
+      </div>
+
+      {/* Promotional Banner */}
+      <div className="bg-white border border-gray-200 rounded-xl p-6 flex flex-col gap-5">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="font-semibold text-navy text-sm">Promotional Banner</h2>
+            <p className="text-xs text-gray-400 mt-0.5">Full-width banner shown on the homepage between categories and testimonials.</p>
+          </div>
+          <button
+            type="button"
+            onClick={() => set("promo_banner_enabled", !form.promo_banner_enabled)}
+            className={`w-10 h-6 rounded-full transition-colors flex items-center px-1 ${form.promo_banner_enabled ? "bg-navy" : "bg-gray-200"}`}
+          >
+            <div className={`w-4 h-4 rounded-full bg-white shadow transition-transform ${form.promo_banner_enabled ? "translate-x-4" : "translate-x-0"}`} />
+          </button>
+        </div>
+
+        <Field label="Banner Text (EN)">
+          <input
+            value={form.promo_banner_en}
+            onChange={(e) => set("promo_banner_en", e.target.value)}
+            placeholder="Free Delivery on orders over 100 KM"
+            className={inputCls}
+          />
+        </Field>
+
+        <Field label="Banner Text (BS)">
+          <input
+            value={form.promo_banner_bs}
+            onChange={(e) => set("promo_banner_bs", e.target.value)}
+            placeholder="Besplatna dostava za narudžbe iznad 100 KM"
+            className={inputCls}
+          />
+        </Field>
+
+        {/* Live preview */}
+        <div className="flex flex-col gap-1.5">
+          <p className="text-xs font-medium text-gray-400 uppercase tracking-wider">Preview</p>
+          {form.promo_banner_enabled ? (
+            <div className="bg-navy rounded-lg px-4 py-4 flex flex-col sm:flex-row items-center justify-between gap-3">
+              <div className="flex flex-col gap-1 text-center sm:text-left">
+                <p className="text-sm font-semibold text-white">
+                  {form.promo_banner_en || <span className="text-cream/30 italic">No English text set</span>}
+                </p>
+                <p className="text-xs text-cream/50">
+                  {form.promo_banner_bs || <span className="italic">No Bosnian text set</span>}
+                </p>
+              </div>
+              <div className="shrink-0 px-4 py-2 bg-copper rounded-lg text-white text-xs font-semibold">Shop Now</div>
+            </div>
+          ) : (
+            <div className="bg-gray-50 border border-dashed border-gray-200 rounded-lg px-4 py-4 text-sm text-gray-400 text-center">
+              Banner is hidden
+            </div>
+          )}
+        </div>
       </div>
 
       {/* SEO & Meta Tags */}
