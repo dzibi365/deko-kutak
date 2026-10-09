@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { PersonalizationModal } from "./PersonalizationModal";
 import { ArrowRight, Instagram, Users, Hand, ShoppingBag } from "lucide-react";
+import { useCart } from "../context/CartContext";
 
 declare module 'react' {
   namespace JSX {
@@ -222,6 +223,7 @@ const NEW_THRESHOLD_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
 export function CategoryShowcase() {
   const { lang } = useLang();
   const navigate = useNavigate();
+  const { addItem } = useCart();
   const [categories, setCategories] = useState<Category[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
@@ -260,6 +262,7 @@ export function CategoryShowcase() {
               onNavigate={(id) => navigate(`/products/${id}`)}
               onCategoryClick={(catName) => navigate(`/shop?category=${encodeURIComponent(catName)}`)}
               onPersonalize={(product) => setModalProduct(product)}
+              onAddToCart={(product) => addItem(product)}
             />
           ))}
         </div>
@@ -281,9 +284,10 @@ type RowProps = {
   onNavigate: (id: number) => void;
   onCategoryClick: (catName: string) => void;
   onPersonalize: (product: Product) => void;
+  onAddToCart: (product: Product) => void;
 };
 
-function CategoryRow({ cat, products, lang, onNavigate, onCategoryClick, onPersonalize }: RowProps) {
+function CategoryRow({ cat, products, lang, onNavigate, onCategoryClick, onPersonalize, onAddToCart }: RowProps) {
   const catName = lang === "bs" ? (cat.name_bs || cat.name_en || cat.name) : (cat.name_en || cat.name);
   const catKey = cat.name_en ?? cat.name;
   const now = Date.now();
@@ -383,7 +387,7 @@ function CategoryRow({ cat, products, lang, onNavigate, onCategoryClick, onPerso
                     ) : (
                       <button
                         type="button"
-                        onClick={(e) => e.stopPropagation()}
+                        onClick={(e) => { e.stopPropagation(); onAddToCart(product); }}
                         className="w-9 h-9 flex-shrink-0 flex items-center justify-center rounded-lg border border-copper text-copper bg-white hover:bg-copper hover:text-white transition-colors duration-200"
                       >
                         <ShoppingBag className="w-4 h-4" strokeWidth={1.75} />
