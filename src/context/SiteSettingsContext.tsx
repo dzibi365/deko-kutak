@@ -23,6 +23,8 @@ type SiteSettings = {
   topbar_hours_bs: string | null;
   topbar_right_text_en: string | null;
   topbar_right_text_bs: string | null;
+  contact_viber: string | null;
+  contact_whatsapp: string | null;
 };
 
 const defaults: SiteSettings = {
@@ -47,6 +49,8 @@ const defaults: SiteSettings = {
   topbar_hours_bs: null,
   topbar_right_text_en: null,
   topbar_right_text_bs: null,
+  contact_viber: null,
+  contact_whatsapp: null,
 };
 
 const SiteSettingsContext = createContext<SiteSettings>(defaults);
@@ -57,7 +61,7 @@ export function SiteSettingsProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     supabase
       .from("store_settings")
-      .select("store_name, logo_url, footer_logo_url, social_facebook, social_instagram, social_email, footer_desc_en, footer_desc_bs, seo_title, seo_description_en, seo_description_bs, og_image, topbar_enabled, topbar_left_text_en, topbar_left_text_bs, topbar_phone, topbar_email, topbar_hours_en, topbar_hours_bs, topbar_right_text_en, topbar_right_text_bs")
+      .select("store_name, logo_url, footer_logo_url, social_facebook, social_instagram, social_email, footer_desc_en, footer_desc_bs, seo_title, seo_description_en, seo_description_bs, og_image, topbar_enabled, topbar_left_text_en, topbar_left_text_bs, topbar_phone, topbar_email, topbar_hours_en, topbar_hours_bs, topbar_right_text_en, topbar_right_text_bs, contact_viber, contact_whatsapp")
       .eq("id", 1)
       .single()
       .then(({ data }) => {
@@ -84,6 +88,8 @@ export function SiteSettingsProvider({ children }: { children: ReactNode }) {
             topbar_hours_bs: data.topbar_hours_bs ?? null,
             topbar_right_text_en: data.topbar_right_text_en ?? null,
             topbar_right_text_bs: data.topbar_right_text_bs ?? null,
+            contact_viber: data.contact_viber ?? null,
+            contact_whatsapp: data.contact_whatsapp ?? null,
           });
         }
       });

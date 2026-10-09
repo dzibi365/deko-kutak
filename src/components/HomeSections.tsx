@@ -37,8 +37,7 @@ export function Hero() {
     });
   }, []);
 
-  // Personalized Wooden Wedding USB & Calendar Gift Set — warm wood tones, personalized
-  const heroImageUrl = "https://smlaoqjushalotduuhcx.supabase.co/storage/v1/object/public/product-images/1789044812034-3850160wbvw.webp";
+  const heroImageUrl = cfg?.image_url || "https://smlaoqjushalotduuhcx.supabase.co/storage/v1/object/public/product-images/1789044812034-3850160wbvw.webp";
 
   const badge    = cfg ? (lang === "bs" ? cfg.badge_bs    : cfg.badge_en)    : tr("hero_badge");
   const heading  = cfg ? (lang === "bs" ? cfg.heading_bs  : cfg.heading_en)  : tr("hero_heading");

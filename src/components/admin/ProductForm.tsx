@@ -16,6 +16,7 @@ const empty = {
   description_en: "", description_bs: "",
   category: "",
   price: "",
+  compare_price: "",
   image_url: "",
   gallery_images: [] as string[],
   in_stock: true,
@@ -68,6 +69,7 @@ export function ProductForm({ product, onClose, onSaved }: Props) {
         description_bs: product.description_bs ?? "",
         category: product.category ?? "",
         price: String(product.price),
+        compare_price: product.compare_price != null ? String(product.compare_price) : "",
         image_url: product.image_url ?? "",
         gallery_images: product.gallery_images ?? [],
         in_stock: product.in_stock,
@@ -173,6 +175,13 @@ export function ProductForm({ product, onClose, onSaved }: Props) {
       return;
     }
 
+    const rawCompare = form.compare_price.trim();
+    const comparePrice = rawCompare === "" ? null : parseFloat(rawCompare);
+    if (comparePrice !== null && (isNaN(comparePrice) || comparePrice < 0)) {
+      setError("Enter a valid compare price, or leave it empty.");
+      return;
+    }
+
     const payload = {
       name: form.name_en.trim() || form.name_bs.trim(),
       name_en: form.name_en.trim() || null,
@@ -182,6 +191,7 @@ export function ProductForm({ product, onClose, onSaved }: Props) {
       description_bs: form.description_bs.trim() || null,
       category: form.category,
       price,
+      compare_price: comparePrice,
       image_url: form.image_url.trim() || null,
       gallery_images: form.gallery_images.length > 0 ? form.gallery_images : [],
       in_stock: form.in_stock,
@@ -281,6 +291,12 @@ export function ProductForm({ product, onClose, onSaved }: Props) {
                   onChange={(e) => set("price", e.target.value)} required placeholder="0.00" className={inputCls} />
               </Field>
             </div>
+
+            {/* Compare price */}
+            <Field label="Compare Price (KM)">
+              <input type="number" min="0" step="0.01" value={form.compare_price}
+                onChange={(e) => set("compare_price", e.target.value)} placeholder="Optional — original price shown as strikethrough" className={inputCls} />
+            </Field>
 
             {/* Main image */}
             <Field label="Main Image">

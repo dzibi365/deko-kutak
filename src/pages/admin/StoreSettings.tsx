@@ -30,6 +30,8 @@ type Settings = {
   topbar_hours_bs: string;
   topbar_right_text_en: string;
   topbar_right_text_bs: string;
+  contact_viber: string;
+  contact_whatsapp: string;
 };
 
 const empty: Settings = {
@@ -46,6 +48,7 @@ const empty: Settings = {
   topbar_phone: "", topbar_email: "",
   topbar_hours_en: "", topbar_hours_bs: "",
   topbar_right_text_en: "", topbar_right_text_bs: "",
+  contact_viber: "", contact_whatsapp: "",
 };
 
 export default function StoreSettings() {
@@ -100,6 +103,8 @@ export default function StoreSettings() {
           topbar_hours_bs: data.topbar_hours_bs ?? "",
           topbar_right_text_en: data.topbar_right_text_en ?? "",
           topbar_right_text_bs: data.topbar_right_text_bs ?? "",
+          contact_viber: data.contact_viber ?? "",
+          contact_whatsapp: data.contact_whatsapp ?? "",
         });
       }
       setLoading(false);
@@ -184,6 +189,8 @@ export default function StoreSettings() {
       topbar_hours_bs: form.topbar_hours_bs || null,
       topbar_right_text_en: form.topbar_right_text_en || null,
       topbar_right_text_bs: form.topbar_right_text_bs || null,
+      contact_viber: form.contact_viber || null,
+      contact_whatsapp: form.contact_whatsapp || null,
       updated_at: new Date().toISOString(),
     });
     setSaving(false);
@@ -563,6 +570,41 @@ export default function StoreSettings() {
               className={`${inputCls} pl-9`}
             />
           </div>
+        </Field>
+      </div>
+
+      {/* Contact Buttons */}
+      <div className="bg-white border border-gray-200 rounded-xl p-6 flex flex-col gap-4">
+        <div className="flex items-center gap-2">
+          <Phone className="w-4 h-4 text-navy/50" strokeWidth={1.75} />
+          <h2 className="font-semibold text-navy text-sm">Contact Buttons</h2>
+        </div>
+        <p className="text-xs text-gray-400 -mt-2">Floating chat buttons shown on every page. Leave blank to hide a button.</p>
+
+        <Field label="Viber Phone Number">
+          <div className="relative">
+            <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" strokeWidth={1.75} />
+            <input
+              value={form.contact_viber}
+              onChange={(e) => set("contact_viber", e.target.value)}
+              placeholder="+387 61 123 456"
+              className={`${inputCls} pl-9`}
+            />
+          </div>
+          <p className="text-xs text-gray-400">International format recommended, e.g. +387 61 498 340. Spaces and formatting are stripped automatically.</p>
+        </Field>
+
+        <Field label="WhatsApp Phone Number">
+          <div className="relative">
+            <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" strokeWidth={1.75} />
+            <input
+              value={form.contact_whatsapp}
+              onChange={(e) => set("contact_whatsapp", e.target.value)}
+              placeholder="+387 61 123 456"
+              className={`${inputCls} pl-9`}
+            />
+          </div>
+          <p className="text-xs text-gray-400">International format recommended, e.g. +387 61 498 340. Spaces and formatting are stripped automatically.</p>
         </Field>
       </div>
 
