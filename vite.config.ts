@@ -5,7 +5,22 @@ import {defineConfig} from 'vite';
 
 export default defineConfig(() => {
   return {
-    plugins: [react(), tailwindcss()],
+    plugins: [
+      react(),
+      tailwindcss(),
+      {
+        name: "robots-meta",
+        transformIndexHtml(html: string): string {
+          if (process.env.VITE_ALLOW_INDEXING === "true") {
+            return html.replace(
+              '<meta name="robots" content="noindex,nofollow" />',
+              '<meta name="robots" content="index,follow" />',
+            );
+          }
+          return html;
+        },
+      },
+    ],
     resolve: {
       alias: {
         '@': path.resolve(__dirname, '.'),
