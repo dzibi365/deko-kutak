@@ -63,7 +63,7 @@ function AccountContent() {
     supabase
       .from("orders")
       .select("*")
-      .eq("customer_email", user.email)
+      .eq("user_id", user.id)
       .order("created_at", { ascending: false })
       .then(({ data }) => { setOrders(data ?? []); setLoading(false); });
   }, [user]);
