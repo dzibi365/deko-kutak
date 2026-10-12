@@ -14,8 +14,10 @@ export function RequireAuth({ children }: { children: React.ReactNode }) {
 
   if (!session) return <Navigate to="/admin/login" replace />;
 
-  // Block customer accounts (created via product review signup) from accessing admin
-  if (session.user.user_metadata?.role === "customer") {
+  // Require app_metadata.role === "admin" — set server-side only via service role.
+  // app_metadata cannot be modified by the user themselves, unlike user_metadata.
+  // A customer who edits their own user_metadata cannot bypass this check.
+  if (session.user.app_metadata?.role !== "admin") {
     return <Navigate to="/" replace />;
   }
 
