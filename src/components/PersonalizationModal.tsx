@@ -76,6 +76,19 @@ export function PersonalizationModal({ product, onClose }: Props) {
   }
 
   async function handleImageFile(fieldId: string, file: File) {
+    // Client-side validation before upload
+    const allowed = ["image/jpeg", "image/png", "image/webp"];
+    if (!allowed.includes(file.type)) {
+      setUploadErrors((prev) => ({ ...prev, [fieldId]: tr("upload_invalid_format") }));
+      if (fileRefs.current[fieldId]) fileRefs.current[fieldId]!.value = "";
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      setUploadErrors((prev) => ({ ...prev, [fieldId]: tr("upload_too_large") }));
+      if (fileRefs.current[fieldId]) fileRefs.current[fieldId]!.value = "";
+      return;
+    }
+
     setUploadingFields((prev) => ({ ...prev, [fieldId]: true }));
     setUploadErrors((prev) => ({ ...prev, [fieldId]: "" }));
 
@@ -86,7 +99,7 @@ export function PersonalizationModal({ product, onClose }: Props) {
       .upload(path, file, { upsert: false });
 
     if (uploadErr) {
-      setUploadErrors((prev) => ({ ...prev, [fieldId]: uploadErr.message }));
+      setUploadErrors((prev) => ({ ...prev, [fieldId]: tr("upload_failed") }));
       setUploadingFields((prev) => ({ ...prev, [fieldId]: false }));
       return;
     }
@@ -307,7 +320,7 @@ export function PersonalizationModal({ product, onClose }: Props) {
                     <input
                       ref={(el) => { fileRefs.current[field.id] = el; }}
                       type="file"
-                      accept="image/*"
+                      accept="image/jpeg,image/png,image/webp"
                       className="hidden"
                       onChange={(e) => {
                         const file = e.target.files?.[0];
@@ -348,7 +361,8 @@ export function PersonalizationModal({ product, onClose }: Props) {
         <div className="px-6 py-4 border-t border-gray-100 flex-shrink-0">
           <button
             onClick={handleSubmit}
-            className="w-full flex items-center justify-center gap-2.5 py-3 bg-navy text-white text-sm font-semibold rounded-xl hover:bg-navy/90 transition-colors"
+            disabled={Object.values(uploadingFields).some(Boolean)}
+            className="w-full flex items-center justify-center gap-2.5 py-3 bg-navy text-white text-sm font-semibold rounded-xl hover:bg-navy/90 transition-colors disabled:opacity-60"
           >
             <ShoppingBag className="w-4 h-4" strokeWidth={1.75} />
             {tr("product_add_to_cart")}

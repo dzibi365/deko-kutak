@@ -142,6 +142,11 @@ export const t = {
     modal_close: "Close",
     modal_more_options: "More options",
 
+    // Photo upload validation
+    upload_invalid_format: "Unsupported format. Use JPG, PNG or WEBP.",
+    upload_too_large: "File too large. Maximum 5 MB.",
+    upload_failed: "Upload failed. Please try again.",
+
     // Sorting
     sort_label: "Sort by",
     sort_newest: "Newest",
@@ -315,6 +320,11 @@ export const t = {
     modal_required_field: "Obavezno polje",
     modal_close: "Zatvori",
     modal_more_options: "Još opcija",
+
+    // Photo upload validation
+    upload_invalid_format: "Nepodržan format. Koristite JPG, PNG ili WEBP.",
+    upload_too_large: "Datoteka je prevelika. Maksimalna veličina je 5 MB.",
+    upload_failed: "Učitavanje nije uspjelo. Pokušajte ponovo.",
 
     // Sorting
     sort_label: "Sortiraj po",
