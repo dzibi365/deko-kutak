@@ -3,6 +3,8 @@ import { X, Minus, Plus, Trash2, ShoppingBag } from "lucide-react";
 import { useCart } from "../context/CartContext";
 import { useLang } from "../context/LanguageContext";
 import { localName } from "../lib/supabase";
+import { CustomerImageDisplay } from "./CustomerImageDisplay";
+import { classifyImageValue } from "../lib/customerUpload";
 
 export function CartDrawer() {
   const { items, count, total, isOpen, closeCart, removeItem, updateQty } = useCart();
@@ -82,17 +84,20 @@ export function CartDrawer() {
                           </p>
                           <ul className="flex flex-col gap-1.5">
                             {customEntries.map(([label, value]) => {
-                              const isImage = value.startsWith("http") && /\.(jpg|jpeg|png|webp)(\?|$)/i.test(value);
+                              const imageType = classifyImageValue(value);
+                              const isImage = imageType !== "other";
+                              const token = item.uploadTokens?.[label];
                               return (
                                 <li key={label} className="text-xs leading-snug">
                                   {isImage ? (
                                     <div className="flex flex-col gap-1">
                                       <span className="font-medium text-gray-500">{label}:</span>
-                                      <a href={value} target="_blank" rel="noreferrer" className="inline-block">
-                                        <div className="w-20 h-20 rounded-lg border border-gray-200 bg-gray-50 overflow-hidden flex items-center justify-center">
-                                          <img src={value} alt={label} className="w-full h-full object-contain" />
-                                        </div>
-                                      </a>
+                                      <CustomerImageDisplay
+                                        value={value}
+                                        token={token}
+                                        label={label}
+                                        sizeClass="w-20 h-20"
+                                      />
                                     </div>
                                   ) : (
                                     <span className="text-gray-500 break-words">

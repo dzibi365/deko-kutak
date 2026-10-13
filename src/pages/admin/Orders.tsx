@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { supabase } from "../../lib/supabase";
+import { classifyImageValue } from "../../lib/customerUpload";
 
 type OrderItem = {
   name: string;
@@ -36,6 +37,42 @@ const STATUS_STYLES: Record<string, string> = {
   delivered: "bg-green-50 text-green-700 border-green-200",
   cancelled: "bg-red-50 text-red-500 border-red-200",
 };
+
+// Renders a customization image for admin.
+// For storage paths (UUID.ext): uses createSignedUrl so it works when the
+// bucket is made private. The admin SELECT RLS policy on customer-uploads
+// (is_admin()) permits this call.
+// For legacy public URLs: renders directly.
+function AdminSignedImage({ value, label }: { value: string; label: string }) {
+  const type = classifyImageValue(value);
+  const [url, setUrl] = useState<string | null>(type === "legacy-url" ? value : null);
+
+  useEffect(() => {
+    if (type !== "storage-path") return;
+    supabase.storage
+      .from("customer-uploads")
+      .createSignedUrl(value, 3600)
+      .then(({ data }) => {
+        if (data?.signedUrl) setUrl(data.signedUrl);
+      });
+  }, [value, type]);
+
+  if (!url) {
+    return (
+      <div className="w-20 h-20 rounded-lg bg-gray-100 animate-pulse" />
+    );
+  }
+
+  return (
+    <a href={url} target="_blank" rel="noreferrer">
+      <img
+        src={url}
+        alt={label}
+        className="w-20 h-20 object-cover rounded-lg border border-gray-200 hover:opacity-80 transition-opacity"
+      />
+    </a>
+  );
+}
 
 export default function Orders() {
   const [orders, setOrders] = useState<Order[]>([]);
@@ -193,14 +230,13 @@ export default function Orders() {
                             {customEntries.length > 0 && (
                               <div className="ml-13 pl-13 flex flex-col gap-1.5 ml-[52px] border-l-2 border-gray-100 pl-3">
                                 {customEntries.map(([label, value]) => {
-                                  const isImage = value.startsWith("http") && /\.(jpg|jpeg|png|webp)(\?|$)/i.test(value);
+                                  const imageType = classifyImageValue(value);
+                                  const isImage = imageType !== "other";
                                   return (
                                     <div key={label} className="flex items-start gap-2">
                                       <span className="text-xs font-medium text-gray-400 whitespace-nowrap">{label}:</span>
                                       {isImage ? (
-                                        <a href={value} target="_blank" rel="noreferrer">
-                                          <img src={value} alt={label} className="w-20 h-20 object-cover rounded-lg border border-gray-200 hover:opacity-80 transition-opacity" />
-                                        </a>
+                                        <AdminSignedImage value={value} label={label} />
                                       ) : (
                                         <span className="text-xs text-gray-600">{value}</span>
                                       )}

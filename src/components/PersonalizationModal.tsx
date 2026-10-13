@@ -2,7 +2,8 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { X, ShoppingBag, Upload, ChevronDown } from "lucide-react";
 import { useLang } from "../context/LanguageContext";
 import { useCart } from "../context/CartContext";
-import { supabase, localName, type Product } from "../lib/supabase";
+import { localName, type Product } from "../lib/supabase";
+import { uploadCustomerPhoto } from "../lib/customerUpload";
 
 type Props = {
   product: Product;
@@ -14,7 +15,7 @@ export function PersonalizationModal({ product, onClose }: Props) {
   const { addItem } = useCart();
   const fields = product.custom_fields ?? [];
 
-  // All field values stored as strings. Image fields store the uploaded Supabase URL.
+  // All field values stored as strings. Image fields store the storage path (UUID.ext).
   const [values, setValues] = useState<Record<string, string>>(() => {
     const init: Record<string, string> = {};
     fields.forEach((f) => { init[f.id] = ""; });
@@ -25,6 +26,8 @@ export function PersonalizationModal({ product, onClose }: Props) {
   // Per-field upload spinners
   const [uploadingFields, setUploadingFields] = useState<Record<string, boolean>>({});
   const [uploadErrors, setUploadErrors] = useState<Record<string, string>>({});
+  // field id → plaintext token (keyed by field id, remapped to label on submit)
+  const [uploadTokens, setUploadTokens] = useState<Record<string, string>>({});
   const [errors, setErrors] = useState<Record<string, boolean>>({});
   const fileRefs = useRef<Record<string, HTMLInputElement | null>>({});
   const scrollRef = useRef<HTMLDivElement | null>(null);
@@ -76,7 +79,6 @@ export function PersonalizationModal({ product, onClose }: Props) {
   }
 
   async function handleImageFile(fieldId: string, file: File) {
-    // Client-side validation before upload
     const allowed = ["image/jpeg", "image/png", "image/webp"];
     if (!allowed.includes(file.type)) {
       setUploadErrors((prev) => ({ ...prev, [fieldId]: tr("upload_invalid_format") }));
@@ -92,28 +94,23 @@ export function PersonalizationModal({ product, onClose }: Props) {
     setUploadingFields((prev) => ({ ...prev, [fieldId]: true }));
     setUploadErrors((prev) => ({ ...prev, [fieldId]: "" }));
 
-    const ext = file.name.split(".").pop();
-    const path = `${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
-    const { error: uploadErr } = await supabase.storage
-      .from("customer-uploads")
-      .upload(path, file, { upsert: false });
-
-    if (uploadErr) {
+    try {
+      const { path, token } = await uploadCustomerPhoto(file);
+      setVal(fieldId, path);
+      setUploadTokens((prev) => ({ ...prev, [fieldId]: token }));
+      setFileNames((prev) => ({ ...prev, [fieldId]: file.name }));
+    } catch {
       setUploadErrors((prev) => ({ ...prev, [fieldId]: tr("upload_failed") }));
+    } finally {
       setUploadingFields((prev) => ({ ...prev, [fieldId]: false }));
-      return;
+      if (fileRefs.current[fieldId]) fileRefs.current[fieldId]!.value = "";
     }
-
-    const url = supabase.storage.from("customer-uploads").getPublicUrl(path).data.publicUrl;
-    setVal(fieldId, url);
-    setFileNames((prev) => ({ ...prev, [fieldId]: file.name }));
-    setUploadingFields((prev) => ({ ...prev, [fieldId]: false }));
-    if (fileRefs.current[fieldId]) fileRefs.current[fieldId]!.value = "";
   }
 
   function clearImageField(fieldId: string) {
     setVal(fieldId, "");
     setFileNames((prev) => ({ ...prev, [fieldId]: "" }));
+    setUploadTokens((prev) => { const next = { ...prev }; delete next[fieldId]; return next; });
   }
 
   function validate(): boolean {
@@ -136,21 +133,25 @@ export function PersonalizationModal({ product, onClose }: Props) {
   function handleSubmit() {
     if (!validate()) return;
 
-    // Build customizations exactly as ProductDetail does:
-    // key = localized label, value = field value string.
-    // Only include fields with a non-empty value.
+    // Build customizations: key = localized label, value = field value string.
+    // Image fields store the storage path (UUID.ext); tokens are passed separately.
     const customizations: Record<string, string> = {};
+    const tokens: Record<string, string> = {};
+
     fields.forEach((f) => {
       const val = values[f.id];
-      if (val) {
-        const label = lang === "bs"
-          ? (f.label_bs || f.label_en)
-          : (f.label_en || f.label_bs);
-        if (label) customizations[label] = val;
+      if (!val) return;
+      const label = lang === "bs"
+        ? (f.label_bs || f.label_en)
+        : (f.label_en || f.label_bs);
+      if (!label) return;
+      customizations[label] = val;
+      if (f.type === "image" && uploadTokens[f.id]) {
+        tokens[label] = uploadTokens[f.id];
       }
     });
 
-    addItem(product, customizations);
+    addItem(product, customizations, Object.keys(tokens).length > 0 ? tokens : undefined);
     onClose();
   }
 

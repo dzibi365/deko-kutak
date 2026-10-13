@@ -5,6 +5,8 @@ import { supabase } from "../lib/supabase";
 import { useCart } from "../context/CartContext";
 import { useLang } from "../context/LanguageContext";
 import { localName } from "../lib/supabase";
+import { CustomerImageDisplay } from "../components/CustomerImageDisplay";
+import { classifyImageValue } from "../lib/customerUpload";
 
 type PaymentMethod = "cod" | "bank_transfer";
 
@@ -28,6 +30,7 @@ export default function Checkout() {
   const [placing, setPlacing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [expandedItems, setExpandedItems] = useState<Record<string, boolean>>({});
+  const [expiredPhotos, setExpiredPhotos] = useState<Record<string, boolean>>({});
 
   function set(key: string, value: string) {
     setForm((f) => ({ ...f, [key]: value }));
@@ -40,6 +43,9 @@ export default function Checkout() {
     setPlacing(true);
 
     const orderNumber = generateOrderNumber();
+    // Strip uploadTokens before persisting — tokens are client-only credentials
+    // and must never be stored in the orders table or transmitted to the server.
+    const orderItems = items.map(({ uploadTokens: _dropped, ...rest }) => rest);
     const { error: err } = await supabase.from("orders").insert({
       order_number: orderNumber,
       customer_name: form.name.trim(),
@@ -49,7 +55,7 @@ export default function Checkout() {
       customer_city: form.city.trim(),
       customer_postal: form.postal.trim() || null,
       payment_method: payment,
-      items: items,
+      items: orderItems,
       subtotal: total,
       note: form.note.trim() || null,
       status: "pending",
@@ -241,17 +247,24 @@ export default function Checkout() {
                                 <div className="mt-2 pt-2 border-t border-gray-100">
                                   <ul className="flex flex-col gap-1.5">
                                     {customEntries.map(([label, value]) => {
-                                      const isImage = value.startsWith("http") && /\.(jpg|jpeg|png|webp)(\?|$)/i.test(value);
+                                      const imageType = classifyImageValue(value);
+                                      const isImage = imageType !== "other";
+                                      const token = item.uploadTokens?.[label];
+                                      const expiredKey = `${item.cartKey}:${label}`;
                                       return (
                                         <li key={label} className="text-xs leading-snug">
                                           {isImage ? (
                                             <div className="flex flex-col gap-1">
                                               <span className="font-medium text-gray-500">{label}:</span>
-                                              <a href={value} target="_blank" rel="noreferrer" className="inline-block">
-                                                <div className="w-20 h-20 rounded-lg border border-gray-200 bg-gray-50 overflow-hidden flex items-center justify-center">
-                                                  <img src={value} alt={label} className="w-full h-full object-contain" />
-                                                </div>
-                                              </a>
+                                              <CustomerImageDisplay
+                                                value={value}
+                                                token={token}
+                                                label={label}
+                                                sizeClass="w-20 h-20"
+                                                onExpiredChange={(expired) =>
+                                                  setExpiredPhotos((prev) => ({ ...prev, [expiredKey]: expired }))
+                                                }
+                                              />
                                             </div>
                                           ) : (
                                             <span className="text-gray-500 break-words">
@@ -278,9 +291,15 @@ export default function Checkout() {
                   <span className="text-xl font-semibold text-navy">{total.toFixed(2)} KM</span>
                 </div>
 
+                {Object.values(expiredPhotos).some(Boolean) && (
+                  <p className="text-xs text-red-500 bg-red-50 rounded-lg px-3 py-2">
+                    {tr("checkout_expired_photo_warning")}
+                  </p>
+                )}
+
                 <button
                   type="submit"
-                  disabled={placing}
+                  disabled={placing || Object.values(expiredPhotos).some(Boolean)}
                   className="w-full py-3.5 bg-navy text-white font-semibold rounded-xl hover:bg-navy/90 transition-colors disabled:opacity-60"
                 >
                   {placing ? tr("checkout_placing") : tr("checkout_place_order")}

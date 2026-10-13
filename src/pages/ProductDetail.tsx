@@ -3,6 +3,8 @@ import { AnimatePresence, motion } from "motion/react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { ShoppingCart, Heart, ArrowLeft, CheckCircle, XCircle, Share2, Upload, X as XIcon, ChevronRight, ChevronLeft, Box, ZoomIn } from "lucide-react";
 import { supabase, type Product, type Category, type CustomField, localName, localDesc } from "../lib/supabase";
+import { uploadCustomerPhoto } from "../lib/customerUpload";
+import { useSignedImage } from "../hooks/useSignedImage";
 import { RichDescription } from "../components/RichDescription";
 import { Navbar, Footer } from "../components/Layout";
 import { CartDrawer } from "../components/CartDrawer";
@@ -125,6 +127,7 @@ function ProductDetailContent() {
   const [activeImage, setActiveImage] = useState<string | null>(null);
   const [slideDir, setSlideDir] = useState<"left" | "right">("left");
   const [fieldValues, setFieldValues] = useState<Record<string, string>>({});
+  const [fieldTokens, setFieldTokens] = useState<Record<string, string>>({});
   const [fieldError, setFieldError] = useState<string | null>(null);
   const [uploadingFields, setUploadingFields] = useState<Record<string, boolean>>({});
   const [similarProducts, setSimilarProducts] = useState<Product[]>([]);
@@ -413,6 +416,14 @@ function ProductDetailContent() {
                   onUploadingChange={(id, isUploading) =>
                     setUploadingFields((prev) => ({ ...prev, [id]: isUploading }))
                   }
+                  onTokenChange={(id, token) =>
+                    setFieldTokens((prev) => {
+                      if (token === null) {
+                        const next = { ...prev }; delete next[id]; return next;
+                      }
+                      return { ...prev, [id]: token };
+                    })
+                  }
                   has3DPreview={product.has_3d_preview}
                   model3dUrl={product.model_3d_url}
                   model3dMesh={product.model_texture_mesh}
@@ -437,14 +448,18 @@ function ProductDetailContent() {
                       }
                       setFieldError(null);
                       const labeled: Record<string, string> = {};
+                      const labeledTokens: Record<string, string> = {};
                       (product.custom_fields ?? []).forEach((f) => {
                         const val = fieldValues[f.id];
                         if (val) {
                           const label = lang === "bs" ? (f.label_bs || f.label_en) : (f.label_en || f.label_bs);
-                          if (label) labeled[label] = val;
+                          if (label) {
+                            labeled[label] = val;
+                            if (fieldTokens[f.id]) labeledTokens[label] = fieldTokens[f.id];
+                          }
                         }
                       });
-                      addItem(product, labeled);
+                      addItem(product, labeled, Object.keys(labeledTokens).length > 0 ? labeledTokens : undefined);
                     }}
                     className="flex-1 flex items-center justify-center gap-2 px-6 py-3.5 bg-navy text-white font-semibold rounded-xl hover:bg-navy/90 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                   >
@@ -526,7 +541,7 @@ const fieldInputCls =
   "w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-navy placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-navy/20 focus:border-navy transition";
 
 function ImageUploadField({
-  fieldId, value, required, label, lang, onChange, onUploadingChange,
+  fieldId, value, required, label, lang, onChange, onUploadingChange, onTokenChange,
   has3DPreview, onPreview3D,
 }: {
   fieldId: string;
@@ -536,6 +551,7 @@ function ImageUploadField({
   lang: string;
   onChange: (id: string, value: string) => void;
   onUploadingChange?: (fieldId: string, isUploading: boolean) => void;
+  onTokenChange?: (fieldId: string, token: string | null) => void;
   has3DPreview?: boolean;
   onPreview3D?: (url: string) => void;
 }) {
@@ -543,6 +559,9 @@ function ImageUploadField({
   const fileRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Local token — used only for display/preview within this session
+  const [localToken, setLocalToken] = useState<string | undefined>(undefined);
+  const { url: signedUrl } = useSignedImage(value, localToken);
 
   async function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -563,42 +582,52 @@ function ImageUploadField({
     setUploading(true);
     onUploadingChange?.(fieldId, true);
     setError(null);
-    const ext = file.name.split(".").pop();
-    const path = `${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
-    const { error: uploadErr } = await supabase.storage
-      .from("customer-uploads")
-      .upload(path, file, { upsert: false });
-    if (uploadErr) {
+
+    try {
+      const { path, token } = await uploadCustomerPhoto(file);
+      setLocalToken(token);
+      onChange(fieldId, path);
+      onTokenChange?.(fieldId, token);
+    } catch {
       setError(tr("upload_failed"));
+    } finally {
       setUploading(false);
       onUploadingChange?.(fieldId, false);
-      return;
+      if (fileRef.current) fileRef.current.value = "";
     }
-    const url = supabase.storage.from("customer-uploads").getPublicUrl(path).data.publicUrl;
-    onChange(fieldId, url);
-    setUploading(false);
-    onUploadingChange?.(fieldId, false);
-    if (fileRef.current) fileRef.current.value = "";
   }
+
+  function handleClear() {
+    setLocalToken(undefined);
+    onChange(fieldId, "");
+    onTokenChange?.(fieldId, null);
+  }
+
+  // Display URL: signed URL from hook, or fall back to legacy http values
+  const displayUrl = signedUrl ?? (value.startsWith("http") ? value : null);
 
   return (
     <div className="flex flex-col gap-2">
       {value ? (
         <div className="flex flex-col gap-2">
           <div className="relative w-full">
-            <img src={value} alt={label} className="w-full max-h-56 object-contain rounded-xl border border-gray-200 bg-gray-50" />
+            {displayUrl ? (
+              <img src={displayUrl} alt={label} className="w-full max-h-56 object-contain rounded-xl border border-gray-200 bg-gray-50" />
+            ) : (
+              <div className="w-full h-36 rounded-xl border border-gray-200 bg-gray-100 animate-pulse" />
+            )}
             <button
               type="button"
-              onClick={() => onChange(fieldId, "")}
+              onClick={handleClear}
               className="absolute top-2 right-2 p-1.5 bg-white/90 border border-gray-200 rounded-lg text-gray-500 hover:text-red-500 hover:border-red-200 transition-colors shadow-sm"
             >
               <XIcon className="w-4 h-4" strokeWidth={1.75} />
             </button>
           </div>
-          {has3DPreview && onPreview3D && (
+          {has3DPreview && onPreview3D && displayUrl && (
             <button
               type="button"
-              onClick={() => onPreview3D(value)}
+              onClick={() => onPreview3D(displayUrl)}
               className="flex items-center justify-center gap-2 w-full py-2.5 bg-navy text-white text-sm font-semibold rounded-xl hover:bg-navy/90 transition-colors"
             >
               <Box className="w-4 h-4" strokeWidth={1.75} />
@@ -634,7 +663,7 @@ function ImageUploadField({
 }
 
 function ProductCustomFields({
-  fields, lang, values, onChange, onUploadingChange,
+  fields, lang, values, onChange, onUploadingChange, onTokenChange,
   has3DPreview, model3dUrl, model3dMesh, onPreview3D,
 }: {
   fields: CustomField[];
@@ -642,6 +671,7 @@ function ProductCustomFields({
   values: Record<string, string>;
   onChange: (id: string, value: string) => void;
   onUploadingChange?: (id: string, isUploading: boolean) => void;
+  onTokenChange?: (id: string, token: string | null) => void;
   has3DPreview?: boolean;
   model3dUrl?: string | null;
   model3dMesh?: string | null;
@@ -722,6 +752,7 @@ function ProductCustomFields({
                 lang={lang}
                 onChange={onChange}
                 onUploadingChange={onUploadingChange}
+                onTokenChange={onTokenChange}
                 has3DPreview={canPreview}
                 onPreview3D={onPreview3D}
               />

@@ -146,6 +146,8 @@ export const t = {
     upload_invalid_format: "Unsupported format. Use JPG, PNG or WEBP.",
     upload_too_large: "File too large. Maximum 5 MB.",
     upload_failed: "Upload failed. Please try again.",
+    upload_photo_unavailable: "Photo unavailable",
+    checkout_expired_photo_warning: "One or more personalization photos are missing. Please re-add the affected items to upload a fresh photo.",
 
     // Sorting
     sort_label: "Sort by",
@@ -325,6 +327,8 @@ export const t = {
     upload_invalid_format: "Nepodržan format. Koristite JPG, PNG ili WEBP.",
     upload_too_large: "Datoteka je prevelika. Maksimalna veličina je 5 MB.",
     upload_failed: "Učitavanje nije uspjelo. Pokušajte ponovo.",
+    upload_photo_unavailable: "Foto nedostupna",
+    checkout_expired_photo_warning: "Jedna ili više fotografija za personalizaciju nedostaje. Dodajte ponovo proizvode kako biste učitali novu fotografiju.",
 
     // Sorting
     sort_label: "Sortiraj po",

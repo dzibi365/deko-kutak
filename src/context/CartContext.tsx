@@ -12,6 +12,10 @@ export type CartItem = {
   category: string;
   quantity: number;
   customizations?: Record<string, string>;
+  // Tokens are keyed by the same labels as customizations (one token per image field).
+  // They are persisted in localStorage to survive page reloads during the cart session
+  // but are stripped from the order JSONB before the DB insert in Checkout.tsx.
+  uploadTokens?: Record<string, string>;
 };
 
 type CartContextType = {
@@ -21,7 +25,11 @@ type CartContextType = {
   isOpen: boolean;
   openCart: () => void;
   closeCart: () => void;
-  addItem: (product: Product, customizations?: Record<string, string>) => void;
+  addItem: (
+    product: Product,
+    customizations?: Record<string, string>,
+    uploadTokens?: Record<string, string>,
+  ) => void;
   removeItem: (cartKey: string) => void;
   updateQty: (cartKey: string, qty: number) => void;
   clearCart: () => void;
@@ -46,7 +54,11 @@ export function CartProvider({ children }: { children: ReactNode }) {
   const count = items.reduce((s, i) => s + i.quantity, 0);
   const total = items.reduce((s, i) => s + i.price * i.quantity, 0);
 
-  function addItem(product: Product, customizations?: Record<string, string>) {
+  function addItem(
+    product: Product,
+    customizations?: Record<string, string>,
+    uploadTokens?: Record<string, string>,
+  ) {
     setItems((prev) => {
       const hasCustom = customizations && Object.keys(customizations).some((k) => customizations[k]);
       const cartKey = hasCustom
@@ -60,6 +72,11 @@ export function CartProvider({ children }: { children: ReactNode }) {
         }
       }
 
+      const tokens =
+        hasCustom && uploadTokens && Object.keys(uploadTokens).length > 0
+          ? uploadTokens
+          : undefined;
+
       return [...prev, {
         cartKey,
         id: product.id,
@@ -71,6 +88,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
         category: product.category,
         quantity: 1,
         customizations: hasCustom ? customizations : undefined,
+        uploadTokens: tokens,
       }];
     });
     setIsOpen(true);
