@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { useParams, useNavigate, Link } from "react-router-dom";
-import { ShoppingCart, Heart, ArrowLeft, CheckCircle, XCircle, Share2, Upload, X as XIcon, ChevronRight, ChevronLeft, Box, ZoomIn } from "lucide-react";
+import { ShoppingCart, ArrowLeft, CheckCircle, XCircle, Share2, Upload, X as XIcon, ChevronRight, ChevronLeft, Box, ZoomIn } from "lucide-react";
 import { supabase, type Product, type Category, type CustomField, localName, localDesc } from "../lib/supabase";
 import { uploadCustomerPhoto } from "../lib/customerUpload";
 import { useSignedImage } from "../hooks/useSignedImage";
@@ -201,8 +201,13 @@ function ProductDetailContent() {
           const { data: simData } = await supabase
             .from("products")
             .select("*")
-            .in("id", data.similar_products);
-          setSimilarProducts(simData ?? []);
+            .in("id", data.similar_products)
+            .eq("in_stock", true)
+            .neq("id", data.id);
+          const ordered = (data.similar_products as number[])
+            .map((sid: number) => (simData ?? []).find((p) => p.id === sid))
+            .filter((p): p is Product => p !== undefined);
+          setSimilarProducts(ordered);
         } else {
           setSimilarProducts([]);
         }
@@ -392,9 +397,6 @@ function ProductDetailContent() {
                 </button>
 
                 <div className="flex gap-3">
-                  <button className="flex-1 flex items-center justify-center py-3.5 border border-navy/20 rounded-xl text-navy/50 hover:text-copper hover:border-copper transition-colors">
-                    <Heart className="w-5 h-5" strokeWidth={1.5} />
-                  </button>
                   <button
                     onClick={() => navigator.share?.({ title: name, url: window.location.href })}
                     className="flex-1 flex items-center justify-center py-3.5 border border-navy/20 rounded-xl text-navy/50 hover:text-navy hover:border-navy/40 transition-colors"
@@ -467,9 +469,6 @@ function ProductDetailContent() {
                     {tr("product_add_to_cart")}
                   </button>
 
-                  <button className="p-3.5 border border-navy/20 rounded-xl text-navy/50 hover:text-copper hover:border-copper transition-colors">
-                    <Heart className="w-5 h-5" strokeWidth={1.5} />
-                  </button>
 
                   <button
                     onClick={() => navigator.share?.({ title: name, url: window.location.href })}

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { Search, X } from "lucide-react";
 import { Navbar, Footer } from "../components/Layout";
@@ -16,6 +16,18 @@ function ShopContent() {
     searchParams.get("category")
   );
   const [searchQuery, setSearchQuery] = useState("");
+  const searchInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (searchParams.get("focus") === "search") {
+      searchInputRef.current?.focus();
+      setSearchParams((prev) => {
+        const next = new URLSearchParams(prev);
+        next.delete("focus");
+        return next;
+      });
+    }
+  }, [searchParams, setSearchParams]);
 
   useEffect(() => {
     const cat = searchParams.get("category");
@@ -52,6 +64,8 @@ function ShopContent() {
               strokeWidth={1.75}
             />
             <input
+              id="shop-search"
+              ref={searchInputRef}
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}

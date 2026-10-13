@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Heart, ShoppingBag } from "lucide-react";
+import { ShoppingBag } from "lucide-react";
 import { supabase, type Product, type Category, localName, localDesc } from "../lib/supabase";
 import { useLang } from "../context/LanguageContext";
 import { useCart } from "../context/CartContext";
@@ -221,13 +221,6 @@ export function ProductGrid({ category, searchQuery = "", onClearSearch }: Produ
                         <span className="text-navy/20 text-xs uppercase tracking-widest">No image</span>
                       </div>
                     )}
-                    <button
-                      type="button"
-                      onClick={(e) => e.stopPropagation()}
-                      className="absolute top-3 right-3 p-2 bg-white/80 backdrop-blur border-[0.5px] border-navy/10 rounded-full text-navy/40 hover:text-copper hover:bg-white transition-all z-10"
-                    >
-                      <Heart className="w-4 h-4" strokeWidth={1.5} />
-                    </button>
                   </div>
 
                   {/* Info */}

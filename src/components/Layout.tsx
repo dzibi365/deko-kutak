@@ -1,6 +1,6 @@
 import { useRef, useEffect, useState } from "react";
 import { Search, User, ShoppingBag, Instagram, Facebook, Mail, LayoutDashboard, LogOut, Phone, ChevronDown, Check } from "lucide-react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import { supabase } from "../lib/supabase";
 import { useLang } from "../context/LanguageContext";
 import { useCart } from "../context/CartContext";
@@ -86,6 +86,7 @@ export function Navbar() {
   const { store_name, logo_url, contact_viber, contact_whatsapp } = useSiteSettings();
   const { user, openModal, signOut } = useCustomerAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const [langOpen, setLangOpen] = useState(false);
@@ -208,7 +209,17 @@ export function Navbar() {
             )}
           </div>
           {/* Search — desktop only */}
-          <button className="hidden md:block hover:text-copper transition-colors" aria-label="Search">
+          <button
+            className="hidden md:block hover:text-copper transition-colors"
+            aria-label="Search"
+            onClick={() => {
+              if (location.pathname === "/shop") {
+                document.getElementById("shop-search")?.focus();
+              } else {
+                navigate("/shop?focus=search");
+              }
+            }}
+          >
             <Search className="w-5 h-5" strokeWidth={1.5} />
           </button>
 
