@@ -248,6 +248,9 @@ const emailT = {
     product: "Product",
     qty: "Qty",
     price: "Price",
+    subtotal: "Subtotal",
+    shipping: "Shipping",
+    shippingFree: "Free",
     total: "Total",
     codTitle: "Cash on Delivery",
     codNote: "You will pay when your order arrives. No action needed now.",
@@ -267,6 +270,9 @@ const emailT = {
     product: "Proizvod",
     qty: "Kol.",
     price: "Cijena",
+    subtotal: "Međuzbir",
+    shipping: "Dostava",
+    shippingFree: "Besplatno",
     total: "Ukupno",
     codTitle: "Plaćanje pouzećem",
     codNote: "Plaćanje se vrši prilikom preuzimanja narudžbe. Trenutno nije potrebno ništa dodatno poduzimati.",
@@ -357,6 +363,30 @@ function itemsTable(items: OrderItem[], lang: "en" | "bs", adminOrdersUrl: strin
     </table>`;
 }
 
+function totalsTable(order: Record<string, unknown>, lang: "en" | "bs") {
+  const t = emailT[lang];
+  const subtotal     = (order.subtotal      as number) ?? 0;
+  const shippingCost = (order.shipping_cost as number) ?? 0;
+  const total        = (order.total         as number) ?? subtotal;
+  const isFreeShip   = shippingCost === 0;
+
+  return `
+    <table style="width:100%;border-collapse:collapse;margin-top:16px;">
+      <tr>
+        <td style="font-size:14px;color:#888;padding:8px 0 4px;">${t.subtotal}</td>
+        <td style="font-size:14px;color:#1a2744;padding:8px 0 4px;text-align:right;font-weight:500;">${subtotal.toFixed(2)} KM</td>
+      </tr>
+      <tr>
+        <td style="font-size:14px;color:#888;padding:4px 0 8px;">${t.shipping}</td>
+        <td style="font-size:14px;padding:4px 0 8px;text-align:right;font-weight:500;${isFreeShip ? "color:#16a34a;" : "color:#1a2744;"}">${isFreeShip ? t.shippingFree : `${shippingCost.toFixed(2)} KM`}</td>
+      </tr>
+      <tr>
+        <td style="font-size:15px;font-weight:700;color:#1a2744;padding:10px 0 0;border-top:1px solid #f0efe8;">${t.total}</td>
+        <td style="font-size:20px;font-weight:700;color:#1a2744;padding:10px 0 0;text-align:right;border-top:1px solid #f0efe8;">${total.toFixed(2)} KM</td>
+      </tr>
+    </table>`;
+}
+
 function paymentBlock(order: Record<string, unknown>, settings: Record<string, unknown>, lang: "en" | "bs") {
   const t = emailT[lang];
   if (order.payment_method === "bank_transfer") {
@@ -413,12 +443,7 @@ function customerEmail(order: Record<string, unknown>, settings: Record<string, 
 
     ${itemsTable(items, lang, null)}
 
-    <table style="width:100%;border-collapse:collapse;margin-top:16px;">
-      <tr>
-        <td style="font-size:15px;color:#888;padding:12px 0 0;">${t.total}</td>
-        <td style="font-size:20px;font-weight:700;color:#1a2744;padding:12px 0 0;text-align:right;">${(order.subtotal as number).toFixed(2)} KM</td>
-      </tr>
-    </table>
+    ${totalsTable(order, lang)}
 
     ${paymentBlock(order, settings, lang)}
 
@@ -455,12 +480,7 @@ function ownerEmail(order: Record<string, unknown>, storeName: string) {
     <p style="margin:0 0 10px;font-size:13px;font-weight:700;color:#1a2744;text-transform:uppercase;letter-spacing:.05em;">Stavke</p>
     ${itemsTable(items, "bs", PUBLIC_SITE_URL ? `${PUBLIC_SITE_URL}/admin/orders` : null)}
 
-    <table style="width:100%;border-collapse:collapse;margin-top:16px;">
-      <tr>
-        <td style="font-size:15px;color:#888;padding:12px 0 0;">Ukupno</td>
-        <td style="font-size:20px;font-weight:700;color:#1a2744;padding:12px 0 0;text-align:right;">${(order.subtotal as number).toFixed(2)} KM</td>
-      </tr>
-    </table>
+    ${totalsTable(order, "bs")}
 
     <div style="border-top:1px solid #f0efe8;margin-top:20px;padding-top:16px;">
       <p style="margin:0;font-size:14px;color:#555;">

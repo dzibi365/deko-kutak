@@ -4,6 +4,8 @@ import { ArrowLeft, Truck, Building2, ChevronDown } from "lucide-react";
 import { supabase } from "../lib/supabase";
 import { useCart } from "../context/CartContext";
 import { useLang } from "../context/LanguageContext";
+import { useSiteSettings } from "../context/SiteSettingsContext";
+import { calcShipping, centsToKm } from "../lib/shipping";
 import { localName } from "../lib/supabase";
 import { CustomerImageDisplay } from "../components/CustomerImageDisplay";
 import { classifyImageValue } from "../lib/customerUpload";
@@ -19,7 +21,11 @@ function generateOrderNumber() {
 export default function Checkout() {
   const { items, total, clearCart, closeCart } = useCart();
   const { lang, tr } = useLang();
+  const { shipping_cost, free_shipping_threshold } = useSiteSettings();
   const navigate = useNavigate();
+
+  const shipping = calcShipping(total, shipping_cost, free_shipping_threshold);
+  const fmtKm = (n: number) => lang === "bs" ? n.toFixed(2).replace(".", ",") : n.toFixed(2);
 
   const [form, setForm] = useState({
     name: "", email: "", phone: "",
@@ -64,6 +70,12 @@ export default function Checkout() {
     // Strip uploadTokens before persisting — tokens are client-only credentials
     // and must never be stored in the orders table or transmitted to the server.
     const orderItems = items.map(({ uploadTokens: _dropped, ...rest }) => rest);
+    // The BEFORE INSERT trigger recalculates subtotal, shipping_cost, and total
+    // server-side from trusted DB data.  Anon users have no SELECT policy on the
+    // orders table, so we cannot read back the trigger-set values directly.
+    // Instead we pass the client-calculated amounts — derived from useSiteSettings()
+    // (read from the DB at page load) — to the confirmation page for display.
+    // The database always stores the server-authoritative values regardless.
     const { error: err } = await supabase.from("orders").insert({
       order_number: orderNumber,
       email_token: emailToken,
@@ -99,7 +111,13 @@ export default function Checkout() {
 
     clearCart();
     closeCart();
-    navigate(`/order-confirmation/${orderNumber}?payment=${payment}`);
+    navigate(`/order-confirmation/${orderNumber}?payment=${payment}`, {
+      state: {
+        subtotal: total,
+        shippingCost: centsToKm(shipping.shippingCents),
+        orderTotal: centsToKm(shipping.totalCents),
+      },
+    });
   }
 
   if (items.length === 0) {
@@ -316,9 +334,23 @@ export default function Checkout() {
                   })}
                 </ul>
 
-                <div className="border-t border-gray-100 pt-4 flex items-center justify-between">
-                  <span className="text-sm text-gray-500">{tr("checkout_summary")}</span>
-                  <span className="text-xl font-semibold text-navy">{total.toFixed(2)} KM</span>
+                <div className="border-t border-gray-100 pt-4 flex flex-col gap-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-gray-500">{tr("checkout_subtotal")}</span>
+                    <span className="text-sm font-medium text-navy">{fmtKm(total)} KM</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-gray-500">{tr("checkout_shipping")}</span>
+                    <span className="text-sm font-medium text-navy">
+                      {shipping.isFree
+                        ? tr("shipping_free")
+                        : `${fmtKm(centsToKm(shipping.shippingCents))} KM`}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between pt-2 border-t border-gray-100 mt-1">
+                    <span className="text-sm font-semibold text-navy">{tr("checkout_total")}</span>
+                    <span className="text-xl font-semibold text-navy">{fmtKm(centsToKm(shipping.totalCents))} KM</span>
+                  </div>
                 </div>
 
                 {Object.values(expiredPhotos).some(Boolean) && (

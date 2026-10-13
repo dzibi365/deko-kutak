@@ -23,6 +23,8 @@ type Order = {
   payment_method: string;
   items: OrderItem[];
   subtotal: number;
+  shipping_cost: number;
+  total: number;
   status: string;
   note: string | null;
   created_at: string;
@@ -185,7 +187,7 @@ export default function Orders() {
                   <p className="text-sm text-gray-500 mt-0.5">{order.customer_name} · {order.customer_city}</p>
                 </div>
                 <div className="text-right flex-shrink-0">
-                  <p className="font-semibold text-navy">{order.subtotal.toFixed(2)} KM</p>
+                  <p className="font-semibold text-navy">{order.total.toFixed(2)} KM</p>
                   <p className="text-xs text-gray-400">{formatDate(order.created_at)}</p>
                 </div>
               </div>
@@ -289,9 +291,21 @@ export default function Orders() {
                         );
                       })}
                     </div>
-                    <div className="flex justify-between mt-3 pt-3 border-t border-gray-100">
-                      <span className="text-sm text-gray-500">Total</span>
-                      <span className="font-semibold text-navy">{order.subtotal.toFixed(2)} KM</span>
+                    <div className="flex flex-col gap-1.5 mt-3 pt-3 border-t border-gray-100">
+                      <div className="flex justify-between">
+                        <span className="text-sm text-gray-500">Subtotal</span>
+                        <span className="text-sm text-navy">{order.subtotal.toFixed(2)} KM</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-sm text-gray-500">Shipping</span>
+                        <span className={`text-sm ${order.shipping_cost === 0 ? "text-green-600 font-medium" : "text-navy"}`}>
+                          {order.shipping_cost === 0 ? "Free" : `${order.shipping_cost.toFixed(2)} KM`}
+                        </span>
+                      </div>
+                      <div className="flex justify-between pt-2 border-t border-gray-100 mt-0.5">
+                        <span className="text-sm font-semibold text-navy">Total</span>
+                        <span className="font-semibold text-navy">{order.total.toFixed(2)} KM</span>
+                      </div>
                     </div>
                   </div>
                 </div>

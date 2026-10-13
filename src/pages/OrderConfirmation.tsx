@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useParams, useNavigate, useSearchParams } from "react-router-dom";
+import { useParams, useNavigate, useSearchParams, useLocation } from "react-router-dom";
 import { CheckCircle, Truck, Building2, Copy, Check } from "lucide-react";
 import { supabase } from "../lib/supabase";
 import { useLang } from "../context/LanguageContext";
@@ -11,11 +11,21 @@ type BankSettings = {
   bank_note: string | null;
 };
 
+type OrderAmounts = {
+  subtotal: number;
+  shippingCost: number;
+  orderTotal: number;
+};
+
 export default function OrderConfirmation() {
   const { orderNumber } = useParams<{ orderNumber: string }>();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const { tr } = useLang();
+  const location = useLocation();
+  const { lang, tr } = useLang();
+
+  const amounts = (location.state as OrderAmounts | null);
+  const fmtKm = (n: number) => lang === "bs" ? n.toFixed(2).replace(".", ",") : n.toFixed(2);
 
   const payment = searchParams.get("payment") as "cod" | "bank_transfer" | null;
   const [bank, setBank] = useState<BankSettings | null>(null);
@@ -60,6 +70,27 @@ export default function OrderConfirmation() {
               <span className="text-xl font-semibold text-navy tracking-wide">{orderNumber}</span>
             </div>
           </div>
+
+          {/* Order totals — shown when amounts are passed from checkout */}
+          {amounts && (
+            <div className="bg-white rounded-2xl p-6 border border-gray-100 flex flex-col gap-2.5">
+              <h3 className="text-sm font-semibold text-navy mb-0.5">{tr("checkout_summary")}</h3>
+              <div className="flex justify-between text-sm">
+                <span className="text-gray-500">{tr("checkout_subtotal")}</span>
+                <span className="text-navy font-medium">{fmtKm(amounts.subtotal)} KM</span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-gray-500">{tr("checkout_shipping")}</span>
+                <span className={amounts.shippingCost === 0 ? "text-green-600 font-semibold text-sm" : "text-navy font-medium text-sm"}>
+                  {amounts.shippingCost === 0 ? tr("shipping_free") : `${fmtKm(amounts.shippingCost)} KM`}
+                </span>
+              </div>
+              <div className="flex justify-between pt-2.5 border-t border-gray-100 mt-0.5">
+                <span className="font-semibold text-navy">{tr("checkout_total")}</span>
+                <span className="font-semibold text-navy text-lg">{fmtKm(amounts.orderTotal)} KM</span>
+              </div>
+            </div>
+          )}
 
           {/* Payment info */}
           {payment === "bank_transfer" ? (
