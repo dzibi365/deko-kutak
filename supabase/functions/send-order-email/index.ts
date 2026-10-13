@@ -18,26 +18,74 @@ const cors = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+// Escapes the five characters with special meaning in HTML so that any
+// customer-supplied value is rendered as literal text rather than markup.
+// Apply to every untrusted string before embedding it in a template literal.
+function h(s: string | null | undefined): string {
+  if (s == null) return "";
+  return String(s)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
 
+  const supabase = createClient(
+    Deno.env.get("SUPABASE_URL")!,
+    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+  );
+
+  // Track the claimed order ID so we can reset email_sent_at on SMTP failure,
+  // allowing a retry with the same token.
+  let claimedOrderId: number | null = null;
+
   try {
-    const { orderNumber, lang: rawLang } = await req.json();
+    const { emailToken, lang: rawLang } = await req.json();
     // Validate lang — default to Bosnian
     const lang: "en" | "bs" = rawLang === "en" ? "en" : "bs";
 
-    const supabase = createClient(
-      Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
-    );
+    // Reject obviously malformed tokens before touching the database.
+    if (!emailToken || typeof emailToken !== "string") {
+      return new Response(JSON.stringify({ success: true }), { headers: cors });
+    }
 
-    const [{ data: order }, { data: settings }] = await Promise.all([
-      supabase.from("orders").select("*").eq("order_number", orderNumber).single(),
-      supabase.from("store_settings").select("*").eq("id", 1).single(),
-    ]);
+    // Check email settings before claiming the token so we don't permanently
+    // consume a token when email delivery is simply disabled in store settings.
+    const { data: settings } = await supabase
+      .from("store_settings")
+      .select("*")
+      .eq("id", 1)
+      .single();
 
-    if (!order) return new Response(JSON.stringify({ error: "Order not found" }), { status: 404, headers: cors });
-    if (!settings?.email_enabled) return new Response(JSON.stringify({ skipped: true }), { headers: cors });
+    if (!settings?.email_enabled) {
+      return new Response(JSON.stringify({ success: true }), { headers: cors });
+    }
+
+    // Atomically claim the token.  The UPDATE only matches rows where the
+    // token exists AND email_sent_at IS NULL, so concurrent duplicate requests
+    // race safely: only one UPDATE wins; the other gets an empty result.
+    // service_role bypasses RLS so this works for both guest and authenticated
+    // orders.
+    const { data: claimed } = await supabase
+      .from("orders")
+      .update({ email_sent_at: new Date().toISOString() })
+      .eq("email_token", emailToken)
+      .is("email_sent_at", null)
+      .select("*");
+
+    const order = claimed?.[0];
+    if (!order) {
+      // Token not found, already used, or no matching row — always return
+      // success to avoid leaking whether a given token corresponds to a real
+      // order (prevents oracle-style enumeration).
+      return new Response(JSON.stringify({ success: true }), { headers: cors });
+    }
+
+    claimedOrderId = order.id as number;
 
     const transporter = nodemailer.createTransport({
       host: SMTP_HOST,
@@ -62,7 +110,7 @@ serve(async (req) => {
       await transporter.sendMail({
         from: `"${SMTP_FROM_NAME}" <${SMTP_FROM_EMAIL}>`,
         to: settings.owner_email,
-        subject: `Nova narudžba — ${order.order_number} (${order.customer_name})`,
+        subject: `Nova narudžba — ${order.order_number} (${h(order.customer_name as string)})`,
         html: ownerEmail(order, storeName),
       });
     }
@@ -70,6 +118,14 @@ serve(async (req) => {
     return new Response(JSON.stringify({ success: true }), { headers: { ...cors, "Content-Type": "application/json" } });
   } catch (err) {
     console.error(err);
+    // Reset the claimed email_sent_at so a retry with the same token is possible
+    // after a transient SMTP or network failure.
+    if (claimedOrderId !== null) {
+      await supabase
+        .from("orders")
+        .update({ email_sent_at: null })
+        .eq("id", claimedOrderId);
+    }
     return new Response(JSON.stringify({ error: String(err) }), { status: 500, headers: cors });
   }
 });
@@ -151,11 +207,13 @@ function customizationsHtml(
   const entries = Object.entries(customizations).filter(([, v]) => v);
   if (entries.length === 0) return "";
   const rows = entries.map(([label, value]) => {
-    // Legacy: inline image for publicly-accessible CDN URLs
+    // Legacy: inline image for publicly-accessible CDN URLs.
+    // h() applied to label (used in alt attribute) and value (used in href/src).
     if (isImageUrl(value)) {
-      return `<tr><td style="padding:4px 0;font-size:12px;color:#888;vertical-align:top;padding-right:8px;white-space:nowrap;">${label}:</td><td style="padding:4px 0;"><a href="${value}" style="display:inline-block;"><img src="${value}" alt="${label}" width="120" style="border-radius:8px;border:1px solid #e5e5e5;display:block;" /></a></td></tr>`;
+      return `<tr><td style="padding:4px 0;font-size:12px;color:#888;vertical-align:top;padding-right:8px;white-space:nowrap;">${h(label)}:</td><td style="padding:4px 0;"><a href="${h(value)}" style="display:inline-block;"><img src="${h(value)}" alt="${h(label)}" width="120" style="border-radius:8px;border:1px solid #e5e5e5;display:block;" /></a></td></tr>`;
     }
-    // New private-upload paths: show text indicator; admin email adds panel link
+    // New private-upload paths: show text indicator; admin email adds panel link.
+    // adminOrdersUrl is from PUBLIC_SITE_URL env var (admin-controlled), not user input.
     if (isStoragePath(value)) {
       const photoText = lang === "bs"
         ? "📷 Foto priložena uz narudžbu"
@@ -163,9 +221,10 @@ function customizationsHtml(
       const linkHtml = adminOrdersUrl
         ? `<br><a href="${adminOrdersUrl}" style="font-size:11px;color:#1a2744;text-decoration:underline;margin-top:2px;display:inline-block;">Pogledaj fotografiju u admin panelu &rarr;</a>`
         : "";
-      return `<tr><td style="padding:4px 0;font-size:12px;color:#888;vertical-align:top;padding-right:8px;white-space:nowrap;">${label}:</td><td style="padding:4px 0;font-size:12px;color:#444;">${photoText}${linkHtml}</td></tr>`;
+      return `<tr><td style="padding:4px 0;font-size:12px;color:#888;vertical-align:top;padding-right:8px;white-space:nowrap;">${h(label)}:</td><td style="padding:4px 0;font-size:12px;color:#444;">${photoText}${linkHtml}</td></tr>`;
     }
-    return `<tr><td style="padding:2px 0;font-size:12px;color:#888;vertical-align:top;padding-right:8px;white-space:nowrap;">${label}:</td><td style="padding:2px 0;font-size:12px;color:#444;">${value}</td></tr>`;
+    // Plain-text customization value — escape both label and value.
+    return `<tr><td style="padding:2px 0;font-size:12px;color:#888;vertical-align:top;padding-right:8px;white-space:nowrap;">${h(label)}:</td><td style="padding:2px 0;font-size:12px;color:#444;">${h(value)}</td></tr>`;
   }).join("");
   return `<table style="border-collapse:collapse;margin-top:6px;">${rows}</table>`;
 }
@@ -173,13 +232,15 @@ function customizationsHtml(
 function itemsTable(items: OrderItem[], lang: "en" | "bs", adminOrdersUrl: string | null) {
   const t = emailT[lang];
   const rows = items.map((item) => {
+    // Product names are stored client-side in the items JSONB and may have
+    // been modified by a malicious client; escape them.
     const name = lang === "bs"
       ? (item.name_bs ?? item.name_en ?? item.name)
       : (item.name_en ?? item.name);
     return `
     <tr>
       <td style="padding:10px 0;border-bottom:1px solid #f0efe8;font-size:14px;color:#1a2744;vertical-align:top;">
-        ${name}
+        ${h(name)}
         ${item.customizations ? customizationsHtml(item.customizations, lang, adminOrdersUrl) : ""}
       </td>
       <td style="padding:10px 0;border-bottom:1px solid #f0efe8;font-size:14px;color:#888;text-align:center;vertical-align:top;">×${item.quantity}</td>
@@ -244,14 +305,15 @@ function emailWrapper(storeName: string, content: string, lang: "en" | "bs") {
 function customerEmail(order: Record<string, unknown>, settings: Record<string, unknown>, storeName: string, lang: "en" | "bs") {
   const t = emailT[lang];
   const items = order.items as OrderItem[];
-  const firstName = (order.customer_name as string).split(" ")[0];
+  // h() applied so that names like "O'Brien" or "<Test>" display as plain text.
+  const firstName = h((order.customer_name as string).split(" ")[0]);
   return emailWrapper(storeName, `
     <h1 style="margin:0 0 6px;font-size:24px;color:#1a2744;font-weight:700;">${t.heading}</h1>
     <p style="margin:0 0 28px;font-size:15px;color:#666;">${t.greeting(firstName)}</p>
 
     <div style="background:#f5f5f0;border-radius:10px;padding:16px 20px;margin-bottom:28px;display:inline-block;">
       <p style="margin:0;font-size:11px;color:#aaa;text-transform:uppercase;letter-spacing:.08em;font-weight:600;">${t.orderNumber}</p>
-      <p style="margin:4px 0 0;font-size:20px;font-weight:700;color:#1a2744;letter-spacing:.02em;">${order.order_number}</p>
+      <p style="margin:4px 0 0;font-size:20px;font-weight:700;color:#1a2744;letter-spacing:.02em;">${h(order.order_number as string)}</p>
     </div>
 
     ${itemsTable(items, lang, null)}
@@ -267,10 +329,10 @@ function customerEmail(order: Record<string, unknown>, settings: Record<string, 
 
     <div style="border-top:1px solid #f0efe8;margin-top:28px;padding-top:20px;">
       <p style="margin:0 0 4px;font-size:13px;font-weight:700;color:#1a2744;text-transform:uppercase;letter-spacing:.05em;">${t.delivery}</p>
-      <p style="margin:0;font-size:14px;color:#555;line-height:1.6;">${order.customer_address}<br>${order.customer_city}${order.customer_postal ? ` ${order.customer_postal}` : ""}</p>
+      <p style="margin:0;font-size:14px;color:#555;line-height:1.6;">${h(order.customer_address as string)}<br>${h(order.customer_city as string)}${order.customer_postal ? ` ${h(order.customer_postal as string)}` : ""}</p>
     </div>
 
-    ${order.note ? `<div style="margin-top:20px;"><p style="margin:0 0 4px;font-size:13px;font-weight:700;color:#1a2744;text-transform:uppercase;letter-spacing:.05em;">${t.note}</p><p style="margin:0;font-size:14px;color:#555;">${order.note}</p></div>` : ""}
+    ${order.note ? `<div style="margin-top:20px;"><p style="margin:0 0 4px;font-size:13px;font-weight:700;color:#1a2744;text-transform:uppercase;letter-spacing:.05em;">${t.note}</p><p style="margin:0;font-size:14px;color:#555;">${h(order.note as string)}</p></div>` : ""}
   `, lang);
 }
 
@@ -283,16 +345,16 @@ function ownerEmail(order: Record<string, unknown>, storeName: string) {
 
     <div style="background:#f5f5f0;border-radius:10px;padding:16px 20px;margin-bottom:24px;">
       <p style="margin:0;font-size:11px;color:#aaa;text-transform:uppercase;letter-spacing:.08em;font-weight:600;">Broj narudžbe</p>
-      <p style="margin:4px 0 0;font-size:20px;font-weight:700;color:#1a2744;">${order.order_number}</p>
+      <p style="margin:4px 0 0;font-size:20px;font-weight:700;color:#1a2744;">${h(order.order_number as string)}</p>
     </div>
 
     <div style="margin-bottom:24px;">
       <p style="margin:0 0 10px;font-size:13px;font-weight:700;color:#1a2744;text-transform:uppercase;letter-spacing:.05em;">Kupac</p>
       <p style="margin:0;font-size:14px;color:#555;line-height:1.8;">
-        <strong>${order.customer_name}</strong><br>
-        ${order.customer_email}<br>
-        ${order.customer_phone ? `${order.customer_phone}<br>` : ""}
-        ${order.customer_address}, ${order.customer_city}${order.customer_postal ? ` ${order.customer_postal}` : ""}
+        <strong>${h(order.customer_name as string)}</strong><br>
+        ${h(order.customer_email as string)}<br>
+        ${order.customer_phone ? `${h(order.customer_phone as string)}<br>` : ""}
+        ${h(order.customer_address as string)}, ${h(order.customer_city as string)}${order.customer_postal ? ` ${h(order.customer_postal as string)}` : ""}
       </p>
     </div>
 
@@ -310,7 +372,7 @@ function ownerEmail(order: Record<string, unknown>, storeName: string) {
       <p style="margin:0;font-size:14px;color:#555;">
         <strong>Plaćanje:</strong> ${order.payment_method === "cod" ? "Pouzećem" : "Uplata na račun"}
       </p>
-      ${order.note ? `<p style="margin:8px 0 0;font-size:14px;color:#555;"><strong>Napomena:</strong> ${order.note}</p>` : ""}
+      ${order.note ? `<p style="margin:8px 0 0;font-size:14px;color:#555;"><strong>Napomena:</strong> ${h(order.note as string)}</p>` : ""}
     </div>
   `, "bs");
 }

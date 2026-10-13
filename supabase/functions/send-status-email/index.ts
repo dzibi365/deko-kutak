@@ -14,6 +14,18 @@ const cors = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+// Escapes the five characters with special meaning in HTML so that any
+// customer-supplied value is rendered as literal text rather than markup.
+function h(s: string | null | undefined): string {
+  if (s == null) return "";
+  return String(s)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
 
@@ -81,7 +93,8 @@ serve(async (req) => {
     notificationId = inserted.id;
     const storeName = settings.store_name ?? "Deko Kutak";
     const t = statusT[lang][notificationType];
-    const firstName = order.customer_name.split(" ")[0];
+    // h() applied: customer_name is customer-supplied and could contain HTML.
+    const firstName = h(order.customer_name.split(" ")[0]);
 
     // Send the email
     const transporter = nodemailer.createTransport({
@@ -167,6 +180,8 @@ type StatusStrings = {
   body: (name: string, orderNo: string) => string;
 };
 
+// firstName must be HTML-escaped by the caller before passing here.
+// orderNumber is application-generated (DK-YYYY-NNNN) and safe as-is.
 function statusEmail(
   storeName: string,
   orderNumber: string,

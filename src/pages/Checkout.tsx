@@ -56,11 +56,17 @@ export default function Checkout() {
     setPlacing(true);
 
     const orderNumber = generateOrderNumber();
+    // One-time token that authorises exactly one call to send-order-email.
+    // Generated client-side, stored with the order, and consumed atomically by
+    // the Edge Function.  A random 128-bit UUID cannot be guessed by a third
+    // party, so only the client that created this order can trigger its email.
+    const emailToken = crypto.randomUUID();
     // Strip uploadTokens before persisting — tokens are client-only credentials
     // and must never be stored in the orders table or transmitted to the server.
     const orderItems = items.map(({ uploadTokens: _dropped, ...rest }) => rest);
     const { error: err } = await supabase.from("orders").insert({
       order_number: orderNumber,
+      email_token: emailToken,
       customer_name: form.name.trim(),
       customer_email: form.email.trim(),
       customer_phone: form.phone.trim() || null,
@@ -78,9 +84,10 @@ export default function Checkout() {
     setPlacing(false);
     if (err) { setError(err.message); return; }
 
-    // Fire invoice emails (non-blocking — don't wait or fail order if this errors)
+    // Fire invoice emails (non-blocking — don't wait or fail order if this errors).
+    // Uses the one-time emailToken rather than the guessable order number.
     supabase.functions.invoke("send-order-email", {
-      body: { orderNumber, lang },
+      body: { emailToken, lang },
     }).catch(() => {/* silent — order already placed */});
 
     clearCart();
