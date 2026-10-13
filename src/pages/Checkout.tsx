@@ -109,14 +109,22 @@ export default function Checkout() {
       body: { emailToken, lang },
     }).catch(() => {/* silent — order already placed */});
 
+    // Persist amounts in sessionStorage so the confirmation page can restore
+    // them after a page refresh.  Falls back gracefully if sessionStorage is
+    // unavailable (private-browsing restrictions, storage quota, etc.).
+    const confirmedAmounts = {
+      subtotal: total,
+      shippingCost: centsToKm(shipping.shippingCents),
+      orderTotal: centsToKm(shipping.totalCents),
+    };
+    try {
+      sessionStorage.setItem(`dk-order-${orderNumber}`, JSON.stringify(confirmedAmounts));
+    } catch { /* non-fatal */ }
+
     clearCart();
     closeCart();
     navigate(`/order-confirmation/${orderNumber}?payment=${payment}`, {
-      state: {
-        subtotal: total,
-        shippingCost: centsToKm(shipping.shippingCents),
-        orderTotal: centsToKm(shipping.totalCents),
-      },
+      state: confirmedAmounts,
     });
   }
 

@@ -24,12 +24,60 @@ export default function OrderConfirmation() {
   const location = useLocation();
   const { lang, tr } = useLang();
 
-  const amounts = (location.state as OrderAmounts | null);
+  // Tier 1: amounts passed directly from Checkout.tsx via router state.
+  // Cleared by React Router on page refresh — tiers 2 and 3 cover that case.
+  const stateAmounts = (location.state as OrderAmounts | null);
+
+  // Tier 2 + 3: recovered after refresh
+  const [fetchedAmounts, setFetchedAmounts] = useState<OrderAmounts | null>(null);
+
+  const displayAmounts = stateAmounts ?? fetchedAmounts;
   const fmtKm = (n: number) => lang === "bs" ? n.toFixed(2).replace(".", ",") : n.toFixed(2);
 
   const payment = searchParams.get("payment") as "cod" | "bank_transfer" | null;
   const [bank, setBank] = useState<BankSettings | null>(null);
   const [copied, setCopied] = useState(false);
+
+  // Recover amounts after a page refresh.
+  useEffect(() => {
+    if (stateAmounts || !orderNumber) return;
+
+    // Tier 2 — sessionStorage (stored by Checkout.tsx on successful submit).
+    // Survives F5 refresh within the same browser tab.  Works for both guest
+    // and authenticated checkouts.
+    try {
+      const raw = sessionStorage.getItem(`dk-order-${orderNumber}`);
+      if (raw) {
+        const parsed = JSON.parse(raw) as OrderAmounts;
+        if (typeof parsed.subtotal === "number" && typeof parsed.orderTotal === "number") {
+          setFetchedAmounts(parsed);
+          return;
+        }
+      }
+    } catch { /* ignore — fall through to tier 3 */ }
+
+    // Tier 3 — DB fetch for authenticated users.
+    // The "customer read own orders" RLS policy (user_id = auth.uid()) ensures
+    // only the order owner can read their row.  Anon users have no SELECT
+    // policy and will receive an empty result — no data is exposed.
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (!session) return;
+      supabase
+        .from("orders")
+        .select("subtotal, shipping_cost, total")
+        .eq("order_number", orderNumber)
+        .single()
+        .then(({ data }) => {
+          if (data) {
+            setFetchedAmounts({
+              subtotal: (data as { subtotal: number }).subtotal,
+              shippingCost: (data as { shipping_cost: number }).shipping_cost,
+              orderTotal: (data as { total: number }).total,
+            });
+          }
+        });
+    });
+  }, [stateAmounts, orderNumber]);
 
   useEffect(() => {
     if (payment === "bank_transfer") {
@@ -71,23 +119,23 @@ export default function OrderConfirmation() {
             </div>
           </div>
 
-          {/* Order totals — shown when amounts are passed from checkout */}
-          {amounts && (
+          {/* Order totals — fresh navigation, sessionStorage recovery, or DB fetch */}
+          {displayAmounts && (
             <div className="bg-white rounded-2xl p-6 border border-gray-100 flex flex-col gap-2.5">
               <h3 className="text-sm font-semibold text-navy mb-0.5">{tr("checkout_summary")}</h3>
               <div className="flex justify-between text-sm">
                 <span className="text-gray-500">{tr("checkout_subtotal")}</span>
-                <span className="text-navy font-medium">{fmtKm(amounts.subtotal)} KM</span>
+                <span className="text-navy font-medium">{fmtKm(displayAmounts.subtotal)} KM</span>
               </div>
               <div className="flex justify-between text-sm">
                 <span className="text-gray-500">{tr("checkout_shipping")}</span>
-                <span className={amounts.shippingCost === 0 ? "text-green-600 font-semibold text-sm" : "text-navy font-medium text-sm"}>
-                  {amounts.shippingCost === 0 ? tr("shipping_free") : `${fmtKm(amounts.shippingCost)} KM`}
+                <span className={displayAmounts.shippingCost === 0 ? "text-green-600 font-semibold text-sm" : "text-navy font-medium text-sm"}>
+                  {displayAmounts.shippingCost === 0 ? tr("shipping_free") : `${fmtKm(displayAmounts.shippingCost)} KM`}
                 </span>
               </div>
               <div className="flex justify-between pt-2.5 border-t border-gray-100 mt-0.5">
                 <span className="font-semibold text-navy">{tr("checkout_total")}</span>
-                <span className="font-semibold text-navy text-lg">{fmtKm(amounts.orderTotal)} KM</span>
+                <span className="font-semibold text-navy text-lg">{fmtKm(displayAmounts.orderTotal)} KM</span>
               </div>
             </div>
           )}
