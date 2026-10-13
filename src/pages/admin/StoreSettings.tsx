@@ -35,6 +35,8 @@ type Settings = {
   promo_banner_en: string;
   promo_banner_bs: string;
   promo_banner_enabled: boolean;
+  shipping_cost: string;
+  free_shipping_threshold: string;
 };
 
 const empty: Settings = {
@@ -53,6 +55,7 @@ const empty: Settings = {
   topbar_right_text_en: "", topbar_right_text_bs: "",
   contact_viber: "", contact_whatsapp: "",
   promo_banner_en: "", promo_banner_bs: "", promo_banner_enabled: true,
+  shipping_cost: "10.00", free_shipping_threshold: "100.00",
 };
 
 export default function StoreSettings() {
@@ -112,6 +115,8 @@ export default function StoreSettings() {
           promo_banner_en: data.promo_banner_en ?? "",
           promo_banner_bs: data.promo_banner_bs ?? "",
           promo_banner_enabled: data.promo_banner_enabled ?? true,
+          shipping_cost: (data.shipping_cost ?? 10).toFixed(2),
+          free_shipping_threshold: (data.free_shipping_threshold ?? 100).toFixed(2),
         });
       }
       setLoading(false);
@@ -167,6 +172,20 @@ export default function StoreSettings() {
   async function handleSave() {
     setSaving(true);
     setError(null);
+
+    const shippingCostVal = parseFloat(form.shipping_cost);
+    const thresholdVal = parseFloat(form.free_shipping_threshold);
+    if (isNaN(shippingCostVal) || shippingCostVal < 0) {
+      setError("Shipping cost must be 0 or greater.");
+      setSaving(false);
+      return;
+    }
+    if (isNaN(thresholdVal) || thresholdVal <= 0) {
+      setError("Free shipping threshold must be greater than 0.");
+      setSaving(false);
+      return;
+    }
+
     const { error: err } = await supabase.from("store_settings").upsert({
       id: 1,
       store_name: form.store_name || "Deko Kutak",
@@ -201,6 +220,8 @@ export default function StoreSettings() {
       promo_banner_en: form.promo_banner_en || null,
       promo_banner_bs: form.promo_banner_bs || null,
       promo_banner_enabled: form.promo_banner_enabled,
+      shipping_cost: shippingCostVal,
+      free_shipping_threshold: thresholdVal,
       updated_at: new Date().toISOString(),
     });
     setSaving(false);
@@ -794,6 +815,62 @@ export default function StoreSettings() {
             </div>
           </div>
         )}
+      </div>
+
+      {/* Shipping */}
+      <div className="bg-white border border-gray-200 rounded-xl p-6 flex flex-col gap-4">
+        <h2 className="font-semibold text-navy text-sm">Shipping</h2>
+        <p className="text-xs text-gray-400 -mt-2">Changes take effect immediately for all new orders. Existing orders are not affected.</p>
+
+        <Field label="Shipping Cost (KM) / Cijena dostave">
+          <div className="relative">
+            <input
+              type="number"
+              min="0"
+              step="0.01"
+              value={form.shipping_cost}
+              onChange={(e) => set("shipping_cost", e.target.value)}
+              placeholder="10.00"
+              className={inputCls}
+            />
+          </div>
+          <p className="text-xs text-gray-400">Flat fee charged per order. Set to 0 for always-free shipping.</p>
+        </Field>
+
+        <Field label="Free Shipping Threshold (KM) / Prag besplatne dostave">
+          <div className="relative">
+            <input
+              type="number"
+              min="0.01"
+              step="0.01"
+              value={form.free_shipping_threshold}
+              onChange={(e) => set("free_shipping_threshold", e.target.value)}
+              placeholder="100.00"
+              className={inputCls}
+            />
+          </div>
+          <p className="text-xs text-gray-400">Orders with a product subtotal at or above this amount qualify for free shipping.</p>
+        </Field>
+
+        {/* Live preview */}
+        {(() => {
+          const cost = parseFloat(form.shipping_cost);
+          const threshold = parseFloat(form.free_shipping_threshold);
+          if (isNaN(cost) || isNaN(threshold) || cost < 0 || threshold <= 0) return null;
+          return (
+            <div className="bg-gray-50 border border-gray-100 rounded-xl p-4 flex flex-col gap-2">
+              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Preview</p>
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-gray-500">Below {threshold.toFixed(2)} KM</span>
+                <span className="font-semibold text-navy">+{cost.toFixed(2)} KM shipping</span>
+              </div>
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-gray-500">{threshold.toFixed(2)} KM or more</span>
+                <span className="font-semibold text-green-600">Free shipping</span>
+              </div>
+            </div>
+          );
+        })()}
       </div>
 
       {/* Bank details */}

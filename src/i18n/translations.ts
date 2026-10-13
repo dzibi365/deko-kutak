@@ -165,6 +165,15 @@ export const t = {
     search_no_results_title: "No products found",
     search_no_results_sub: "Try searching for something else.",
 
+    // Shipping
+    shipping_free: "Free",
+    shipping_label: "Shipping",
+    cart_free_shipping_progress: "Add {remaining} more for free shipping!",
+    cart_free_shipping_unlocked: "You've unlocked free shipping!",
+    checkout_subtotal: "Subtotal",
+    checkout_shipping: "Shipping",
+    checkout_total: "Total",
+
     // Load more
     load_more: "Load more products",
 
@@ -347,6 +356,15 @@ export const t = {
     search_clear: "Očisti pretragu",
     search_no_results_title: "Nema pronađenih proizvoda",
     search_no_results_sub: "Pokušajte s drugim pojmom za pretragu.",
+
+    // Shipping
+    shipping_free: "Besplatno",
+    shipping_label: "Dostava",
+    cart_free_shipping_progress: "Još {remaining} KM do besplatne dostave!",
+    cart_free_shipping_unlocked: "Ostvarili ste besplatnu dostavu!",
+    checkout_subtotal: "Međuzbir",
+    checkout_shipping: "Dostava",
+    checkout_total: "Ukupno",
 
     // Load more
     load_more: "Učitaj još proizvoda",

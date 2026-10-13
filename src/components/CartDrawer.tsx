@@ -2,14 +2,24 @@ import { useNavigate } from "react-router-dom";
 import { X, Minus, Plus, Trash2, ShoppingBag } from "lucide-react";
 import { useCart } from "../context/CartContext";
 import { useLang } from "../context/LanguageContext";
+import { useSiteSettings } from "../context/SiteSettingsContext";
 import { localName } from "../lib/supabase";
 import { CustomerImageDisplay } from "./CustomerImageDisplay";
 import { classifyImageValue } from "../lib/customerUpload";
+import { calcShipping, centsToKm } from "../lib/shipping";
 
 export function CartDrawer() {
   const { items, count, total, isOpen, closeCart, removeItem, updateQty } = useCart();
   const { lang, tr } = useLang();
+  const { shipping_cost, free_shipping_threshold } = useSiteSettings();
   const navigate = useNavigate();
+
+  const shipping = calcShipping(total, shipping_cost, free_shipping_threshold);
+
+  function fmtKm(cents: number): string {
+    const km = centsToKm(cents).toFixed(2);
+    return lang === "bs" ? km.replace(".", ",") : km;
+  }
 
   return (
     <>
@@ -143,6 +153,17 @@ export function CartDrawer() {
 
             {/* Footer */}
             <div className="px-6 py-5 border-t border-gray-100 flex flex-col gap-4">
+              {/* Free shipping progress */}
+              {shipping.isFree ? (
+                <p className="text-xs font-semibold text-green-600 text-center py-1.5 px-3 bg-green-50 rounded-lg">
+                  {tr("cart_free_shipping_unlocked")}
+                </p>
+              ) : (
+                <p className="text-xs text-gray-500 text-center">
+                  {tr("cart_free_shipping_progress").replace("{remaining}", `${fmtKm(shipping.remainingCents)} KM`)}
+                </p>
+              )}
+
               <div className="flex items-center justify-between">
                 <span className="text-sm text-gray-500">{tr("cart_subtotal")}</span>
                 <span className="text-xl font-semibold text-navy">{total.toFixed(2)} KM</span>
