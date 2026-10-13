@@ -8,19 +8,24 @@ const SMTP_USER = Deno.env.get("SMTP_USER")!;
 const SMTP_PASS = Deno.env.get("SMTP_PASS")!;
 const SMTP_FROM_EMAIL = Deno.env.get("SMTP_FROM_EMAIL")!;
 const SMTP_FROM_NAME = Deno.env.get("SMTP_FROM_NAME") ?? "Deko Kutak";
-// Optional — set to the storefront origin (e.g. https://dekokutak.ba).
-// Used to generate an admin link in owner notification emails.
-// If unset, the link is omitted and only the text indicator is shown.
 const PUBLIC_SITE_URL = (Deno.env.get("PUBLIC_SITE_URL") ?? "").replace(/\/$/, "");
+
+const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
+const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
 const cors = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-// Escapes the five characters with special meaning in HTML so that any
-// customer-supplied value is rendered as literal text rather than markup.
-// Apply to every untrusted string before embedding it in a template literal.
+function ok(body: unknown = { success: true }): Response {
+  return new Response(JSON.stringify(body), {
+    headers: { ...cors, "Content-Type": "application/json" },
+  });
+}
+
+// Escapes characters with special meaning in HTML so customer-supplied
+// values render as literal text rather than markup.
 function h(s: string | null | undefined): string {
   if (s == null) return "";
   return String(s)
@@ -31,61 +36,150 @@ function h(s: string | null | undefined): string {
     .replace(/'/g, "&#39;");
 }
 
+// ─── Per-email send helper ─────────────────────────────────────────────────────
+//
+// Calls claim_confirmation_notification() to atomically acquire the send slot
+// for one email type.  Returns { claimed: boolean, sent: boolean }.
+//
+// If the slot is already 'sent' (or held by a recent 'pending'), claimed=false
+// and nothing is sent.  If sending fails, the notification is marked 'failed'
+// so an admin retry can reclaim it later.
+
+async function sendTracked(
+  supabase: ReturnType<typeof createClient>,
+  transporter: ReturnType<typeof nodemailer.createTransport>,
+  orderId: number,
+  type: "confirmation_customer" | "confirmation_owner",
+  recipientEmail: string,
+  recipientLang: "en" | "bs",
+  mailOptions: { subject: string; html: string },
+  fromLine: string,
+): Promise<boolean> {
+  const { data: notifId, error: claimErr } = await supabase.rpc(
+    "claim_confirmation_notification",
+    {
+      p_order_id:        orderId,
+      p_type:            type,
+      p_recipient_email: recipientEmail,
+      p_lang:            recipientLang,
+    },
+  );
+
+  if (claimErr) {
+    console.error(`claim error (${type}):`, claimErr);
+    return false;
+  }
+
+  if (notifId === null) {
+    // Already sent or currently in-flight — nothing to do.
+    return false;
+  }
+
+  try {
+    await transporter.sendMail({
+      from: fromLine,
+      to: recipientEmail,
+      subject: mailOptions.subject,
+      html: mailOptions.html,
+    });
+    await supabase.from("order_notifications")
+      .update({ status: "sent" })
+      .eq("id", notifId);
+    return true;
+  } catch (err) {
+    console.error(`send error (${type}):`, err);
+    await supabase.from("order_notifications")
+      .update({ status: "failed", error_message: String(err) })
+      .eq("id", notifId);
+    return false;
+  }
+}
+
+// ─── Main handler ──────────────────────────────────────────────────────────────
+
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
 
-  const supabase = createClient(
-    Deno.env.get("SUPABASE_URL")!,
-    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
-  );
-
-  // Track the claimed order ID so we can reset email_sent_at on SMTP failure,
-  // allowing a retry with the same token.
-  let claimedOrderId: number | null = null;
+  const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY);
 
   try {
-    const { emailToken, lang: rawLang } = await req.json();
-    // Validate lang — default to Bosnian
-    const lang: "en" | "bs" = rawLang === "en" ? "en" : "bs";
+    const body = await req.json();
+    const lang: "en" | "bs" = body.lang === "en" ? "en" : "bs";
 
-    // Reject obviously malformed tokens before touching the database.
-    if (!emailToken || typeof emailToken !== "string") {
-      return new Response(JSON.stringify({ success: true }), { headers: cors });
-    }
-
-    // Check email settings before claiming the token so we don't permanently
-    // consume a token when email delivery is simply disabled in store settings.
+    // ── Fetch store settings early (needed by both code paths) ────────────────
     const { data: settings } = await supabase
       .from("store_settings")
       .select("*")
       .eq("id", 1)
       .single();
 
-    if (!settings?.email_enabled) {
-      return new Response(JSON.stringify({ success: true }), { headers: cors });
+    let order: Record<string, unknown> | null = null;
+
+    // ── Admin retry path ───────────────────────────────────────────────────────
+    // Accepts { adminRetryOrderId: number } — requires admin JWT.
+    // Retries any failed or unsent confirmation emails for the given order.
+    // Does NOT require or consume email_token; idempotency is enforced by
+    // claim_confirmation_notification() in the DB.
+
+    if (body.adminRetryOrderId !== undefined) {
+      const authHeader = req.headers.get("Authorization") ?? "";
+      const jwt = authHeader.replace(/^Bearer\s+/i, "").trim();
+      const { data: { user }, error: authErr } = await supabase.auth.getUser(jwt);
+
+      if (authErr || !user || user.app_metadata?.role !== "admin") {
+        return new Response(
+          JSON.stringify({ error: "Forbidden" }),
+          { status: 403, headers: cors },
+        );
+      }
+
+      const { data: o, error: orderErr } = await supabase
+        .from("orders")
+        .select("*")
+        .eq("id", body.adminRetryOrderId)
+        .single();
+
+      if (orderErr || !o) {
+        return new Response(
+          JSON.stringify({ error: "Order not found" }),
+          { status: 404, headers: cors },
+        );
+      }
+
+      order = o;
+
+    // ── Normal client path (one-time token) ────────────────────────────────────
+    // Accepts { emailToken: string, lang: "en"|"bs" }.
+    // Atomically claims email_sent_at so this token is consumed once.
+    // email_sent_at is NEVER reset on failure — per-email retry is tracked in
+    // order_notifications via claim_confirmation_notification().
+
+    } else {
+      const { emailToken } = body;
+      if (!emailToken || typeof emailToken !== "string") {
+        return ok();
+      }
+
+      // Guard: avoid consuming the token when email is disabled.
+      if (!settings?.email_enabled) {
+        return ok();
+      }
+
+      const { data: claimed } = await supabase
+        .from("orders")
+        .update({ email_sent_at: new Date().toISOString() })
+        .eq("email_token", emailToken)
+        .is("email_sent_at", null)
+        .select("*");
+
+      order = claimed?.[0] ?? null;
     }
 
-    // Atomically claim the token.  The UPDATE only matches rows where the
-    // token exists AND email_sent_at IS NULL, so concurrent duplicate requests
-    // race safely: only one UPDATE wins; the other gets an empty result.
-    // service_role bypasses RLS so this works for both guest and authenticated
-    // orders.
-    const { data: claimed } = await supabase
-      .from("orders")
-      .update({ email_sent_at: new Date().toISOString() })
-      .eq("email_token", emailToken)
-      .is("email_sent_at", null)
-      .select("*");
+    if (!order) return ok();
 
-    const order = claimed?.[0];
-    if (!order) {
-      // Token not found, already used, or no matching row — always return
-      // success to avoid leaking whether a given token corresponds to a real
-      // order (prevents oracle-style enumeration).
-      return new Response(JSON.stringify({ success: true }), { headers: cors });
-    }
+    if (!settings?.email_enabled) return ok();
 
-    claimedOrderId = order.id as number;
+    // ── Send emails ────────────────────────────────────────────────────────────
 
     const transporter = nodemailer.createTransport({
       host: SMTP_HOST,
@@ -95,38 +189,51 @@ serve(async (req) => {
     });
 
     const storeName = settings.store_name ?? "Deko Kutak";
-    const t = emailT[lang];
+    const fromLine = `"${SMTP_FROM_NAME}" <${SMTP_FROM_EMAIL}>`;
+    // Prefer the language stored on the order; fall back to the request lang.
+    const emailLang: "en" | "bs" = (order.lang as string) === "en" ? "en" : (lang === "en" ? "en" : "bs");
+    const t = emailT[emailLang];
 
-    // Send to customer
-    await transporter.sendMail({
-      from: `"${SMTP_FROM_NAME}" <${SMTP_FROM_EMAIL}>`,
-      to: order.customer_email,
-      subject: `${t.subject} ${order.order_number}`,
-      html: customerEmail(order, settings, storeName, lang),
-    });
+    const customerSent = await sendTracked(
+      supabase, transporter,
+      order.id as number,
+      "confirmation_customer",
+      order.customer_email as string,
+      emailLang,
+      {
+        subject: `${t.subject} ${order.order_number}`,
+        html: customerEmail(order, settings, storeName, emailLang),
+      },
+      fromLine,
+    );
 
-    // Send to owner (always in Bosnian)
+    let ownerSent = false;
     if (settings.owner_email) {
-      await transporter.sendMail({
-        from: `"${SMTP_FROM_NAME}" <${SMTP_FROM_EMAIL}>`,
-        to: settings.owner_email,
-        subject: `Nova narudžba — ${order.order_number} (${h(order.customer_name as string)})`,
-        html: ownerEmail(order, storeName),
-      });
+      ownerSent = await sendTracked(
+        supabase, transporter,
+        order.id as number,
+        "confirmation_owner",
+        settings.owner_email as string,
+        "bs",
+        {
+          subject: `Nova narudžba — ${order.order_number} (${h(order.customer_name as string)})`,
+          html: ownerEmail(order, storeName),
+        },
+        fromLine,
+      );
     }
 
-    return new Response(JSON.stringify({ success: true }), { headers: { ...cors, "Content-Type": "application/json" } });
+    return ok({ success: true, customer_sent: customerSent, owner_sent: ownerSent });
+
   } catch (err) {
-    console.error(err);
-    // Reset the claimed email_sent_at so a retry with the same token is possible
-    // after a transient SMTP or network failure.
-    if (claimedOrderId !== null) {
-      await supabase
-        .from("orders")
-        .update({ email_sent_at: null })
-        .eq("id", claimedOrderId);
-    }
-    return new Response(JSON.stringify({ error: String(err) }), { status: 500, headers: cors });
+    console.error("send-order-email error:", err);
+    // email_sent_at is intentionally NOT reset here.
+    // The token is consumed; per-email retry uses admin retry or a future
+    // scheduled function that calls with adminRetryOrderId.
+    return new Response(
+      JSON.stringify({ error: String(err) }),
+      { status: 500, headers: cors },
+    );
   }
 });
 
@@ -173,7 +280,7 @@ const emailT = {
   },
 } as const;
 
-// ─── Email templates ──────────────────────────────────────────────────────────
+// ─── Email templates ───────────────────────────────────────────────────────────
 
 type OrderItem = {
   name: string;
@@ -184,8 +291,6 @@ type OrderItem = {
   customizations?: Record<string, string>;
 };
 
-// Matches storage paths generated by the customer-upload Edge Function.
-// Format: <uuid-v4>.<jpg|jpeg|png|webp>
 const STORAGE_PATH_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\.(jpg|jpeg|png|webp)$/i;
 
@@ -197,8 +302,6 @@ function isStoragePath(val: string) {
   return STORAGE_PATH_RE.test(val);
 }
 
-// adminOrdersUrl: pass the full URL to /admin/orders for owner emails;
-// pass null for customer emails (no internal links in customer-facing copy).
 function customizationsHtml(
   customizations: Record<string, string>,
   lang: "en" | "bs",
@@ -207,13 +310,9 @@ function customizationsHtml(
   const entries = Object.entries(customizations).filter(([, v]) => v);
   if (entries.length === 0) return "";
   const rows = entries.map(([label, value]) => {
-    // Legacy: inline image for publicly-accessible CDN URLs.
-    // h() applied to label (used in alt attribute) and value (used in href/src).
     if (isImageUrl(value)) {
       return `<tr><td style="padding:4px 0;font-size:12px;color:#888;vertical-align:top;padding-right:8px;white-space:nowrap;">${h(label)}:</td><td style="padding:4px 0;"><a href="${h(value)}" style="display:inline-block;"><img src="${h(value)}" alt="${h(label)}" width="120" style="border-radius:8px;border:1px solid #e5e5e5;display:block;" /></a></td></tr>`;
     }
-    // New private-upload paths: show text indicator; admin email adds panel link.
-    // adminOrdersUrl is from PUBLIC_SITE_URL env var (admin-controlled), not user input.
     if (isStoragePath(value)) {
       const photoText = lang === "bs"
         ? "📷 Foto priložena uz narudžbu"
@@ -223,7 +322,6 @@ function customizationsHtml(
         : "";
       return `<tr><td style="padding:4px 0;font-size:12px;color:#888;vertical-align:top;padding-right:8px;white-space:nowrap;">${h(label)}:</td><td style="padding:4px 0;font-size:12px;color:#444;">${photoText}${linkHtml}</td></tr>`;
     }
-    // Plain-text customization value — escape both label and value.
     return `<tr><td style="padding:2px 0;font-size:12px;color:#888;vertical-align:top;padding-right:8px;white-space:nowrap;">${h(label)}:</td><td style="padding:2px 0;font-size:12px;color:#444;">${h(value)}</td></tr>`;
   }).join("");
   return `<table style="border-collapse:collapse;margin-top:6px;">${rows}</table>`;
@@ -232,8 +330,6 @@ function customizationsHtml(
 function itemsTable(items: OrderItem[], lang: "en" | "bs", adminOrdersUrl: string | null) {
   const t = emailT[lang];
   const rows = items.map((item) => {
-    // Product names are stored client-side in the items JSONB and may have
-    // been modified by a malicious client; escape them.
     const name = lang === "bs"
       ? (item.name_bs ?? item.name_en ?? item.name)
       : (item.name_en ?? item.name);
@@ -305,7 +401,6 @@ function emailWrapper(storeName: string, content: string, lang: "en" | "bs") {
 function customerEmail(order: Record<string, unknown>, settings: Record<string, unknown>, storeName: string, lang: "en" | "bs") {
   const t = emailT[lang];
   const items = order.items as OrderItem[];
-  // h() applied so that names like "O'Brien" or "<Test>" display as plain text.
   const firstName = h((order.customer_name as string).split(" ")[0]);
   return emailWrapper(storeName, `
     <h1 style="margin:0 0 6px;font-size:24px;color:#1a2744;font-weight:700;">${t.heading}</h1>
@@ -338,7 +433,6 @@ function customerEmail(order: Record<string, unknown>, settings: Record<string, 
 
 function ownerEmail(order: Record<string, unknown>, storeName: string) {
   const items = order.items as OrderItem[];
-  // Owner email stays in Bosnian
   return emailWrapper(storeName, `
     <h1 style="margin:0 0 6px;font-size:22px;color:#1a2744;font-weight:700;">Nova narudžba primljena</h1>
     <p style="margin:0 0 28px;font-size:15px;color:#666;">Nova narudžba je zaprimljena u vašoj prodavnici.</p>

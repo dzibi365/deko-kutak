@@ -82,7 +82,14 @@ export default function Checkout() {
     });
 
     setPlacing(false);
-    if (err) { setError(err.message); return; }
+    if (err) {
+      setError(
+        err.message?.includes("order_rate_limit_exceeded")
+          ? tr("checkout_rate_limit_error")
+          : err.message,
+      );
+      return;
+    }
 
     // Fire invoice emails (non-blocking — don't wait or fail order if this errors).
     // Uses the one-time emailToken rather than the guessable order number.

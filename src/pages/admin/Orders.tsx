@@ -80,6 +80,8 @@ export default function Orders() {
   const [expanded, setExpanded] = useState<number | null>(null);
   const [updatingId, setUpdatingId] = useState<number | null>(null);
   const [notifyingId, setNotifyingId] = useState<number | null>(null);
+  const [resendingId, setResendingId] = useState<number | null>(null);
+  const [resendResult, setResendResult] = useState<Record<number, string>>({});
   // Pending status per order — holds an unsaved dropdown selection
   const [pendingStatuses, setPendingStatuses] = useState<Record<number, string>>({});
 
@@ -113,6 +115,30 @@ export default function Orders() {
           body: { orderId: order.id, notificationType: newStatus },
         })
         .finally(() => setNotifyingId(null));
+    }
+  }
+
+  async function resendEmails(order: Order) {
+    setResendingId(order.id);
+    setResendResult((prev) => { const n = { ...prev }; delete n[order.id]; return n; });
+    try {
+      const { data } = await supabase.functions.invoke("send-order-email", {
+        body: { adminRetryOrderId: order.id },
+      });
+      const sent = [
+        data?.customer_sent ? "customer" : null,
+        data?.owner_sent ? "owner" : null,
+      ].filter(Boolean);
+      setResendResult((prev) => ({
+        ...prev,
+        [order.id]: sent.length > 0
+          ? `Sent: ${sent.join(", ")}`
+          : "No new emails sent (already delivered)",
+      }));
+    } catch {
+      setResendResult((prev) => ({ ...prev, [order.id]: "Failed — check EF logs" }));
+    } finally {
+      setResendingId(null);
     }
   }
 
@@ -206,6 +232,20 @@ export default function Orders() {
                           <p className="text-sm text-gray-600 bg-gray-50 rounded-lg px-3 py-2">{order.note}</p>
                         </div>
                       )}
+
+                      <div>
+                        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Emails</p>
+                        <button
+                          onClick={() => resendEmails(order)}
+                          disabled={resendingId === order.id}
+                          className="w-full py-2 border border-gray-200 text-sm text-navy rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-60"
+                        >
+                          {resendingId === order.id ? "Sending…" : "Resend confirmation emails"}
+                        </button>
+                        {resendResult[order.id] && (
+                          <p className="text-xs text-gray-500 mt-1.5">{resendResult[order.id]}</p>
+                        )}
+                      </div>
                     </div>
                   </div>
 
