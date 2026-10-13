@@ -8,7 +8,8 @@ type Props = {
   token: string | undefined;
   label: string;
   sizeClass?: string;
-  onExpiredChange?: (expired: boolean) => void;
+  onExpiredChange?: (unavailable: boolean) => void;
+  onLoadingChange?: (loading: boolean) => void;
 };
 
 export function CustomerImageDisplay({
@@ -17,26 +18,48 @@ export function CustomerImageDisplay({
   label,
   sizeClass = "w-20 h-20",
   onExpiredChange,
+  onLoadingChange,
 }: Props) {
-  const { lang } = useLang();
-  const { url, loading, expired } = useSignedImage(value, token);
+  const { tr } = useLang();
+  const { url, loading, expired, legacy } = useSignedImage(value, token);
 
-  // Use a ref so the effect only depends on `expired`, not on the callback identity.
+  // Use refs so effects only re-run when state values change, not when callback
+  // identity changes due to parent re-renders with inline function expressions.
   const onExpiredRef = useRef(onExpiredChange);
+  useEffect(() => { onExpiredRef.current = onExpiredChange; });
+
+  const onLoadingRef = useRef(onLoadingChange);
+  useEffect(() => { onLoadingRef.current = onLoadingChange; });
+
+  // Propagate unavailability to parent. Both expired (bad token) and legacy
+  // (old CDN URL — not a verified secure upload) block checkout.
   useEffect(() => {
-    onExpiredRef.current = onExpiredChange;
-  });
+    onExpiredRef.current?.(expired || legacy);
+  }, [expired, legacy]);
+
   useEffect(() => {
-    onExpiredRef.current?.(expired);
-  }, [expired]);
+    onLoadingRef.current?.(loading);
+  }, [loading]);
 
   if (classifyImageValue(value) === "other") return null;
 
   if (loading) {
     return (
+      <div className={`${sizeClass} rounded-lg border border-gray-200 bg-gray-100 animate-pulse`} />
+    );
+  }
+
+  // Legacy CDN URL — not a verified secure upload; user must re-upload.
+  if (legacy) {
+    return (
       <div
-        className={`${sizeClass} rounded-lg border border-gray-200 bg-gray-100 animate-pulse`}
-      />
+        className={`${sizeClass} rounded-lg border border-amber-200 bg-amber-50 flex items-center justify-center p-1 text-center`}
+        title={label}
+      >
+        <span className="text-[9px] leading-tight text-amber-600">
+          {tr("upload_photo_legacy")}
+        </span>
+      </div>
     );
   }
 
@@ -47,7 +70,7 @@ export function CustomerImageDisplay({
         title={label}
       >
         <span className="text-[9px] leading-tight text-red-400">
-          {lang === "bs" ? "Foto nedostupna" : "Photo unavailable"}
+          {tr("upload_photo_unavailable")}
         </span>
       </div>
     );

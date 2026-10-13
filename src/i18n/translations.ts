@@ -147,7 +147,8 @@ export const t = {
     upload_too_large: "File too large. Maximum 5 MB.",
     upload_failed: "Upload failed. Please try again.",
     upload_photo_unavailable: "Photo unavailable",
-    checkout_expired_photo_warning: "One or more personalization photos are missing. Please re-add the affected items to upload a fresh photo.",
+    upload_photo_legacy: "Re-upload needed",
+    checkout_expired_photo_warning: "One or more personalization photos are missing or need to be re-uploaded. Please remove and re-add the affected items.",
 
     // Sorting
     sort_label: "Sort by",
@@ -328,7 +329,8 @@ export const t = {
     upload_too_large: "Datoteka je prevelika. Maksimalna veličina je 5 MB.",
     upload_failed: "Učitavanje nije uspjelo. Pokušajte ponovo.",
     upload_photo_unavailable: "Foto nedostupna",
-    checkout_expired_photo_warning: "Jedna ili više fotografija za personalizaciju nedostaje. Dodajte ponovo proizvode kako biste učitali novu fotografiju.",
+    upload_photo_legacy: "Potrebno ponovo učitati",
+    checkout_expired_photo_warning: "Jedna ili više fotografija za personalizaciju nedostaje ili je potrebno ponovo učitati. Uklonite i ponovo dodajte te stavke.",
 
     // Sorting
     sort_label: "Sortiraj po",

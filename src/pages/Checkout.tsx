@@ -31,6 +31,7 @@ export default function Checkout() {
   const [error, setError] = useState<string | null>(null);
   const [expandedItems, setExpandedItems] = useState<Record<string, boolean>>({});
   const [expiredPhotos, setExpiredPhotos] = useState<Record<string, boolean>>({});
+  const [loadingPhotos, setLoadingPhotos] = useState<Record<string, boolean>>({});
 
   function set(key: string, value: string) {
     setForm((f) => ({ ...f, [key]: value }));
@@ -39,6 +40,18 @@ export default function Checkout() {
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     if (items.length === 0) return;
+
+    // Pre-submit validation sweep — block if any photo authorization is still
+    // in progress, has failed, or belongs to a legacy (unverified) URL.
+    if (Object.values(loadingPhotos).some(Boolean)) return;
+    if (Object.values(expiredPhotos).some(Boolean)) return;
+    const hasLegacyImage = items.some((item) =>
+      Object.values(item.customizations ?? {}).some(
+        (v) => classifyImageValue(v) === "legacy-url"
+      )
+    );
+    if (hasLegacyImage) return;
+
     setError(null);
     setPlacing(true);
 
@@ -250,7 +263,7 @@ export default function Checkout() {
                                       const imageType = classifyImageValue(value);
                                       const isImage = imageType !== "other";
                                       const token = item.uploadTokens?.[label];
-                                      const expiredKey = `${item.cartKey}:${label}`;
+                                      const photoKey = `${item.cartKey}:${label}`;
                                       return (
                                         <li key={label} className="text-xs leading-snug">
                                           {isImage ? (
@@ -261,8 +274,11 @@ export default function Checkout() {
                                                 token={token}
                                                 label={label}
                                                 sizeClass="w-20 h-20"
-                                                onExpiredChange={(expired) =>
-                                                  setExpiredPhotos((prev) => ({ ...prev, [expiredKey]: expired }))
+                                                onExpiredChange={(unavailable) =>
+                                                  setExpiredPhotos((prev) => ({ ...prev, [photoKey]: unavailable }))
+                                                }
+                                                onLoadingChange={(loading) =>
+                                                  setLoadingPhotos((prev) => ({ ...prev, [photoKey]: loading }))
                                                 }
                                               />
                                             </div>
@@ -299,7 +315,11 @@ export default function Checkout() {
 
                 <button
                   type="submit"
-                  disabled={placing || Object.values(expiredPhotos).some(Boolean)}
+                  disabled={
+                    placing ||
+                    Object.values(expiredPhotos).some(Boolean) ||
+                    Object.values(loadingPhotos).some(Boolean)
+                  }
                   className="w-full py-3.5 bg-navy text-white font-semibold rounded-xl hover:bg-navy/90 transition-colors disabled:opacity-60"
                 >
                   {placing ? tr("checkout_placing") : tr("checkout_place_order")}
