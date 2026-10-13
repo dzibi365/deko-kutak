@@ -71,8 +71,8 @@ BEGIN
 END;
 $$;
 
--- Only callable via service_role (Edge Functions); no public access.
-REVOKE ALL ON FUNCTION claim_confirmation_notification(BIGINT, TEXT, TEXT, TEXT) FROM PUBLIC;
+REVOKE EXECUTE ON FUNCTION claim_confirmation_notification(BIGINT, TEXT, TEXT, TEXT) FROM PUBLIC;
+GRANT  EXECUTE ON FUNCTION claim_confirmation_notification(BIGINT, TEXT, TEXT, TEXT) TO service_role;
 
 -- ─── 3. Order creation rate limiting ─────────────────────────────────────────
 --
@@ -103,7 +103,8 @@ BEGIN
 END;
 $$;
 
-REVOKE ALL ON FUNCTION check_order_rate(TEXT, INT) FROM PUBLIC;
+REVOKE EXECUTE ON FUNCTION check_order_rate(TEXT, INT) FROM PUBLIC;
+GRANT  EXECUTE ON FUNCTION check_order_rate(TEXT, INT) TO service_role;
 
 -- Trigger function: enforces per-IP rate limit on order INSERT.
 -- Reads x-forwarded-for from PostgREST session headers; service_role
