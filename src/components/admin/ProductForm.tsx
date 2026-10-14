@@ -4,6 +4,7 @@ import { MeshPickerCanvas } from "./MeshPickerCanvas";
 import { supabase, type Product, type Category, type CustomField, type FieldGroup, localName } from "../../lib/supabase";
 import { CustomFieldsList, newField } from "./CustomFieldsEditor";
 import { RichTextEditor } from "./RichTextEditor";
+import { AiStudio, type AiContent } from "./AiStudio";
 
 type Props = {
   product?: Product | null;
@@ -89,6 +90,13 @@ export function ProductForm({ product, onClose, onSaved }: Props) {
 
   function set(key: string, value: string | boolean | string[]) {
     setForm((f) => ({ ...f, [key]: value }));
+  }
+
+  function applyAiContent(data: AiContent) {
+    if (data.name_en !== undefined) set("name_en", data.name_en);
+    if (data.name_bs !== undefined) set("name_bs", data.name_bs);
+    if (data.description_en !== undefined) set("description_en", data.description_en);
+    if (data.description_bs !== undefined) set("description_bs", data.description_bs);
   }
 
   function applyGroup(groupId: string) {
@@ -236,6 +244,14 @@ export function ProductForm({ product, onClose, onSaved }: Props) {
           {/* Left — form fields (scrollable) */}
           <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto px-6 py-5 flex flex-col gap-5 border-r border-gray-100">
             {error && <p className="text-sm text-red-500 px-4 py-3 bg-red-50 rounded-lg">{error}</p>}
+
+            {/* AI Studio */}
+            <AiStudio
+              productName={form.name_en || form.name_bs}
+              category={form.category}
+              hasExistingContent={!!(form.name_en || form.name_bs || form.description_en || form.description_bs)}
+              onApply={applyAiContent}
+            />
 
             {/* Language tabs */}
             <div className="flex gap-1 p-1 bg-gray-100 rounded-lg w-fit">
