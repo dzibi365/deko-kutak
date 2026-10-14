@@ -40,16 +40,28 @@ function formatDate(iso: string) {
   });
 }
 
-// ── Sales chart ──────────────────────────────────────────────────────────────
+// ── Area / line chart ────────────────────────────────────────────────────────
 
-const CW = 540; // chart area width
-const CH = 110; // chart area height
-const ML = 52;  // left margin (y-axis labels)
-const MT = 10;  // top margin
-const MB = 32;  // bottom margin (x-axis labels)
-const MR = 8;   // right margin
-const VW = ML + CW + MR;
-const VH = MT + CH + MB;
+const CW = 538; // chart content width
+const CH = 134; // chart content height  (viewBox 600×180 → ~240px at 800px container)
+const ML = 50;  // left margin (y-axis labels)
+const MT = 12;  // top margin
+const MB = 34;  // bottom margin (x-axis labels)
+const MR = 12;  // right margin
+const VW = ML + CW + MR; // 600
+const VH = MT + CH + MB; // 180
+
+/** Midpoint cubic bezier through points — stays bounded between adjacent values. */
+function smoothPath(pts: { x: number; y: number }[]): string {
+  if (pts.length === 0) return "";
+  if (pts.length === 1) return `M ${pts[0].x} ${pts[0].y}`;
+  const d = [`M ${pts[0].x} ${pts[0].y}`];
+  for (let i = 1; i < pts.length; i++) {
+    const mx = (pts[i - 1].x + pts[i].x) / 2;
+    d.push(`C ${mx} ${pts[i - 1].y} ${mx} ${pts[i].y} ${pts[i].x} ${pts[i].y}`);
+  }
+  return d.join(" ");
+}
 
 type ChartDay = { date: string; label: string; revenue: number };
 
@@ -85,109 +97,112 @@ function SalesChart({ orders, period }: { orders: OrderRow[]; period: Period }) 
   const [hoverIdx, setHoverIdx] = useState<number | null>(null);
 
   const days = useMemo(() => buildDays(orders, period), [orders, period]);
-
   const maxRevenue = Math.max(...days.map((d) => d.revenue), 1);
-  const barStep = CW / period;
-  const barW = Math.max(barStep - 3, 2);
   const labelEvery = period === 7 ? 1 : period === 30 ? 5 : 15;
+  const n = days.length;
 
-  // Three y-axis reference lines at 0%, 50%, 100%
+  // Map each day to an SVG point; distribute evenly across CW
+  const pts = days.map((_, i) => ({
+    x: ML + (n > 1 ? (i / (n - 1)) * CW : CW / 2),
+    y: MT + CH - (days[i].revenue / maxRevenue) * CH,
+  }));
+
+  const linePath = smoothPath(pts);
+  const baseline = MT + CH;
+  const areaPath = pts.length > 0
+    ? `${linePath} L ${pts[n - 1].x} ${baseline} L ${pts[0].x} ${baseline} Z`
+    : "";
+
   const yRefs = [0, 0.5, 1].map((frac) => ({
     y: MT + CH - frac * CH,
     label: frac === 0 ? "0" : `${Math.round(maxRevenue * frac)} KM`,
   }));
 
-  const hDay = hoverIdx !== null ? days[hoverIdx] : null;
+  function onMouseMove(e: React.MouseEvent<SVGSVGElement>) {
+    const r = e.currentTarget.getBoundingClientRect();
+    const svgX = ((e.clientX - r.left) / r.width) * VW;
+    const chartX = svgX - ML;
+    if (chartX < -10 || chartX > CW + 10) { setHoverIdx(null); return; }
+    const idx = n <= 1 ? 0 : Math.round((Math.max(0, Math.min(CW, chartX)) / CW) * (n - 1));
+    setHoverIdx(idx);
+  }
+
+  const hov = hoverIdx !== null ? { day: days[hoverIdx], pt: pts[hoverIdx] } : null;
+  const TIP_W = 96;
 
   return (
-    <div className="relative select-none">
-      <svg
-        viewBox={`0 0 ${VW} ${VH}`}
-        className="w-full h-auto"
-        onMouseLeave={() => setHoverIdx(null)}
-      >
-        {/* Horizontal grid + y-axis labels */}
-        {yRefs.map(({ y, label }) => (
-          <g key={y}>
-            <line x1={ML} x2={ML + CW} y1={y} y2={y} stroke="#E5E7EB" strokeWidth={1} />
-            <text x={ML - 6} y={y} textAnchor="end" dominantBaseline="middle" fontSize={10} fill="#9CA3AF">
-              {label}
-            </text>
-          </g>
-        ))}
+    <svg
+      viewBox={`0 0 ${VW} ${VH}`}
+      className="w-full h-auto select-none"
+      onMouseMove={onMouseMove}
+      onMouseLeave={() => setHoverIdx(null)}
+    >
+      <defs>
+        <linearGradient id="areaGrad" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%"   stopColor="#c8813a" stopOpacity={0.18} />
+          <stop offset="100%" stopColor="#c8813a" stopOpacity={0}    />
+        </linearGradient>
+      </defs>
 
-        {/* Bars + x-axis labels */}
-        {days.map((day, i) => {
-          const barH = Math.max((day.revenue / maxRevenue) * CH, day.revenue > 0 ? 2 : 0);
-          const bx = ML + i * barStep + (barStep - barW) / 2;
-          const by = MT + CH - barH;
-          const isHov = hoverIdx === i;
+      {/* Subtle grid lines + y-axis labels */}
+      {yRefs.map(({ y, label }) => (
+        <g key={y}>
+          <line x1={ML} x2={ML + CW} y1={y} y2={y} stroke="#F3F4F6" strokeWidth={1} />
+          <text x={ML - 6} y={y} textAnchor="end" dominantBaseline="middle" fontSize={10} fill="#D1D5DB">
+            {label}
+          </text>
+        </g>
+      ))}
 
-          // Tooltip: clamp horizontally so it doesn't overflow
-          const tipCx = ML + i * barStep + barStep / 2;
-          const tipW = 72;
-          const tipX = Math.max(ML + tipW / 2 + 2, Math.min(ML + CW - tipW / 2 - 2, tipCx));
-          const tipY = Math.max(MT + 4, by - 8);
+      {/* Area fill */}
+      {areaPath && <path d={areaPath} fill="url(#areaGrad)" />}
 
-          return (
-            <g key={day.date}>
-              {/* Invisible hover target spanning full column height */}
-              <rect
-                x={ML + i * barStep}
-                y={MT}
-                width={barStep}
-                height={CH}
-                fill="transparent"
-                onMouseEnter={() => setHoverIdx(i)}
-              />
-
-              {/* Bar */}
-              {barH > 0 && (
-                <rect
-                  x={bx}
-                  y={by}
-                  width={barW}
-                  height={barH}
-                  rx={Math.min(barW / 2, 3)}
-                  fill={isHov ? "#c8813a" : "#1a1a2e"}
-                  style={{ transition: "fill 0.1s" }}
-                />
-              )}
-
-              {/* X-axis label */}
-              {i % labelEvery === 0 && (
-                <text
-                  x={ML + i * barStep + barStep / 2}
-                  y={MT + CH + MB - 4}
-                  textAnchor="middle"
-                  fontSize={9}
-                  fill="#9CA3AF"
-                >
-                  {day.label}
-                </text>
-              )}
-
-              {/* Inline tooltip above hovered bar */}
-              {isHov && (
-                <g>
-                  <rect x={tipX - tipW / 2} y={tipY - 18} width={tipW} height={20} rx={4} fill="white" stroke="#E5E7EB" strokeWidth={1} />
-                  <text x={tipX} y={tipY - 4} textAnchor="middle" fontSize={10} fill="#1a1a2e" fontWeight="600">
-                    {day.revenue.toFixed(2)} KM
-                  </text>
-                </g>
-              )}
-            </g>
-          );
-        })}
-      </svg>
-
-      {/* Date label below tooltip */}
-      {hDay && (
-        <p className="absolute top-1 right-2 text-xs text-gray-400 pointer-events-none">
-          {hDay.date}
-        </p>
+      {/* Smooth orange line */}
+      {linePath && (
+        <path
+          d={linePath}
+          fill="none"
+          stroke="#c8813a"
+          strokeWidth={1.75}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
       )}
-    </div>
+
+      {/* X-axis labels */}
+      {days.map((day, i) => {
+        if (i % labelEvery !== 0) return null;
+        const x = ML + (n > 1 ? (i / (n - 1)) * CW : CW / 2);
+        return (
+          <text key={day.date} x={x} y={VH - 4} textAnchor="middle" fontSize={9} fill="#D1D5DB">
+            {day.label}
+          </text>
+        );
+      })}
+
+      {/* Hover: dashed vertical line + dot + tooltip */}
+      {hov && (() => {
+        const tipX = Math.max(ML + TIP_W / 2, Math.min(ML + CW - TIP_W / 2, hov.pt.x));
+        const tipY = Math.max(MT + 2, hov.pt.y - 40);
+        // Format tooltip date: "14. okt" from ISO string
+        const [yr, mo, dy] = hov.day.date.split("-").map(Number);
+        const local = new Date(yr, mo - 1, dy);
+        const tipDate = `${dy}. ${local.toLocaleDateString("bs-BA", { month: "short" })}`;
+        return (
+          <g>
+            <line
+              x1={hov.pt.x} x2={hov.pt.x}
+              y1={MT} y2={baseline}
+              stroke="#E5E7EB" strokeWidth={1} strokeDasharray="3 2"
+            />
+            <circle cx={hov.pt.x} cy={hov.pt.y} r={4} fill="#c8813a" stroke="white" strokeWidth={2} />
+            <rect x={tipX - TIP_W / 2} y={tipY} width={TIP_W} height={30} rx={5} fill="white" stroke="#E5E7EB" strokeWidth={1} />
+            <text x={tipX} y={tipY + 11} textAnchor="middle" fontSize={9}  fill="#9CA3AF">{tipDate}</text>
+            <text x={tipX} y={tipY + 23} textAnchor="middle" fontSize={11} fill="#1a1a2e" fontWeight="700">{hov.day.revenue.toFixed(2)} KM</text>
+          </g>
+        );
+      })()}
+    </svg>
   );
 }
 
