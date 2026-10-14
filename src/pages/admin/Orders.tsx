@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { supabase } from "../../lib/supabase";
 import { classifyImageValue } from "../../lib/customerUpload";
 
@@ -126,9 +127,13 @@ function AdminSignedImage({ value, label }: { value: string; label: string }) {
 }
 
 export default function Orders() {
+  const [searchParams] = useSearchParams();
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
-  const [expanded, setExpanded] = useState<number | null>(null);
+  const [expanded, setExpanded] = useState<number | null>(() => {
+    const id = searchParams.get("expand");
+    return id ? Number(id) : null;
+  });
   const [updatingId, setUpdatingId] = useState<number | null>(null);
   const [notifyingId, setNotifyingId] = useState<number | null>(null);
   const [resendingId, setResendingId] = useState<number | null>(null);
