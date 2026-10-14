@@ -259,10 +259,28 @@ function ProductDetailContent() {
 
   const name = localName(product, lang);
   const desc = localDesc(product, lang);
+  const plainDesc = desc ? desc.replace(/<[^>]*>/g, " ").replace(/&nbsp;/g, " ").replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/\s+/g, " ").trim() : undefined;
+
+  const productJsonLd: Record<string, unknown> = {
+    "@context": "https://schema.org",
+    "@type": "Product",
+    name,
+    ...(plainDesc ? { description: plainDesc } : {}),
+    ...(product.image_url ? { image: product.image_url } : {}),
+    offers: {
+      "@type": "Offer",
+      url: `https://dekokutak.ba/products/${product.id}`,
+      price: product.price.toFixed(2),
+      priceCurrency: "BAM",
+      availability: product.in_stock
+        ? "https://schema.org/InStock"
+        : "https://schema.org/OutOfStock",
+    },
+  };
 
   return (
     <div className="max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 pt-4 pb-12">
-      <SiteMeta title={name} description={desc || undefined} />
+      <SiteMeta title={name} description={desc || undefined} jsonLd={productJsonLd} />
       {/* Back link */}
       <button
         onClick={() => navigate(-1)}
