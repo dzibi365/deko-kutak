@@ -94,6 +94,7 @@ export function Hero() {
                 src={heroImageUrl}
                 alt="Personalized wooden gift set by Deko Kutak"
                 className="absolute inset-0 w-full h-full object-cover"
+                fetchPriority="high"
               />
             </div>
 
@@ -254,7 +255,32 @@ export function CategoryShowcase() {
     })
     .filter((r) => r.products.length > 0);
 
-  if (loading || rows.length === 0) return null;
+  if (!loading && rows.length === 0) return null;
+
+  if (loading) {
+    return (
+      <section className="flex flex-col gap-4">
+        {[0, 1, 2].map((i) => (
+          <div key={i} className="flex flex-col md:flex-row rounded-2xl overflow-hidden border border-navy/10 animate-pulse" style={{ boxShadow: "0 4px 16px rgba(0,0,0,0.07), inset 4px 0 0 0 #c8813a" }}>
+            <div className="w-full h-[180px] md:w-[220px] md:h-auto flex-shrink-0 bg-navy/10" />
+            <div className="flex-1 bg-gray-50 p-4 md:p-5">
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-3 md:gap-4">
+                {[0, 1, 2].map((j) => (
+                  <div key={j} className="rounded-xl overflow-hidden border border-navy/[0.07] bg-white">
+                    <div className="aspect-square bg-navy/5" />
+                    <div className="p-3 flex flex-col gap-2">
+                      <div className="h-3 bg-navy/10 rounded w-3/4" />
+                      <div className="h-3 bg-navy/10 rounded w-1/2" />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        ))}
+      </section>
+    );
+  }
 
   return (
     <>
@@ -312,6 +338,7 @@ function CategoryRow({ cat, products, lang, onNavigate, onCategoryClick, onPerso
             src={cat.image_url}
             alt={catName}
             className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+            loading="lazy"
           />
         ) : (
           <div className="absolute inset-0 bg-gradient-to-br from-navy/90 to-navy/60 flex items-center justify-center">
@@ -356,6 +383,7 @@ function CategoryRow({ cat, products, lang, onNavigate, onCategoryClick, onPerso
                       src={product.image_url}
                       alt={name}
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                      loading="lazy"
                     />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center min-h-[80px]">
