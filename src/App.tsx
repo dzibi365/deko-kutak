@@ -15,8 +15,8 @@ import { SiteMeta } from "./components/SiteMeta";
 import { AdminLayout } from "./components/admin/AdminLayout";
 import { RequireAuth } from "./components/admin/RequireAuth";
 import Login from "./pages/admin/Login";
-import ProductDetail from "./pages/ProductDetail";
-import Shop from "./pages/Shop";
+const ProductDetail = lazy(() => import("./pages/ProductDetail"));
+const Shop          = lazy(() => import("./pages/Shop"));
 
 // Secondary public pages — loaded on demand, not on the initial storefront path.
 const InfoPage          = lazy(() => import("./pages/InfoPage"));
@@ -86,7 +86,9 @@ function ProductPage() {
     <LanguageProvider>
       <CartProvider>
         <CustomerAuthProvider>
-          <ProductDetail />
+          <Suspense fallback={<PageFallback />}>
+            <ProductDetail />
+          </Suspense>
         </CustomerAuthProvider>
       </CartProvider>
     </LanguageProvider>
@@ -157,7 +159,9 @@ export default function App() {
             <LanguageProvider>
               <CartProvider>
                 <CustomerAuthProvider>
-                  <Shop />
+                  <Suspense fallback={<PageFallback />}>
+                    <Shop />
+                  </Suspense>
                 </CustomerAuthProvider>
               </CartProvider>
             </LanguageProvider>

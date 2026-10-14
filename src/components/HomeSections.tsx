@@ -90,12 +90,20 @@ export function Hero() {
 
           <div className="relative h-[400px] w-full hidden lg:block">
             <div className="absolute inset-0 rounded-3xl overflow-hidden">
-              <img
-                src={heroImageUrl}
-                alt="Personalized wooden gift set by Deko Kutak"
-                className="absolute inset-0 w-full h-full object-cover"
-                fetchPriority="high"
-              />
+              {/* <picture> with a desktop-only <source> prevents the browser from
+                  downloading the hero image on mobile where the parent is display:none.
+                  The <img> src is a zero-byte data URI so no network request fires
+                  when the media query doesn't match. fetchPriority="high" still
+                  applies for desktop where this is the above-the-fold LCP. */}
+              <picture>
+                <source media="(min-width: 1024px)" srcSet={heroImageUrl} />
+                <img
+                  src="data:,"
+                  alt="Personalized wooden gift set by Deko Kutak"
+                  className="absolute inset-0 w-full h-full object-cover"
+                  fetchPriority="high"
+                />
+              </picture>
             </div>
 
             {/* Badge 1 — top-left, sitting at the image edge */}
