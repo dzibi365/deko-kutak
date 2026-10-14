@@ -34,6 +34,24 @@ serve(async (req) => {
     Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
   );
 
+  // Reject non-admin callers before touching any DB state or idempotency records.
+  const authHeader = req.headers.get("Authorization") ?? "";
+  const jwt = authHeader.replace(/^Bearer\s+/i, "").trim();
+
+  if (!jwt) {
+    return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: cors });
+  }
+
+  const { data: { user }, error: authErr } = await supabase.auth.getUser(jwt);
+
+  if (authErr || !user) {
+    return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: cors });
+  }
+
+  if (user.app_metadata?.role !== "admin") {
+    return new Response(JSON.stringify({ error: "Forbidden" }), { status: 403, headers: cors });
+  }
+
   let notificationId: number | null = null;
 
   try {
