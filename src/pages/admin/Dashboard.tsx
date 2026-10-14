@@ -43,7 +43,7 @@ function formatDate(iso: string) {
 // ── Sales chart ──────────────────────────────────────────────────────────────
 
 const CW = 540; // chart area width
-const CH = 140; // chart area height
+const CH = 110; // chart area height
 const ML = 52;  // left margin (y-axis labels)
 const MT = 10;  // top margin
 const MB = 32;  // bottom margin (x-axis labels)
@@ -71,10 +71,11 @@ function buildDays(orders: OrderRow[], period: Period): ChartDay[] {
     const dateStr = dt.toISOString().slice(0, 10);
     // Use local-time date for label formatting
     const local = new Date(dt.getUTCFullYear(), dt.getUTCMonth(), dt.getUTCDate());
+    // "15. sep", "5. okt" — numeric day + abbreviated month in Bosnian
     const label =
       period === 7
         ? local.toLocaleDateString("bs-BA", { weekday: "short" })
-        : local.toLocaleDateString("bs-BA", { day: "numeric", month: "short" });
+        : `${local.getDate()}. ${local.toLocaleDateString("bs-BA", { month: "short" })}`;
     days.push({ date: dateStr, label, revenue: revenueMap.get(dateStr) ?? 0 });
   }
   return days;
@@ -249,7 +250,7 @@ export default function AdminDashboard() {
 
   const kpiCards = [
     {
-      label: "Ukupna prodaja",
+      label: "Vrijednost narudžbi",
       value: stats ? `${stats.totalSales.toFixed(2)} KM` : null,
       icon: TrendingUp,
       iconClass: "text-copper",
@@ -302,7 +303,7 @@ export default function AdminDashboard() {
       {/* Sales chart */}
       <div className="bg-white border border-gray-200 rounded-xl p-6 mb-6">
         <div className="flex items-center justify-between mb-5">
-          <h2 className="text-sm font-semibold text-navy">Prihod</h2>
+          <h2 className="text-sm font-semibold text-navy">Vrijednost narudžbi</h2>
           <div className="flex gap-1">
             {([7, 30, 90] as Period[]).map((p) => (
               <button
