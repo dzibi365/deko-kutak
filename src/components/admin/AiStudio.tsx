@@ -373,7 +373,7 @@ export function AiStudio({ productName, category, hasExistingContent, onApply }:
   }
 
   return (
-    <div className="border border-gray-200 rounded-xl overflow-hidden">
+    <div className="border border-gray-200 rounded-xl overflow-hidden flex-shrink-0">
       {/* ── Toggle header ── */}
       <button
         type="button"
