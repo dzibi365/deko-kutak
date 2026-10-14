@@ -12,12 +12,6 @@ import { classifyImageValue } from "../lib/customerUpload";
 
 type PaymentMethod = "cod" | "bank_transfer";
 
-function generateOrderNumber() {
-  const year = new Date().getFullYear();
-  const rand = Math.floor(1000 + Math.random() * 9000);
-  return `DK-${year}-${rand}`;
-}
-
 export default function Checkout() {
   const { items, total, clearCart, closeCart } = useCart();
   const { lang, tr } = useLang();
@@ -61,37 +55,29 @@ export default function Checkout() {
     setError(null);
     setPlacing(true);
 
-    const orderNumber = generateOrderNumber();
-    // One-time token that authorises exactly one call to send-order-email.
-    // Generated client-side, stored with the order, and consumed atomically by
-    // the Edge Function.  A random 128-bit UUID cannot be guessed by a third
-    // party, so only the client that created this order can trigger its email.
-    const emailToken = crypto.randomUUID();
     // Strip uploadTokens before persisting — tokens are client-only credentials
     // and must never be stored in the orders table or transmitted to the server.
     const orderItems = items.map(({ uploadTokens: _dropped, ...rest }) => rest);
-    // The BEFORE INSERT trigger recalculates subtotal, shipping_cost, and total
-    // server-side from trusted DB data.  Anon users have no SELECT policy on the
-    // orders table, so we cannot read back the trigger-set values directly.
-    // Instead we pass the client-calculated amounts — derived from useSiteSettings()
-    // (read from the DB at page load) — to the confirmation page for display.
-    // The database always stores the server-authoritative values regardless.
-    const { error: err } = await supabase.from("orders").insert({
-      order_number: orderNumber,
-      email_token: emailToken,
-      customer_name: form.name.trim(),
-      customer_email: form.email.trim(),
-      customer_phone: form.phone.trim() || null,
-      customer_address: form.address.trim(),
-      customer_city: form.city.trim(),
-      customer_postal: form.postal.trim() || null,
-      payment_method: payment,
-      items: orderItems,
-      subtotal: total,
-      note: form.note.trim() || null,
-      status: "pending",
-      lang,
-    });
+    // place_order is a SECURITY DEFINER RPC that inserts the order, generates
+    // order_number from a DB sequence, and returns both order_number and email_token.
+    // Anon users have no SELECT RLS on orders, so INSERT…RETURNING yields 0 rows
+    // for guests via the REST path — the RPC resolves this.
+    // The BEFORE INSERT trigger still recalculates all financial amounts server-side.
+    const { data: orderRow, error: err } = await supabase
+      .rpc("place_order", {
+        p_customer_name:    form.name.trim(),
+        p_customer_email:   form.email.trim(),
+        p_customer_phone:   form.phone.trim() || null,
+        p_customer_address: form.address.trim(),
+        p_customer_city:    form.city.trim(),
+        p_customer_postal:  form.postal.trim() || null,
+        p_payment_method:   payment,
+        p_items:            orderItems,
+        p_subtotal:         total,
+        p_note:             form.note.trim() || null,
+        p_lang:             lang,
+      })
+      .single();
 
     setPlacing(false);
     if (err) {
@@ -103,8 +89,15 @@ export default function Checkout() {
       return;
     }
 
+    const row = orderRow as { order_number: string; email_token: string } | null;
+    const orderNumber = row?.order_number;
+    const emailToken  = row?.email_token;
+    if (!orderNumber || !emailToken) {
+      setError("Order placed but confirmation unavailable. Please contact support.");
+      return;
+    }
+
     // Fire invoice emails (non-blocking — don't wait or fail order if this errors).
-    // Uses the one-time emailToken rather than the guessable order number.
     supabase.functions.invoke("send-order-email", {
       body: { emailToken, lang },
     }).catch(() => {/* silent — order already placed */});
