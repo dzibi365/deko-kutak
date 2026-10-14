@@ -286,12 +286,13 @@ export function CategoryShowcase() {
     <>
       <section className="flex flex-col gap-4">
         <div className="flex flex-col gap-4">
-          {rows.map(({ cat, products: catProducts }) => (
+          {rows.map(({ cat, products: catProducts }, index) => (
             <CategoryRow
               key={cat.id}
               cat={cat}
               products={catProducts.slice(0, 3)}
               lang={lang}
+              isFirst={index === 0}
               onNavigate={(id) => navigate(`/products/${id}`)}
               onCategoryClick={(catName) => navigate(`/shop?category=${encodeURIComponent(catName)}`)}
               onPersonalize={(product) => setModalProduct(product)}
@@ -314,13 +315,14 @@ type RowProps = {
   cat: Category;
   products: Product[];
   lang: string;
+  isFirst: boolean;
   onNavigate: (id: number) => void;
   onCategoryClick: (catName: string) => void;
   onPersonalize: (product: Product) => void;
   onAddToCart: (product: Product) => void;
 };
 
-function CategoryRow({ cat, products, lang, onNavigate, onCategoryClick, onPersonalize, onAddToCart }: RowProps) {
+function CategoryRow({ cat, products, lang, isFirst, onNavigate, onCategoryClick, onPersonalize, onAddToCart }: RowProps) {
   const catName = lang === "bs" ? (cat.name_bs || cat.name_en || cat.name) : (cat.name_en || cat.name);
   const catKey = cat.name_en ?? cat.name;
   const now = Date.now();
@@ -338,7 +340,8 @@ function CategoryRow({ cat, products, lang, onNavigate, onCategoryClick, onPerso
             src={cat.image_url}
             alt={catName}
             className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-            loading="lazy"
+            loading={isFirst ? "eager" : "lazy"}
+            fetchPriority={isFirst ? "high" : "auto"}
           />
         ) : (
           <div className="absolute inset-0 bg-gradient-to-br from-navy/90 to-navy/60 flex items-center justify-center">
