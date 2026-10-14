@@ -1,5 +1,5 @@
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { LayoutDashboard, Package, Tag, LogOut, Store, ImagePlay, ShoppingBag, Settings, MessageSquare, Layers, Scissors, FileText } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
 import { supabase } from "../../lib/supabase";
@@ -84,7 +84,13 @@ export function AdminLayout() {
       </aside>
 
       <main className="flex-1 overflow-auto">
-        <Outlet />
+        <Suspense fallback={
+          <div className="flex items-center justify-center h-64">
+            <div className="w-6 h-6 border-2 border-navy/20 border-t-navy rounded-full animate-spin" />
+          </div>
+        }>
+          <Outlet />
+        </Suspense>
       </main>
     </div>
   );

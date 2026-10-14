@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { ShoppingCart, ArrowLeft, CheckCircle, XCircle, Share2, Upload, X as XIcon, ChevronRight, ChevronLeft, Box, ZoomIn } from "lucide-react";
@@ -10,7 +10,10 @@ import { Navbar, Footer } from "../components/Layout";
 import { CartDrawer } from "../components/CartDrawer";
 import { AuthModal } from "../components/AuthModal";
 import { ReviewsSection } from "../components/ReviewsSection";
-import { ThreeDPreviewModal } from "../components/ThreeDPreviewModal";
+// Three.js is only needed when the user opens the 3D preview — load it on demand.
+const ThreeDPreviewModal = lazy(() =>
+  import("../components/ThreeDPreviewModal").then((m) => ({ default: m.ThreeDPreviewModal }))
+);
 import { PersonalizationModal } from "../components/PersonalizationModal";
 import { useLang } from "../context/LanguageContext";
 import { useCart } from "../context/CartContext";
@@ -512,12 +515,14 @@ function ProductDetailContent() {
 
       {/* 3D Preview Modal */}
       {preview3DUrl && product.has_3d_preview && product.model_3d_url && product.model_texture_mesh && (
-        <ThreeDPreviewModal
-          modelUrl={product.model_3d_url}
-          textureUrl={preview3DUrl}
-          meshName={product.model_texture_mesh}
-          onClose={() => setPreview3DUrl(null)}
-        />
+        <Suspense fallback={<div className="fixed inset-0 bg-black/95 z-[60]" />}>
+          <ThreeDPreviewModal
+            modelUrl={product.model_3d_url}
+            textureUrl={preview3DUrl}
+            meshName={product.model_texture_mesh}
+            onClose={() => setPreview3DUrl(null)}
+          />
+        </Suspense>
       )}
 
       {/* Lightbox */}

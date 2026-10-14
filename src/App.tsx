@@ -1,3 +1,4 @@
+import { lazy, Suspense } from "react";
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { useEffect } from "react";
 import { HelmetProvider } from "react-helmet-async";
@@ -14,28 +15,42 @@ import { SiteMeta } from "./components/SiteMeta";
 import { AdminLayout } from "./components/admin/AdminLayout";
 import { RequireAuth } from "./components/admin/RequireAuth";
 import Login from "./pages/admin/Login";
-import AdminDashboard from "./pages/admin/Dashboard";
-import Products from "./pages/admin/Products";
-import Categories from "./pages/admin/Categories";
-import HeroConfig from "./pages/admin/HeroConfig";
-import Orders from "./pages/admin/Orders";
-import StoreSettings from "./pages/admin/StoreSettings";
-import AdminReviews from "./pages/admin/Reviews";
-import FieldGroups from "./pages/admin/FieldGroups";
-import ImageTools from "./pages/admin/ImageTools";
-import AdminPages from "./pages/admin/Pages";
-import InfoPage from "./pages/InfoPage";
 import ProductDetail from "./pages/ProductDetail";
-import Checkout from "./pages/Checkout";
-import OrderConfirmation from "./pages/OrderConfirmation";
-import Account from "./pages/Account";
-import ResetPassword from "./pages/ResetPassword";
 import Shop from "./pages/Shop";
+
+// Secondary public pages — loaded on demand, not on the initial storefront path.
+const InfoPage          = lazy(() => import("./pages/InfoPage"));
+const Account           = lazy(() => import("./pages/Account"));
+const Checkout          = lazy(() => import("./pages/Checkout"));
+const OrderConfirmation = lazy(() => import("./pages/OrderConfirmation"));
+const ResetPassword     = lazy(() => import("./pages/ResetPassword"));
+
+// Admin pages — loaded only when an authenticated user navigates to /admin/*.
+// Keeps the public storefront bundle free of admin code, TipTap and
+// the Three.js MeshPickerCanvas used only in the product editor.
+const AdminDashboard = lazy(() => import("./pages/admin/Dashboard"));
+const Products       = lazy(() => import("./pages/admin/Products"));
+const Categories     = lazy(() => import("./pages/admin/Categories"));
+const HeroConfig     = lazy(() => import("./pages/admin/HeroConfig"));
+const Orders         = lazy(() => import("./pages/admin/Orders"));
+const StoreSettings  = lazy(() => import("./pages/admin/StoreSettings"));
+const AdminReviews   = lazy(() => import("./pages/admin/Reviews"));
+const FieldGroups    = lazy(() => import("./pages/admin/FieldGroups"));
+const ImageTools     = lazy(() => import("./pages/admin/ImageTools"));
+const AdminPages     = lazy(() => import("./pages/admin/Pages"));
 
 function ScrollToTop() {
   const { pathname } = useLocation();
   useEffect(() => { window.scrollTo(0, 0); }, [pathname]);
   return null;
+}
+
+function PageFallback() {
+  return (
+    <div className="min-h-screen bg-cream flex items-center justify-center">
+      <div className="w-8 h-8 border-2 border-navy/20 border-t-navy rounded-full animate-spin" />
+    </div>
+  );
 }
 
 function StoreFront() {
@@ -83,7 +98,9 @@ function AccountPage() {
     <LanguageProvider>
       <CartProvider>
         <CustomerAuthProvider>
-          <Account />
+          <Suspense fallback={<PageFallback />}>
+            <Account />
+          </Suspense>
         </CustomerAuthProvider>
       </CartProvider>
     </LanguageProvider>
@@ -94,7 +111,9 @@ function CheckoutPage() {
   return (
     <LanguageProvider>
       <CartProvider>
-        <Checkout />
+        <Suspense fallback={<PageFallback />}>
+          <Checkout />
+        </Suspense>
       </CartProvider>
     </LanguageProvider>
   );
@@ -103,7 +122,9 @@ function CheckoutPage() {
 function ConfirmationPage() {
   return (
     <LanguageProvider>
-      <OrderConfirmation />
+      <Suspense fallback={<PageFallback />}>
+        <OrderConfirmation />
+      </Suspense>
     </LanguageProvider>
   );
 }
@@ -113,7 +134,9 @@ function InfoPageWrapper({ slug }: { slug?: string }) {
     <LanguageProvider>
       <CartProvider>
         <CustomerAuthProvider>
-          <InfoPage slug={slug} />
+          <Suspense fallback={<PageFallback />}>
+            <InfoPage slug={slug} />
+          </Suspense>
         </CustomerAuthProvider>
       </CartProvider>
     </LanguageProvider>
@@ -141,7 +164,13 @@ export default function App() {
           } />
           <Route path="/products/:id" element={<ProductPage />} />
           <Route path="/account" element={<AccountPage />} />
-          <Route path="/reset-password" element={<LanguageProvider><ResetPassword /></LanguageProvider>} />
+          <Route path="/reset-password" element={
+            <LanguageProvider>
+              <Suspense fallback={<PageFallback />}>
+                <ResetPassword />
+              </Suspense>
+            </LanguageProvider>
+          } />
           <Route path="/checkout" element={<CheckoutPage />} />
           <Route path="/order-confirmation/:orderNumber" element={<ConfirmationPage />} />
 
