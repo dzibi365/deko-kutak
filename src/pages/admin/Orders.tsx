@@ -40,24 +40,73 @@ const STATUS_STYLES: Record<string, string> = {
   cancelled: "bg-red-50 text-red-500 border-red-200",
 };
 
-// Renders a customization image for admin.
-// For storage paths (UUID.ext): uses createSignedUrl so it works when the
-// bucket is made private. The admin SELECT RLS policy on customer-uploads
-// (is_admin()) permits this call.
-// For legacy public URLs: renders directly.
+// Extracts the storage object path from a legacy public CDN URL.
+// Returns null for URLs that don't belong to this project's customer-uploads bucket.
+const SUPABASE_PROJECT_ORIGIN = new URL(import.meta.env.VITE_SUPABASE_URL as string).origin;
+const LEGACY_PREFIX = "/storage/v1/object/public/customer-uploads/";
+
+function extractCustomerUploadPath(legacyUrl: string): string | null {
+  try {
+    const parsed = new URL(legacyUrl);
+    if (parsed.origin !== SUPABASE_PROJECT_ORIGIN) return null;
+    if (!parsed.pathname.startsWith(LEGACY_PREFIX)) return null;
+    const decoded = decodeURIComponent(parsed.pathname.slice(LEGACY_PREFIX.length));
+    return decoded || null;
+  } catch {
+    return null;
+  }
+}
+
+// Renders a customization image for admin. Covers three cases:
+// 1. storage-path (UUID.ext): signs via the admin SELECT RLS policy.
+// 2. legacy-url from this project's customer-uploads bucket: extracts the path
+//    and signs it the same way — bucket is now private, public URLs return 400.
+// 3. legacy-url from an unrelated origin: renders directly (early external photos).
 function AdminSignedImage({ value, label }: { value: string; label: string }) {
   const type = classifyImageValue(value);
-  const [url, setUrl] = useState<string | null>(type === "legacy-url" ? value : null);
+  const [url, setUrl] = useState<string | null>(null);
+  const [failed, setFailed] = useState(false);
 
   useEffect(() => {
-    if (type !== "storage-path") return;
-    supabase.storage
-      .from("customer-uploads")
-      .createSignedUrl(value, 3600)
-      .then(({ data }) => {
-        if (data?.signedUrl) setUrl(data.signedUrl);
-      });
+    let cancelled = false;
+
+    async function resolve() {
+      if (type === "storage-path") {
+        const { data } = await supabase.storage
+          .from("customer-uploads")
+          .createSignedUrl(value, 3600);
+        if (!cancelled) {
+          if (data?.signedUrl) setUrl(data.signedUrl);
+          else setFailed(true);
+        }
+      } else if (type === "legacy-url") {
+        const path = extractCustomerUploadPath(value);
+        if (!path) {
+          // Not a customer-uploads URL — render the external URL directly.
+          if (!cancelled) setUrl(value);
+          return;
+        }
+        const { data } = await supabase.storage
+          .from("customer-uploads")
+          .createSignedUrl(path, 3600);
+        if (!cancelled) {
+          if (data?.signedUrl) setUrl(data.signedUrl);
+          else setFailed(true);
+        }
+      }
+    }
+
+    resolve();
+    return () => { cancelled = true; };
   }, [value, type]);
+
+  if (failed) {
+    return (
+      <div className="w-20 h-20 rounded-lg bg-red-50 border border-red-200 flex items-center justify-center">
+        <span className="text-xs text-red-400">Missing</span>
+      </div>
+    );
+  }
 
   if (!url) {
     return (
