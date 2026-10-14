@@ -1,10 +1,16 @@
+import type { IncomingMessage, ServerResponse } from "http";
 import { createClient } from "@supabase/supabase-js";
 
 const BASE = "https://dekokutak.ba";
 
-export default async function handler(_req: Request): Promise<Response> {
+export default async function handler(
+  _req: IncomingMessage,
+  res: ServerResponse
+): Promise<void> {
   if (process.env.VITE_ALLOW_INDEXING !== "true") {
-    return new Response("Not found", { status: 404 });
+    res.writeHead(404);
+    res.end("Not found");
+    return;
   }
 
   const sb = createClient(
@@ -57,12 +63,9 @@ export default async function handler(_req: Request): Promise<Response> {
     entries.join("\n") +
     `\n</urlset>`;
 
-  return new Response(xml, {
-    headers: {
-      "Content-Type": "application/xml; charset=utf-8",
-      "Cache-Control": "public, s-maxage=3600, stale-while-revalidate=86400",
-    },
-  });
+  res.setHeader("Content-Type", "application/xml; charset=utf-8");
+  res.setHeader("Cache-Control", "public, s-maxage=3600, stale-while-revalidate=86400");
+  res.end(xml);
 }
 
 function urlEntry(
@@ -72,9 +75,9 @@ function urlEntry(
   return [
     "  <url>",
     `    <loc>${loc}</loc>`,
-    opts.lastmod    ? `    <lastmod>${opts.lastmod}</lastmod>`       : null,
+    opts.lastmod    ? `    <lastmod>${opts.lastmod}</lastmod>`           : null,
     opts.changefreq ? `    <changefreq>${opts.changefreq}</changefreq>` : null,
-    opts.priority   ? `    <priority>${opts.priority}</priority>`   : null,
+    opts.priority   ? `    <priority>${opts.priority}</priority>`       : null,
     "  </url>",
   ]
     .filter(Boolean)
