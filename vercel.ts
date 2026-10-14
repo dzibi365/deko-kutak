@@ -8,7 +8,11 @@ import { type VercelConfig } from "@vercel/config/v1";
 const allowIndexing = process.env.VITE_ALLOW_INDEXING === "true";
 
 export const config: VercelConfig = {
-  rewrites: [{ source: "/(.*)", destination: "/index.html" }],
+  rewrites: [
+    { source: "/robots.txt",  destination: "/api/robots"  },
+    { source: "/sitemap.xml", destination: "/api/sitemap" },
+    { source: "/(.*)",        destination: "/index.html"  },
+  ],
   headers: allowIndexing
     ? []
     : [
