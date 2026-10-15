@@ -153,7 +153,7 @@ function buildTextPrompt(params: {
 
 ${context}
 
-Return ONLY a valid JSON object — no markdown, no code fences, no explanation before or after. Use exactly these keys:
+Return ONLY a valid JSON object — no markdown, no code fences, no explanation before or after. Use only standard ASCII double quotes (") as string delimiters — never typographic or curly quotes (" "). Use exactly these keys:
 
 {
   "name_en": "Product title in English. 20–70 characters. Specific and descriptive — never generic.",
@@ -252,6 +252,45 @@ type ParseResult =
   | { ok: true; data: AiContent; warnings: string[]; richPreview?: RichPreview }
   | { ok: false; error: string };
 
+// Normalise typographic/curly double quotes used as JSON structural delimiters.
+// Uses a state machine to distinguish delimiter quotes (replaced with ") from
+// literal curly quotes that appear as content inside already-open strings (kept).
+function normalizeSmartQuotes(s: string): { normalized: string; changed: boolean } {
+  const OPEN = "“";  // "
+  const CLOSE = "”"; // "
+  let result = "";
+  let inString = false;
+  let changed = false;
+  let i = 0;
+  while (i < s.length) {
+    const ch = s[i];
+    if (!inString) {
+      if (ch === OPEN || ch === CLOSE) {
+        result += '"'; inString = true; changed = true; i++;
+      } else if (ch === '"') {
+        result += '"'; inString = true; i++;
+      } else {
+        result += ch; i++;
+      }
+    } else {
+      if (ch === "\\") {
+        // Pass escape sequence through unchanged
+        result += ch; i++;
+        if (i < s.length) { result += s[i]; i++; }
+      } else if (ch === '"' || ch === CLOSE) {
+        // Straight quote or close-smart → end of string
+        result += '"'; inString = false; if (ch === CLOSE) changed = true; i++;
+      } else if (ch === OPEN) {
+        // Open-smart inside a string → literal content, preserve
+        result += ch; i++;
+      } else {
+        result += ch; i++;
+      }
+    }
+  }
+  return { normalized: result, changed };
+}
+
 function parseClaudeResponse(raw: string): ParseResult {
   let s = raw.trim();
   s = s.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/i, "").trim();
@@ -264,10 +303,23 @@ function parseClaudeResponse(raw: string): ParseResult {
   s = s.slice(start, end + 1);
 
   let parsed: unknown;
+  let smartQuotesNormalized = false;
   try {
     parsed = JSON.parse(s);
-  } catch (e) {
-    return { ok: false, error: `Invalid JSON: ${e instanceof Error ? e.message : String(e)}` };
+  } catch (firstErr) {
+    // Try once with smart-quote normalization before giving up
+    const { normalized, changed } = normalizeSmartQuotes(s);
+    if (changed) {
+      try {
+        parsed = JSON.parse(normalized);
+        s = normalized;
+        smartQuotesNormalized = true;
+      } catch {
+        return { ok: false, error: `Invalid JSON: ${firstErr instanceof Error ? firstErr.message : String(firstErr)}` };
+      }
+    } else {
+      return { ok: false, error: `Invalid JSON: ${firstErr instanceof Error ? firstErr.message : String(firstErr)}` };
+    }
   }
 
   if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) {
@@ -276,6 +328,7 @@ function parseClaudeResponse(raw: string): ParseResult {
 
   const obj = parsed as Record<string, unknown>;
   const warnings: string[] = [];
+  if (smartQuotesNormalized) warnings.push("Typographic quotes were normalised to standard JSON quotes.");
 
   function getString(key: string): string | undefined {
     const v = obj[key];
