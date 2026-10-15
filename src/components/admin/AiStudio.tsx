@@ -149,46 +149,60 @@ function buildTextPrompt(params: {
     .filter(Boolean)
     .join("\n");
 
-  return `You are a bilingual copywriter for Deko Kutak (dekokutak.ba), a Bosnian handmade gifts webshop. Customers are primarily from Bosnia & Herzegovina and the wider region.
+  return `You are a bilingual copywriter for Deko Kutak (dekokutak.ba), a premium handmade gifts webshop serving customers in Bosnia & Herzegovina and the wider region.
 
 ${context}
 
-Return ONLY a valid JSON object — no markdown, no code fences, no explanation before or after. Use only standard ASCII double quotes (") as string delimiters — never typographic or curly quotes (" "). Use exactly these keys:
+Your task: write accurate, natural-sounding product copy based strictly on the product context above.
+
+LANGUAGE RULES
+- Bosnian (bs): natural, fluent Bosnian. Translate meaning — never transliterate or leave English words where a clear Bosnian equivalent exists.
+- English (en): natural, fluent international English. Never leave untranslated Bosnian terms (e.g. "kumovi", "kuma") — translate the concept instead (e.g. "godparents").
+- Avoid AI marketing clichés: "perfect gift", "ideal for", "testament to", "speaks to", "elevate your", "crafted with love". Write as a knowledgeable human copywriter would.
+- Do not repeat the same selling point across multiple fields.
+
+ACCURACY RULES
+- Use only details explicitly stated in the product context above.
+- Do not invent: materials, dimensions, capacity, accessories, packaging, personalization options, engraving methods, manufacturing processes or delivery promises.
+- Do not claim "gift box included", "ready-to-give packaging" or similar unless gift packaging is explicitly confirmed in the notes.
+- Do not describe the product box or outer packaging as a feature unless the product is the packaging itself.
+- If information is missing, write a shorter accurate description rather than inventing plausible-sounding details.
+
+OUTPUT FORMAT
+Return ONLY a valid JSON object — no markdown fences, no explanatory text before or after. Use standard ASCII double quotes (") as string delimiters — never typographic or curly quotes.
 
 {
-  "name_en": "Product title in English. 20–70 characters. Specific and descriptive — never generic.",
+  "name_en": "Product title in English. 20–70 characters. Specific and descriptive.",
   "name_bs": "Naziv na bosanskom. 20–70 znakova. Konkretan i opisni.",
-  "short_description_en": "One short paragraph in English for display near the price. 120–220 characters. Plain text, no HTML. Warm, specific, mentions key material or occasion.",
-  "short_description_bs": "Jedan kratki odlomak na bosanskom za prikaz uz cijenu. 120–220 znakova. Čisti tekst, bez HTML-a.",
-  "headline_en": "One-sentence marketing tagline in English. Max 80 characters. Warm, personal, memorable.",
-  "headline_bs": "Jedna rečenica — marketinški slogan na bosanskom. Maks 80 znakova.",
-  "paragraph1_en": "First paragraph in English. Emotional introduction — why this product matters, who it is for, what feeling it evokes. 40–70 words.",
-  "paragraph1_bs": "Prvi odlomak na bosanskom. Emocionalni uvod — zašto je ovaj proizvod poseban, za koga je i kakav osjećaj izaziva.",
-  "paragraph2_en": "Second paragraph in English. Product characteristics visible in the images, materials, contents, personalization options and practical use. 50–80 words.",
-  "paragraph2_bs": "Drugi odlomak na bosanskom. Karakteristike proizvoda vidljive na slikama, materijali, sadržaj, opcije personalizacije i praktična primjena.",
-  "paragraph3_en": "Third paragraph in English. Gifting occasions this suits, customer benefits and the lasting value it provides. 40–70 words.",
-  "paragraph3_bs": "Treći odlomak na bosanskom. Prilike za poklon, koristi za kupca i trajna vrijednost ovog poklona.",
+  "short_description_en": "120–220 characters. Plain text, no HTML. States clearly what the product is and its key confirmed benefit. No generic sales phrases.",
+  "short_description_bs": "120–220 znakova. Čisti tekst, bez HTML-a. Jasno navodi što je proizvod i njegovu ključnu potvrđenu prednost.",
+  "headline_en": "One marketing headline in English. Max 80 characters. Product-specific — not a generic tagline.",
+  "headline_bs": "Jedan marketinški naslov na bosanskom. Maks 80 znakova. Specifičan za proizvod.",
+  "paragraph1_en": "Emotional introduction. Why this product matters and who it is for. 40–70 words. Based on confirmed details only.",
+  "paragraph1_bs": "Emocionalni uvod. Zašto je ovaj proizvod poseban i za koga je namijenjen.",
+  "paragraph2_en": "Product details: what it contains, confirmed materials, personalization options and practical use. 50–80 words. Do not invent.",
+  "paragraph2_bs": "Detalji proizvoda: sadržaj, potvrđeni materijali, opcije personalizacije i praktična primjena.",
+  "paragraph3_en": "Gifting occasions it suits, who it is for and the lasting value it provides. 40–70 words. No invented claims.",
+  "paragraph3_bs": "Prilike za poklon, za koga je namijenjen i trajna vrijednost koju pruža.",
   "features": [
     {
       "icon": "one icon name from the allowed list",
       "title_en": "Feature title in English. 2–5 words.",
       "title_bs": "Naslov osobine na bosanskom. 2–5 riječi.",
-      "desc_en": "Feature description in English. 1–2 short sentences.",
-      "desc_bs": "Opis osobine na bosanskom. 1–2 kratke rečenice."
+      "desc_en": "1–2 sentences describing a real, confirmed characteristic of this product.",
+      "desc_bs": "1–2 rečenice koje opisuju stvarnu, potvrđenu karakteristiku ovog proizvoda."
     }
   ]
 }
 
-Rules:
-- Output ONLY the JSON object. Any text outside it will break the import.
-- All text fields are plain text — no HTML tags anywhere.
-- features must have exactly 4 items.
+RULES
+- All text fields: plain text only — no HTML tags anywhere.
+- features: include 2–4 items, each describing a distinct, factual characteristic. Do not repeat information across cards. Do not invent features to reach four. Return fewer if fewer facts are available.
 - Each icon must be one of: ${ICON_OPTIONS.join(", ")}
-- Do not invent materials, dimensions, accessories, production methods or features not visible in the images or mentioned in the notes. If information is missing, write conservatively rather than inventing details.
-- Both languages are required — do not omit any field.
-- name_en and name_bs must be plain text, 20–70 characters.
-- short_description_en and short_description_bs must be plain text, 120–220 characters.
-- Three paragraphs total (paragraph1, paragraph2, paragraph3) — approximately 150–210 words per language combined. No repetition between paragraphs.`;
+- name_en and name_bs: 20–70 characters.
+- short_description_en and short_description_bs: 120–220 characters.
+- Three paragraphs combined: approximately 150–210 words per language when sufficient facts are available. Prefer a shorter accurate description over padding with invented content.
+- Both languages required for every field — do not omit any key.`;
 }
 
 // ── HTML sanitizer ───────────────────────────────────────────────────────────
@@ -363,7 +377,7 @@ function parseClaudeResponse(raw: string): ParseResult {
   const featuresRaw = obj["features"];
   if (Array.isArray(featuresRaw) && featuresRaw.length > 0) {
     featEn = []; featBs = []; featureTitles = [];
-    for (let i = 0; i < Math.min(featuresRaw.length, 8); i++) {
+    for (let i = 0; i < Math.min(featuresRaw.length, 4); i++) {
       const f = featuresRaw[i] as Record<string, unknown>;
       if (typeof f !== "object" || f === null) continue;
       const rawIcon = typeof f.icon === "string" ? f.icon.trim() : "";
@@ -376,6 +390,7 @@ function parseClaudeResponse(raw: string): ParseResult {
       if (t) featureTitles.push(t);
     }
     if (featEn.length === 0) { featEn = undefined; featBs = undefined; featureTitles = undefined; }
+    else if (featEn.length > 4) warnings.push(`${featEn.length} feature cards returned — showing first 4.`);
   }
 
   const hasRich = !!(headline_en || headline_bs || p1_en || p1_bs || featEn);
