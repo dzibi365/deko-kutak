@@ -162,10 +162,12 @@ Return ONLY a valid JSON object — no markdown, no code fences, no explanation 
   "short_description_bs": "Jedan kratki odlomak na bosanskom za prikaz uz cijenu. 120–220 znakova. Čisti tekst, bez HTML-a.",
   "headline_en": "One-sentence marketing tagline in English. Max 80 characters. Warm, personal, memorable.",
   "headline_bs": "Jedna rečenica — marketinški slogan na bosanskom. Maks 80 znakova.",
-  "paragraph1_en": "First description paragraph in English. 1–3 sentences. Material, occasion, emotional appeal.",
-  "paragraph1_bs": "Prva opisna rečenica/rečenice na bosanskom.",
-  "paragraph2_en": "Second paragraph in English. Personalization possibilities and ideal occasions or recipients.",
-  "paragraph2_bs": "Drugi odlomak na bosanskom.",
+  "paragraph1_en": "First paragraph in English. Emotional introduction — why this product matters, who it is for, what feeling it evokes. 40–70 words.",
+  "paragraph1_bs": "Prvi odlomak na bosanskom. Emocionalni uvod — zašto je ovaj proizvod poseban, za koga je i kakav osjećaj izaziva.",
+  "paragraph2_en": "Second paragraph in English. Product characteristics visible in the images, materials, contents, personalization options and practical use. 50–80 words.",
+  "paragraph2_bs": "Drugi odlomak na bosanskom. Karakteristike proizvoda vidljive na slikama, materijali, sadržaj, opcije personalizacije i praktična primjena.",
+  "paragraph3_en": "Third paragraph in English. Gifting occasions this suits, customer benefits and the lasting value it provides. 40–70 words.",
+  "paragraph3_bs": "Treći odlomak na bosanskom. Prilike za poklon, koristi za kupca i trajna vrijednost ovog poklona.",
   "features": [
     {
       "icon": "one icon name from the allowed list",
@@ -182,10 +184,11 @@ Rules:
 - All text fields are plain text — no HTML tags anywhere.
 - features must have exactly 4 items.
 - Each icon must be one of: ${ICON_OPTIONS.join(", ")}
-- Do not invent personalizations, engravings or features not mentioned in the notes.
+- Do not invent materials, dimensions, accessories, production methods or features not visible in the images or mentioned in the notes. If information is missing, write conservatively rather than inventing details.
 - Both languages are required — do not omit any field.
 - name_en and name_bs must be plain text, 20–70 characters.
-- short_description_en and short_description_bs must be plain text, 120–220 characters.`;
+- short_description_en and short_description_bs must be plain text, 120–220 characters.
+- Three paragraphs total (paragraph1, paragraph2, paragraph3) — approximately 150–210 words per language combined. No repetition between paragraphs.`;
 }
 
 // ── HTML sanitizer ───────────────────────────────────────────────────────────
@@ -218,12 +221,14 @@ function buildDescriptionHtml(
   headline: string | undefined,
   p1: string | undefined,
   p2: string | undefined,
+  p3: string | undefined,
   items: Array<{ icon: string; title: string; desc: string }> | undefined,
 ): string {
   const parts: string[] = [];
   if (headline?.trim()) parts.push(`<h2>${escapeHtml(headline.trim())}</h2>`);
   if (p1?.trim()) parts.push(`<p>${escapeHtml(p1.trim())}</p>`);
   if (p2?.trim()) parts.push(`<p>${escapeHtml(p2.trim())}</p>`);
+  if (p3?.trim()) parts.push(`<p>${escapeHtml(p3.trim())}</p>`);
   if (items && items.length > 0) {
     const grid = { cardColor: "#faf7f4", iconColor: "#ede5db", iconTextColor: "#7a5c3a", items };
     parts.push(`<div data-type="feature-grid" data-grid="${escapeHtmlAttr(JSON.stringify(grid))}"></div>`);
@@ -238,6 +243,7 @@ type RichPreview = {
   headline_bs?: string;
   short_description_en?: string;
   paragraph1_en?: string;
+  paragraphCount?: number;
   featureCount?: number;
   featureTitles?: string[];
 };
@@ -292,6 +298,8 @@ function parseClaudeResponse(raw: string): ParseResult {
   const p1_bs = getString("paragraph1_bs");
   const p2_en = getString("paragraph2_en");
   const p2_bs = getString("paragraph2_bs");
+  const p3_en = getString("paragraph3_en");
+  const p3_bs = getString("paragraph3_bs");
 
   // Parse features array
   type ParsedItem = { icon: string; title: string; desc: string };
@@ -324,11 +332,11 @@ function parseClaudeResponse(raw: string): ParseResult {
   const rawDescBs = typeof obj["description_bs"] === "string" ? (obj["description_bs"] as string).trim() : undefined;
 
   const description_en = hasRich
-    ? buildDescriptionHtml(headline_en, p1_en, p2_en, featEn) || undefined
+    ? buildDescriptionHtml(headline_en, p1_en, p2_en, p3_en, featEn) || undefined
     : rawDescEn ? sanitizeHtml(rawDescEn) : undefined;
 
   const description_bs = hasRich
-    ? buildDescriptionHtml(headline_bs, p1_bs, p2_bs, featBs) || undefined
+    ? buildDescriptionHtml(headline_bs, p1_bs, p2_bs, p3_bs, featBs) || undefined
     : rawDescBs ? sanitizeHtml(rawDescBs) : undefined;
 
   const data: AiContent = {};
@@ -346,8 +354,9 @@ function parseClaudeResponse(raw: string): ParseResult {
     };
   }
 
+  const paragraphCount = [p1_en, p2_en, p3_en].filter(Boolean).length || undefined;
   const richPreview: RichPreview | undefined = hasRich
-    ? { headline_en, headline_bs, short_description_en, paragraph1_en: p1_en, featureCount: featEn?.length, featureTitles }
+    ? { headline_en, headline_bs, short_description_en, paragraph1_en: p1_en, paragraphCount, featureCount: featEn?.length, featureTitles }
     : undefined;
 
   return { ok: true, data, warnings, richPreview };
@@ -657,7 +666,7 @@ export function AiStudio({ productName, category, hasExistingContent, onApply }:
                     value={importRaw}
                     onChange={(e) => setImportRaw(e.target.value)}
                     rows={6}
-                    placeholder={'{\n  "name_en": "...",\n  "name_bs": "...",\n  "headline_en": "...",\n  "headline_bs": "...",\n  "paragraph1_en": "...",\n  "paragraph1_bs": "...",\n  "paragraph2_en": "...",\n  "paragraph2_bs": "...",\n  "features": [{...}]\n}'}
+                    placeholder={'{\n  "name_en": "...",\n  "name_bs": "...",\n  "headline_en": "...",\n  "headline_bs": "...",\n  "paragraph1_en": "...",\n  "paragraph1_bs": "...",\n  "paragraph2_en": "...",\n  "paragraph2_bs": "...",\n  "paragraph3_en": "...",\n  "paragraph3_bs": "...",\n  "features": [{...}]\n}'}
                     className="w-full px-3 py-2 border border-gray-200 rounded-lg text-xs text-gray-700 bg-white resize-y focus:outline-none focus:ring-2 focus:ring-navy/20 focus:border-navy transition font-mono leading-relaxed"
                   />
                 </div>
@@ -712,7 +721,9 @@ export function AiStudio({ productName, category, hasExistingContent, onApply }:
                           )}
                           {parseResult.richPreview.paragraph1_en && (
                             <div className="px-3 py-2">
-                              <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-0.5">description</p>
+                              <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-0.5">
+                                description ({parseResult.richPreview.paragraphCount ?? 1} paragraph{(parseResult.richPreview.paragraphCount ?? 1) !== 1 ? "s" : ""})
+                              </p>
                               <p className="text-xs text-navy/60 line-clamp-2">{parseResult.richPreview.paragraph1_en}</p>
                             </div>
                           )}
