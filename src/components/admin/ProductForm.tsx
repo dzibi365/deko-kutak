@@ -33,6 +33,8 @@ const empty = {
   has_3d_preview: false,
   model_3d_url: "",
   model_texture_mesh: "",
+  personalization_note_en: "",
+  personalization_note_bs: "",
 };
 
 type LangTab = "en" | "bs";
@@ -90,6 +92,8 @@ export function ProductForm({ product, onClose, onSaved }: Props) {
         has_3d_preview: product.has_3d_preview ?? false,
         model_3d_url: product.model_3d_url ?? "",
         model_texture_mesh: product.model_texture_mesh ?? "",
+        personalization_note_en: product.personalization_note_en ?? "",
+        personalization_note_bs: product.personalization_note_bs ?? "",
       });
       setCustomFields(product.custom_fields ?? []);
       setSimilarIds(product.similar_products ?? []);
@@ -318,6 +322,8 @@ export function ProductForm({ product, onClose, onSaved }: Props) {
       has_3d_preview: form.has_3d_preview,
       model_3d_url: form.model_3d_url.trim() || null,
       model_texture_mesh: form.model_texture_mesh.trim() || null,
+      personalization_note_en: form.personalization_note_en.trim() || null,
+      personalization_note_bs: form.personalization_note_bs.trim() || null,
       custom_fields: customFields,
       similar_products: similarIds,
       price_options: savedPriceOptions,
@@ -397,6 +403,15 @@ export function ProductForm({ product, onClose, onSaved }: Props) {
                   <RichTextEditor value={form.description_en} onChange={(v) => set("description_en", v)} placeholder="Full product description with headline, paragraphs and feature cards…" />
                   <CharCount value={form.description_en.replace(/<[^>]*>/g, "")} min={80} max={500} />
                 </Field>
+                <Field label="Personalization Note (EN)">
+                  <textarea
+                    value={form.personalization_note_en}
+                    onChange={(e) => set("personalization_note_en", e.target.value)}
+                    rows={3}
+                    placeholder="Optional note shown to the customer above the personalization fields (e.g. format instructions, file requirements)."
+                    className={`${inputCls} resize-none`}
+                  />
+                </Field>
               </>
             ) : (
               <>
@@ -418,6 +433,15 @@ export function ProductForm({ product, onClose, onSaved }: Props) {
                 <Field label="Dugi opis (BS)">
                   <RichTextEditor value={form.description_bs} onChange={(v) => set("description_bs", v)} placeholder="Puni opis sa naslovom, paragrafima i karticama osobina…" />
                   <CharCount value={form.description_bs.replace(/<[^>]*>/g, "")} min={80} max={500} />
+                </Field>
+                <Field label="Napomena za personalizaciju (BS)">
+                  <textarea
+                    value={form.personalization_note_bs}
+                    onChange={(e) => set("personalization_note_bs", e.target.value)}
+                    rows={3}
+                    placeholder="Opcionalna napomena kupcu iznad polja za personalizaciju (npr. format datoteke, upute)."
+                    className={`${inputCls} resize-none`}
+                  />
                 </Field>
               </>
             )}

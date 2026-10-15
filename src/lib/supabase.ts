@@ -55,6 +55,8 @@ export type Product = {
   short_description_en: string | null;
   short_description_bs: string | null;
   price_options: PriceOption[] | null;
+  personalization_note_en: string | null;
+  personalization_note_bs: string | null;
   created_at: string;
 };
 

@@ -223,6 +223,17 @@ export function PersonalizationModal({ product, onClose, variantOption }: Props)
             className="flex-1 min-h-0 overflow-y-auto px-6 py-5"
           >
             <div className="flex flex-col gap-5">
+          {(() => {
+            const note = lang === "bs"
+              ? (product.personalization_note_bs || product.personalization_note_en)
+              : (product.personalization_note_en || product.personalization_note_bs);
+            if (!note) return null;
+            return (
+              <div className="rounded-lg bg-gray-50 border border-gray-100 px-4 py-3">
+                <p className="text-xs text-gray-500 leading-relaxed whitespace-pre-wrap">{note}</p>
+              </div>
+            );
+          })()}
           {fields.map((field) => {
             const label = lang === "bs"
               ? (field.label_bs || field.label_en)
