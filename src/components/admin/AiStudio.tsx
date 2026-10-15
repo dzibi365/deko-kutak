@@ -1,5 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Sparkles, ChevronDown, Copy, Check, X, Plus, FileText } from "lucide-react";
+import { ICON_OPTIONS } from "./FeatureGridExtension";
+
+const ICON_OPTIONS_SET = new Set<string>(ICON_OPTIONS);
 
 // ── Public types ──────────────────────────────────────────────────────────────
 
@@ -148,26 +151,40 @@ function buildTextPrompt(params: {
 
 ${context}
 
-Return ONLY a valid JSON object — no markdown, no code fences, no explanation before or after the JSON. Use exactly these four keys:
+Return ONLY a valid JSON object — no markdown, no code fences, no explanation before or after. Use exactly these keys:
 
 {
-  "name_en": "Product title in English. 20–70 characters. Specific and descriptive — never generic. Example: 'Personalised Wooden Wedding Photo Album'.",
+  "name_en": "Product title in English. 20–70 characters. Specific and descriptive — never generic.",
   "name_bs": "Naziv na bosanskom. 20–70 znakova. Konkretan i opisni.",
-  "description_en": "<p>Engaging description in English. 100–300 characters of plain-text equivalent. Mention material, occasion and personalization possibilities if confirmed in the notes. Warm, personal tone. Allowed HTML only: <p>, <strong>, <em>, <ul>, <li>.</p>",
-  "description_bs": "<p>Opis na bosanskom. Isti sadržaj kao engleski, prilagođen lokalnom govoru i pravopisu.</p>"
+  "headline_en": "One-sentence marketing tagline in English. Max 80 characters. Warm, personal, memorable.",
+  "headline_bs": "Jedna rečenica — marketinški slogan na bosanskom. Maks 80 znakova.",
+  "paragraph1_en": "First description paragraph in English. 1–3 sentences. Material, occasion, emotional appeal.",
+  "paragraph1_bs": "Prva opisna rečenica/rečenice na bosanskom.",
+  "paragraph2_en": "Second paragraph in English. Personalization possibilities and ideal occasions or recipients.",
+  "paragraph2_bs": "Drugi odlomak na bosanskom.",
+  "features": [
+    {
+      "icon": "one icon name from the allowed list",
+      "title_en": "Feature title in English. 2–5 words.",
+      "title_bs": "Naslov osobine na bosanskom. 2–5 riječi.",
+      "desc_en": "Feature description in English. 1–2 short sentences.",
+      "desc_bs": "Opis osobine na bosanskom. 1–2 kratke rečenice."
+    }
+  ]
 }
 
 Rules:
 - Output ONLY the JSON object. Any text outside it will break the import.
+- All text fields are plain text — no HTML tags anywhere.
+- features must have exactly 4 items.
+- Each icon must be one of: ${ICON_OPTIONS.join(", ")}
 - Do not invent personalizations, engravings or features not mentioned in the notes.
-- name_en and name_bs must be plain text with no HTML tags.
-- description_en and description_bs must be valid HTML using only the allowed tags above.
-- Both languages are required — do not omit any field.`;
+- Both languages are required — do not omit any field.
+- name_en and name_bs must be plain text, 20–70 characters.`;
 }
 
 // ── HTML sanitizer ───────────────────────────────────────────────────────────
-// Strips all tags except an explicit allowlist and removes all attributes.
-// Applied to description fields before preview and apply.
+// Used only for backward-compat when Claude returns old-format description HTML.
 
 const ALLOWED_TAGS = new Set(["p", "strong", "em", "ul", "ol", "li", "br"]);
 
@@ -182,19 +199,51 @@ function sanitizeHtml(html: string): string {
     });
 }
 
+// ── Description HTML builder ─────────────────────────────────────────────────
+
+function escapeHtml(s: string): string {
+  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+
+function escapeHtmlAttr(s: string): string {
+  return s.replace(/&/g, "&amp;").replace(/"/g, "&quot;");
+}
+
+function buildDescriptionHtml(
+  headline: string | undefined,
+  p1: string | undefined,
+  p2: string | undefined,
+  items: Array<{ icon: string; title: string; desc: string }> | undefined,
+): string {
+  const parts: string[] = [];
+  if (headline?.trim()) parts.push(`<p><strong>${escapeHtml(headline.trim())}</strong></p>`);
+  if (p1?.trim()) parts.push(`<p>${escapeHtml(p1.trim())}</p>`);
+  if (p2?.trim()) parts.push(`<p>${escapeHtml(p2.trim())}</p>`);
+  if (items && items.length > 0) {
+    const grid = { cardColor: "#faf7f4", iconColor: "#ede5db", iconTextColor: "#7a5c3a", items };
+    parts.push(`<div data-type="feature-grid" data-grid="${escapeHtmlAttr(JSON.stringify(grid))}"></div>`);
+  }
+  return parts.join("");
+}
+
 // ── JSON import parser ────────────────────────────────────────────────────────
 
+type RichPreview = {
+  headline_en?: string;
+  headline_bs?: string;
+  paragraph1_en?: string;
+  featureCount?: number;
+  featureTitles?: string[];
+};
+
 type ParseResult =
-  | { ok: true; data: AiContent; warnings: string[] }
+  | { ok: true; data: AiContent; warnings: string[]; richPreview?: RichPreview }
   | { ok: false; error: string };
 
 function parseClaudeResponse(raw: string): ParseResult {
   let s = raw.trim();
-
-  // Strip markdown code fences
   s = s.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/i, "").trim();
 
-  // Extract the outermost JSON object
   const start = s.indexOf("{");
   const end = s.lastIndexOf("}");
   if (start === -1 || end === -1 || end <= start) {
@@ -215,50 +264,83 @@ function parseClaudeResponse(raw: string): ParseResult {
 
   const obj = parsed as Record<string, unknown>;
   const warnings: string[] = [];
+
+  function getString(key: string): string | undefined {
+    const v = obj[key];
+    if (v === undefined || v === null) return undefined;
+    if (typeof v !== "string") { warnings.push(`"${key}" is not a string — skipped.`); return undefined; }
+    const trimmed = v.trim();
+    if (!trimmed) { warnings.push(`"${key}" is empty — skipped.`); return undefined; }
+    const plain = trimmed.replace(/<[^>]*>/g, "").trim();
+    if (plain !== trimmed) warnings.push(`HTML tags stripped from "${key}".`);
+    return plain || undefined;
+  }
+
+  const name_en = getString("name_en");
+  const name_bs = getString("name_bs");
+  const headline_en = getString("headline_en");
+  const headline_bs = getString("headline_bs");
+  const p1_en = getString("paragraph1_en");
+  const p1_bs = getString("paragraph1_bs");
+  const p2_en = getString("paragraph2_en");
+  const p2_bs = getString("paragraph2_bs");
+
+  // Parse features array
+  type ParsedItem = { icon: string; title: string; desc: string };
+  let featEn: ParsedItem[] | undefined;
+  let featBs: ParsedItem[] | undefined;
+  let featureTitles: string[] | undefined;
+
+  const featuresRaw = obj["features"];
+  if (Array.isArray(featuresRaw) && featuresRaw.length > 0) {
+    featEn = []; featBs = []; featureTitles = [];
+    for (let i = 0; i < Math.min(featuresRaw.length, 8); i++) {
+      const f = featuresRaw[i] as Record<string, unknown>;
+      if (typeof f !== "object" || f === null) continue;
+      const rawIcon = typeof f.icon === "string" ? f.icon.trim() : "";
+      const icon = ICON_OPTIONS_SET.has(rawIcon) ? rawIcon : "Star";
+      if (rawIcon && !ICON_OPTIONS_SET.has(rawIcon)) warnings.push(`Feature ${i + 1}: unknown icon "${rawIcon}" — using "Star".`);
+      const clean = (k: string) => typeof f[k] === "string" ? (f[k] as string).replace(/<[^>]*>/g, "").trim() : "";
+      featEn.push({ icon, title: clean("title_en"), desc: clean("desc_en") });
+      featBs.push({ icon, title: clean("title_bs"), desc: clean("desc_bs") });
+      const t = clean("title_en");
+      if (t) featureTitles.push(t);
+    }
+    if (featEn.length === 0) { featEn = undefined; featBs = undefined; featureTitles = undefined; }
+  }
+
+  const hasRich = !!(headline_en || headline_bs || p1_en || p1_bs || featEn);
+
+  // Backward-compat: old format with description_en/description_bs HTML
+  const rawDescEn = typeof obj["description_en"] === "string" ? (obj["description_en"] as string).trim() : undefined;
+  const rawDescBs = typeof obj["description_bs"] === "string" ? (obj["description_bs"] as string).trim() : undefined;
+
+  const description_en = hasRich
+    ? buildDescriptionHtml(headline_en, p1_en, p2_en, featEn) || undefined
+    : rawDescEn ? sanitizeHtml(rawDescEn) : undefined;
+
+  const description_bs = hasRich
+    ? buildDescriptionHtml(headline_bs, p1_bs, p2_bs, featBs) || undefined
+    : rawDescBs ? sanitizeHtml(rawDescBs) : undefined;
+
   const data: AiContent = {};
-
-  for (const key of ["name_en", "name_bs", "description_en", "description_bs"] as const) {
-    const raw = obj[key];
-    if (raw === undefined || raw === null) continue;
-    if (typeof raw !== "string") {
-      warnings.push(`"${key}" is not a string — skipped.`);
-      continue;
-    }
-    const val = raw.trim();
-    if (!val) {
-      warnings.push(`"${key}" is empty — skipped.`);
-      continue;
-    }
-    data[key] = val;
-  }
-
-  // Name fields must be plain text — strip any stray HTML tags
-  for (const nameKey of ["name_en", "name_bs"] as const) {
-    if (data[nameKey] && /<[^>]+>/.test(data[nameKey]!)) {
-      data[nameKey] = data[nameKey]!.replace(/<[^>]*>/g, "").trim();
-      warnings.push(`HTML tags stripped from "${nameKey}".`);
-    }
-  }
-
-  // Description fields: sanitize to allowed tags only, strip all attributes
-  for (const descKey of ["description_en", "description_bs"] as const) {
-    if (data[descKey]) {
-      const sanitized = sanitizeHtml(data[descKey]!);
-      if (sanitized !== data[descKey]) {
-        data[descKey] = sanitized;
-        warnings.push(`Unsafe markup removed from "${descKey}".`);
-      }
-    }
-  }
+  if (name_en) data.name_en = name_en;
+  if (name_bs) data.name_bs = name_bs;
+  if (description_en) data.description_en = description_en;
+  if (description_bs) data.description_bs = description_bs;
 
   if (Object.keys(data).length === 0) {
     return {
       ok: false,
-      error: "No valid fields found. Ensure Claude returned name_en, name_bs, description_en and description_bs.",
+      error: "No valid fields found. Ensure Claude returned name_en, name_bs, and description content.",
     };
   }
 
-  return { ok: true, data, warnings };
+  const richPreview: RichPreview | undefined = hasRich
+    ? { headline_en, headline_bs, paragraph1_en: p1_en, featureCount: featEn?.length, featureTitles }
+    : undefined;
+
+  return { ok: true, data, warnings, richPreview };
 }
 
 // ── UI helpers ────────────────────────────────────────────────────────────────
@@ -565,7 +647,7 @@ export function AiStudio({ productName, category, hasExistingContent, onApply }:
                     value={importRaw}
                     onChange={(e) => setImportRaw(e.target.value)}
                     rows={6}
-                    placeholder={'{\n  "name_en": "...",\n  "name_bs": "...",\n  "description_en": "<p>...</p>",\n  "description_bs": "<p>...</p>"\n}'}
+                    placeholder={'{\n  "name_en": "...",\n  "name_bs": "...",\n  "headline_en": "...",\n  "headline_bs": "...",\n  "paragraph1_en": "...",\n  "paragraph1_bs": "...",\n  "paragraph2_en": "...",\n  "paragraph2_bs": "...",\n  "features": [{...}]\n}'}
                     className="w-full px-3 py-2 border border-gray-200 rounded-lg text-xs text-gray-700 bg-white resize-y focus:outline-none focus:ring-2 focus:ring-navy/20 focus:border-navy transition font-mono leading-relaxed"
                   />
                 </div>
@@ -591,18 +673,61 @@ export function AiStudio({ productName, category, hasExistingContent, onApply }:
                     )}
 
                     {/* Field preview */}
-                    <div className="flex flex-col gap-2 border border-gray-200 rounded-lg bg-white divide-y divide-gray-100 overflow-hidden">
-                      {(["name_en", "name_bs", "description_en", "description_bs"] as const).map((key) => {
-                        const val = parseResult.data[key];
-                        if (!val) return null;
-                        const plain = val.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
-                        return (
-                          <div key={key} className="px-3 py-2">
-                            <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-0.5">{key}</p>
-                            <p className="text-xs text-navy line-clamp-2">{plain}</p>
-                          </div>
-                        );
-                      })}
+                    <div className="flex flex-col border border-gray-200 rounded-lg bg-white divide-y divide-gray-100 overflow-hidden">
+                      {parseResult.data.name_en && (
+                        <div className="px-3 py-2">
+                          <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-0.5">name_en</p>
+                          <p className="text-xs text-navy">{parseResult.data.name_en}</p>
+                        </div>
+                      )}
+                      {parseResult.data.name_bs && (
+                        <div className="px-3 py-2">
+                          <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-0.5">name_bs</p>
+                          <p className="text-xs text-navy">{parseResult.data.name_bs}</p>
+                        </div>
+                      )}
+                      {parseResult.richPreview ? (
+                        <>
+                          {parseResult.richPreview.headline_en && (
+                            <div className="px-3 py-2">
+                              <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-0.5">headline</p>
+                              <p className="text-xs text-navy italic">{parseResult.richPreview.headline_en}</p>
+                            </div>
+                          )}
+                          {parseResult.richPreview.paragraph1_en && (
+                            <div className="px-3 py-2">
+                              <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-0.5">description</p>
+                              <p className="text-xs text-navy/60 line-clamp-2">{parseResult.richPreview.paragraph1_en}</p>
+                            </div>
+                          )}
+                          {parseResult.richPreview.featureTitles && parseResult.richPreview.featureTitles.length > 0 && (
+                            <div className="px-3 py-2">
+                              <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-1.5">
+                                {parseResult.richPreview.featureCount} feature card{parseResult.richPreview.featureCount !== 1 ? "s" : ""}
+                              </p>
+                              <div className="flex flex-wrap gap-1">
+                                {parseResult.richPreview.featureTitles.map((title, i) => (
+                                  <span key={i} className="text-[10px] bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full">{title}</span>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                        </>
+                      ) : (
+                        <>
+                          {(["description_en", "description_bs"] as const).map((key) => {
+                            const val = parseResult.data[key];
+                            if (!val) return null;
+                            const plain = val.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
+                            return (
+                              <div key={key} className="px-3 py-2">
+                                <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-0.5">{key}</p>
+                                <p className="text-xs text-navy line-clamp-2">{plain}</p>
+                              </div>
+                            );
+                          })}
+                        </>
+                      )}
                     </div>
 
                     {confirmStep ? (
