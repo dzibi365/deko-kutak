@@ -51,12 +51,13 @@ const inputCls =
   "px-3 py-2 border border-gray-200 rounded-lg text-sm text-navy placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-navy/20 focus:border-navy transition w-full";
 
 export function CustomFieldEditor({
-  field, index, onChange, onRemove,
+  field, index, onChange, onRemove, dropdownFields,
 }: {
   field: CustomField;
   index: number;
   onChange: (patch: Partial<CustomField>) => void;
   onRemove: () => void;
+  dropdownFields: CustomField[];
 }) {
   return (
     <div className="border border-gray-200 rounded-xl p-4 flex flex-col gap-3 bg-gray-50/50">
@@ -111,6 +112,61 @@ export function CustomFieldEditor({
             placeholder="Placeholder (BS)" className={inputCls} />
         </div>
       )}
+
+      {/* Conditional Required — only when there are dropdown siblings and field is not always-required */}
+      {!field.required && dropdownFields.length > 0 && (() => {
+        const rif = field.required_if;
+        if (!rif) {
+          return (
+            <button
+              type="button"
+              onClick={() => onChange({ required_if: { field_id: dropdownFields[0].id, value: "" } })}
+              className="flex items-center gap-1 self-start text-xs text-gray-400 hover:text-navy transition-colors"
+            >
+              <Plus className="w-3 h-3" strokeWidth={2} />
+              Add conditional rule
+            </button>
+          );
+        }
+        const srcField = dropdownFields.find((df) => df.id === rif.field_id);
+        const srcOptions = srcField
+          ? (srcField.options_en ?? srcField.options).filter((o) => o.trim())
+          : [];
+        return (
+          <div className="flex flex-col gap-2">
+            <span className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Required when</span>
+            <div className="grid grid-cols-[1fr_1fr_28px] gap-2 items-center">
+              <select
+                value={rif.field_id}
+                onChange={(e) => onChange({ required_if: { field_id: e.target.value, value: "" } })}
+                className={inputCls}
+              >
+                {dropdownFields.map((df) => (
+                  <option key={df.id} value={df.id}>{df.label_en || df.label_bs || "(Dropdown)"}</option>
+                ))}
+              </select>
+              <select
+                value={rif.value}
+                onChange={(e) => onChange({ required_if: { ...rif, value: e.target.value } })}
+                className={inputCls}
+              >
+                <option value="">— select option —</option>
+                {srcOptions.map((o, i) => (
+                  <option key={i} value={o}>{o}</option>
+                ))}
+              </select>
+              <button
+                type="button"
+                title="Remove rule"
+                onClick={() => onChange({ required_if: undefined })}
+                className="p-1 text-gray-300 hover:text-red-400 transition-colors"
+              >
+                <Trash2 className="w-3.5 h-3.5" strokeWidth={1.75} />
+              </button>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* Options — bilingual row editor, only for select */}
       {field.type === "select" && (() => {
@@ -195,15 +251,19 @@ export function CustomFieldsList({
           No fields yet. Click "Add Field" to create one.
         </p>
       )}
-      {fields.map((f, idx) => (
-        <CustomFieldEditor
-          key={f.id}
-          field={f}
-          index={idx}
-          onChange={(patch) => update(f.id, patch)}
-          onRemove={() => remove(f.id)}
-        />
-      ))}
+      {fields.map((f, idx) => {
+        const dropdownFields = fields.filter((other) => other.type === "select" && other.id !== f.id);
+        return (
+          <CustomFieldEditor
+            key={f.id}
+            field={f}
+            index={idx}
+            dropdownFields={dropdownFields}
+            onChange={(patch) => update(f.id, patch)}
+            onRemove={() => remove(f.id)}
+          />
+        );
+      })}
       <button type="button" onClick={add}
         className="flex items-center gap-1.5 self-start px-3 py-1.5 text-xs font-semibold text-navy border border-navy/20 rounded-lg hover:bg-navy hover:text-white hover:border-navy transition-colors">
         <Plus className="w-3.5 h-3.5" strokeWidth={2} />

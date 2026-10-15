@@ -26,6 +26,10 @@ export type CustomField = {
   options_en?: string[];
   options_bs?: string[];
   required: boolean;
+  required_if?: {
+    field_id: string;
+    value: string;
+  };
 };
 
 export type Product = {

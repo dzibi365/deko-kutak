@@ -244,6 +244,36 @@ export function ProductForm({ product, onClose, onSaved }: Props) {
       }
     }
 
+    // Validate required_if rules
+    for (const f of customFields) {
+      if (!f.required_if) continue;
+      const { field_id, value } = f.required_if;
+      const fieldLabel = f.label_en || f.label_bs || "Field";
+      if (field_id === f.id) {
+        setError(`Custom field "${fieldLabel}": a field cannot have a conditional rule that references itself.`);
+        return;
+      }
+      const srcField = customFields.find((x) => x.id === field_id);
+      if (!srcField) {
+        setError(`Custom field "${fieldLabel}": conditional required references a field that no longer exists. Please update or remove the rule.`);
+        return;
+      }
+      if (srcField.type !== "select") {
+        setError(`Custom field "${fieldLabel}": conditional required source must be a dropdown field.`);
+        return;
+      }
+      if (!value.trim()) {
+        setError(`Custom field "${fieldLabel}": conditional required option is not selected.`);
+        return;
+      }
+      const srcOptions = srcField.options_en ?? srcField.options;
+      if (!srcOptions.includes(value)) {
+        const srcLabel = srcField.label_en || srcField.label_bs || "Dropdown";
+        setError(`Custom field "${fieldLabel}": conditional required value "${value}" is not a current option of field "${srcLabel}".`);
+        return;
+      }
+    }
+
     let savedPriceOptions: PriceOption[] | null = null;
     if (variantsEnabled) {
       if (priceOptions.length < 2 || priceOptions.length > 10) {

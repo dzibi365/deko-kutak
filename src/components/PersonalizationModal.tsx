@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { X, ShoppingBag, Upload, ChevronDown } from "lucide-react";
 import { useLang } from "../context/LanguageContext";
 import { useCart } from "../context/CartContext";
-import { localName, type Product, type PriceOption } from "../lib/supabase";
+import { localName, type CustomField, type Product, type PriceOption } from "../lib/supabase";
 import { uploadCustomerPhoto } from "../lib/customerUpload";
 
 type Props = {
@@ -119,7 +119,7 @@ export function PersonalizationModal({ product, onClose, variantOption }: Props)
   function validate(): boolean {
     const next: Record<string, boolean> = {};
     fields.forEach((f) => {
-      if (!f.required) return;
+      if (!isEffectivelyRequired(f, values)) return;
       // image: check URL stored in values (empty = not uploaded)
       if (f.type === "image" && !values[f.id]) next[f.id] = true;
       else if (f.type === "checkbox" && values[f.id] !== "yes") next[f.id] = true;
@@ -241,7 +241,7 @@ export function PersonalizationModal({ product, onClose, variantOption }: Props)
                 {field.type !== "checkbox" && (
                   <label className="text-sm font-medium text-navy">
                     {label}
-                    {field.required && <span className="text-red-400 ml-1">*</span>}
+                    {isEffectivelyRequired(field, values) && <span className="text-red-400 ml-1">*</span>}
                   </label>
                 )}
 
@@ -299,7 +299,7 @@ export function PersonalizationModal({ product, onClose, variantOption }: Props)
                     />
                     <span className="text-sm text-navy/70">
                       {label}
-                      {field.required && <span className="text-red-400 ml-1">*</span>}
+                      {isEffectivelyRequired(field, values) && <span className="text-red-400 ml-1">*</span>}
                     </span>
                   </label>
                 )}
@@ -398,6 +398,14 @@ export function PersonalizationModal({ product, onClose, variantOption }: Props)
       </div>
     </div>
   );
+}
+
+function isEffectivelyRequired(field: CustomField, values: Record<string, string>): boolean {
+  if (field.required) return true;
+  if (field.required_if) {
+    return (values[field.required_if.field_id] ?? "") === field.required_if.value;
+  }
+  return false;
 }
 
 function fieldCls(error: boolean) {
