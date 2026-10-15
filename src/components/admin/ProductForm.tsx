@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { X, Upload, Trash2, Plus, Search, Box } from "lucide-react";
 import { MeshPickerCanvas } from "./MeshPickerCanvas";
-import { supabase, type Product, type Category, type CustomField, type FieldGroup, localName } from "../../lib/supabase";
+import { supabase, type Product, type Category, type CustomField, type FieldGroup, type PriceOption, localName } from "../../lib/supabase";
 import { CustomFieldsList, newField } from "./CustomFieldsEditor";
 import { RichTextEditor } from "./RichTextEditor";
 import { AiStudio, type AiContent } from "./AiStudio";
@@ -10,6 +10,13 @@ type Props = {
   product?: Product | null;
   onClose: () => void;
   onSaved: () => void;
+};
+
+type PriceOptionDraft = {
+  id: string;
+  label_bs: string;
+  label_en: string;
+  price: string;
 };
 
 const empty = {
@@ -43,6 +50,8 @@ export function ProductForm({ product, onClose, onSaved }: Props) {
   const [allProducts, setAllProducts] = useState<Product[]>([]);
   const [similarIds, setSimilarIds] = useState<number[]>([]);
   const [productSearch, setProductSearch] = useState("");
+  const [variantsEnabled, setVariantsEnabled] = useState(false);
+  const [priceOptions, setPriceOptions] = useState<PriceOptionDraft[]>([]);
 
   const mainFileRef = useRef<HTMLInputElement>(null);
   const galleryFileRef = useRef<HTMLInputElement>(null);
@@ -84,10 +93,24 @@ export function ProductForm({ product, onClose, onSaved }: Props) {
       });
       setCustomFields(product.custom_fields ?? []);
       setSimilarIds(product.similar_products ?? []);
+      if (product.price_options && product.price_options.length > 0) {
+        setVariantsEnabled(true);
+        setPriceOptions((product.price_options as PriceOption[]).map((o) => ({
+          id: o.id,
+          label_bs: o.label_bs,
+          label_en: o.label_en,
+          price: String(o.price),
+        })));
+      } else {
+        setVariantsEnabled(false);
+        setPriceOptions([]);
+      }
     } else {
       setForm({ ...empty });
       setCustomFields([]);
       setSimilarIds([]);
+      setVariantsEnabled(false);
+      setPriceOptions([]);
     }
   }, [product]);
 
@@ -195,6 +218,31 @@ export function ProductForm({ product, onClose, onSaved }: Props) {
       return;
     }
 
+    let savedPriceOptions: PriceOption[] | null = null;
+    if (variantsEnabled) {
+      if (priceOptions.length < 2 || priceOptions.length > 10) {
+        setError(`Price options: need 2–10 options when variants are enabled (currently ${priceOptions.length}).`);
+        return;
+      }
+      const ids = new Set<string>();
+      for (const opt of priceOptions) {
+        const id = opt.id.trim();
+        if (!id) { setError("All option IDs must be non-empty."); return; }
+        if (ids.has(id)) { setError(`Duplicate option ID: "${id}".`); return; }
+        ids.add(id);
+        if (!opt.label_en.trim()) { setError(`Option "${id}": English label is required.`); return; }
+        if (!opt.label_bs.trim()) { setError(`Option "${id}": Bosnian label is required.`); return; }
+        const p = parseFloat(opt.price);
+        if (isNaN(p) || p <= 0 || p > 99999) { setError(`Option "${id}": price must be a positive number ≤ 99999.`); return; }
+      }
+      savedPriceOptions = priceOptions.map((o) => ({
+        id: o.id.trim(),
+        label_en: o.label_en.trim(),
+        label_bs: o.label_bs.trim(),
+        price: parseFloat(o.price),
+      }));
+    }
+
     const payload = {
       name: form.name_en.trim() || form.name_bs.trim(),
       name_en: form.name_en.trim() || null,
@@ -216,6 +264,7 @@ export function ProductForm({ product, onClose, onSaved }: Props) {
       model_texture_mesh: form.model_texture_mesh.trim() || null,
       custom_fields: customFields,
       similar_products: similarIds,
+      price_options: savedPriceOptions,
     };
 
     setSaving(true);
@@ -340,6 +389,106 @@ export function ProductForm({ product, onClose, onSaved }: Props) {
               <input type="number" min="0" step="0.01" value={form.compare_price}
                 onChange={(e) => set("compare_price", e.target.value)} placeholder="Optional — original price shown as strikethrough" className={inputCls} />
             </Field>
+
+            {/* Purchase variants */}
+            <div className="flex flex-col gap-3">
+              <label className="flex items-center gap-3 cursor-pointer select-none">
+                <div
+                  onClick={() => {
+                    const next = !variantsEnabled;
+                    setVariantsEnabled(next);
+                    if (next && priceOptions.length === 0) {
+                      setPriceOptions([
+                        { id: "", label_bs: "", label_en: "", price: "" },
+                        { id: "", label_bs: "", label_en: "", price: "" },
+                      ]);
+                    }
+                  }}
+                  className={`w-10 h-6 rounded-full transition-colors flex items-center px-1 cursor-pointer ${variantsEnabled ? "bg-navy" : "bg-gray-200"}`}
+                >
+                  <div className={`w-4 h-4 rounded-full bg-white shadow transition-transform ${variantsEnabled ? "translate-x-4" : "translate-x-0"}`} />
+                </div>
+                <div>
+                  <span className="text-sm font-medium text-navy">Purchase Variants (price options)</span>
+                  <p className="text-xs text-gray-400">Customers choose a variant at add-to-cart. Each variant has its own price.</p>
+                </div>
+              </label>
+
+              {variantsEnabled && (
+                <div className="flex flex-col gap-3 pl-[52px]">
+                  {priceOptions.map((opt, idx) => (
+                    <div key={idx} className="grid grid-cols-[90px_1fr_1fr_90px_auto] gap-2 items-start">
+                      <div className="flex flex-col gap-1">
+                        {idx === 0 && <span className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">ID</span>}
+                        <input
+                          value={opt.id}
+                          onChange={(e) => setPriceOptions((prev) => prev.map((o, i) => i === idx ? { ...o, id: e.target.value } : o))}
+                          placeholder="boutonniere"
+                          className={`${inputCls} font-mono text-xs`}
+                        />
+                      </div>
+                      <div className="flex flex-col gap-1">
+                        {idx === 0 && <span className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Label BS</span>}
+                        <input
+                          value={opt.label_bs}
+                          onChange={(e) => setPriceOptions((prev) => prev.map((o, i) => i === idx ? { ...o, label_bs: e.target.value } : o))}
+                          placeholder="Naziv BS"
+                          className={inputCls}
+                        />
+                      </div>
+                      <div className="flex flex-col gap-1">
+                        {idx === 0 && <span className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Label EN</span>}
+                        <input
+                          value={opt.label_en}
+                          onChange={(e) => setPriceOptions((prev) => prev.map((o, i) => i === idx ? { ...o, label_en: e.target.value } : o))}
+                          placeholder="Name EN"
+                          className={inputCls}
+                        />
+                      </div>
+                      <div className="flex flex-col gap-1">
+                        {idx === 0 && <span className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Price KM</span>}
+                        <input
+                          type="number"
+                          min="0.01"
+                          step="0.01"
+                          value={opt.price}
+                          onChange={(e) => setPriceOptions((prev) => prev.map((o, i) => i === idx ? { ...o, price: e.target.value } : o))}
+                          placeholder="0.00"
+                          className={inputCls}
+                        />
+                      </div>
+                      <div className={`flex items-end pb-0.5 ${idx === 0 ? "pt-5" : ""}`}>
+                        <button
+                          type="button"
+                          title="Remove option"
+                          onClick={() => {
+                            const next = priceOptions.filter((_, i) => i !== idx);
+                            setPriceOptions(next);
+                            if (next.length === 0) setVariantsEnabled(false);
+                          }}
+                          className="p-1.5 text-gray-400 hover:text-red-500 transition-colors"
+                        >
+                          <Trash2 className="w-4 h-4" strokeWidth={1.75} />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+
+                  {priceOptions.length < 10 && (
+                    <button
+                      type="button"
+                      onClick={() => setPriceOptions((prev) => [...prev, { id: "", label_bs: "", label_en: "", price: "" }])}
+                      className="flex items-center gap-1.5 text-sm text-navy/60 hover:text-navy transition-colors self-start"
+                    >
+                      <Plus className="w-4 h-4" strokeWidth={2} />
+                      Add option
+                    </button>
+                  )}
+
+                  <p className="text-xs text-gray-400">2–10 options · IDs must be unique alphanumeric slugs · Remove all to disable variants</p>
+                </div>
+              )}
+            </div>
 
             {/* Main image */}
             <Field label="Main Image">

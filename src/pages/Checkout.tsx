@@ -55,9 +55,29 @@ export default function Checkout() {
     setError(null);
     setPlacing(true);
 
-    // Strip uploadTokens before persisting — tokens are client-only credentials
-    // and must never be stored in the orders table or transmitted to the server.
-    const orderItems = items.map(({ uploadTokens: _dropped, ...rest }) => rest);
+    // Strip client-only fields before persisting.
+    // uploadTokens: credentials — must never reach the DB.
+    // cartKey: local merge key — not meaningful server-side.
+    // option_label_*: display-only; the canonical label is injected into customizations below.
+    const orderItems = items.map(({
+      uploadTokens: _tokens,
+      cartKey: _cartKey,
+      option_label_en,
+      option_label_bs,
+      ...rest
+    }) => {
+      if (rest.option_id && (option_label_en || option_label_bs)) {
+        const variantLabel = lang === "bs"
+          ? (option_label_bs || option_label_en || "")
+          : (option_label_en || option_label_bs || "");
+        const labelKey = lang === "bs" ? "Varijanta" : "Variant";
+        return {
+          ...rest,
+          customizations: { [labelKey]: variantLabel, ...(rest.customizations ?? {}) },
+        };
+      }
+      return rest;
+    });
     // place_order is a SECURITY DEFINER RPC that inserts the order, generates
     // order_number from a DB sequence, and returns both order_number and email_token.
     // Anon users have no SELECT RLS on orders, so INSERT…RETURNING yields 0 rows
@@ -262,6 +282,13 @@ export default function Checkout() {
                           </div>
                           <div className="flex-1 min-w-0">
                             <p className="text-sm font-medium text-navy line-clamp-1">{name}</p>
+                            {item.option_id && (item.option_label_bs || item.option_label_en) && (
+                              <p className="text-xs text-gray-400 truncate">
+                                {lang === "bs"
+                                  ? (item.option_label_bs || item.option_label_en)
+                                  : (item.option_label_en || item.option_label_bs)}
+                              </p>
+                            )}
                             <p className="text-xs text-gray-400">× {item.quantity}</p>
                           </div>
                           <span className="text-sm font-semibold text-navy flex-shrink-0">

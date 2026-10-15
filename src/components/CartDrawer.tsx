@@ -84,6 +84,13 @@ export function CartDrawer() {
                     {/* Info */}
                     <div className="flex-1 min-w-0 flex flex-col gap-1">
                       <p className="font-medium text-navy text-sm leading-snug line-clamp-2">{name}</p>
+                      {item.option_id && (item.option_label_bs || item.option_label_en) && (
+                        <p className="text-xs text-gray-400">
+                          {lang === "bs"
+                            ? (item.option_label_bs || item.option_label_en)
+                            : (item.option_label_en || item.option_label_bs)}
+                        </p>
+                      )}
                       <p className="text-sm font-semibold text-copper">{item.price.toFixed(2)} KM</p>
 
                       {/* Customizations */}

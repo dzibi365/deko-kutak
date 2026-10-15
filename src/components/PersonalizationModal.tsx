@@ -2,15 +2,16 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { X, ShoppingBag, Upload, ChevronDown } from "lucide-react";
 import { useLang } from "../context/LanguageContext";
 import { useCart } from "../context/CartContext";
-import { localName, type Product } from "../lib/supabase";
+import { localName, type Product, type PriceOption } from "../lib/supabase";
 import { uploadCustomerPhoto } from "../lib/customerUpload";
 
 type Props = {
   product: Product;
   onClose: () => void;
+  variantOption?: PriceOption;
 };
 
-export function PersonalizationModal({ product, onClose }: Props) {
+export function PersonalizationModal({ product, onClose, variantOption }: Props) {
   const { lang, tr } = useLang();
   const { addItem } = useCart();
   const fields = product.custom_fields ?? [];
@@ -34,7 +35,9 @@ export function PersonalizationModal({ product, onClose }: Props) {
   const [hasMoreBelow, setHasMoreBelow] = useState(false);
 
   const name = localName(product, lang);
-  const price = `${product.price.toFixed(2).replace(".", ",")} KM`;
+  const price = variantOption
+    ? `${variantOption.price.toFixed(2).replace(".", ",")} KM`
+    : `${product.price.toFixed(2).replace(".", ",")} KM`;
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
@@ -151,7 +154,7 @@ export function PersonalizationModal({ product, onClose }: Props) {
       }
     });
 
-    addItem(product, customizations, Object.keys(tokens).length > 0 ? tokens : undefined);
+    addItem(product, customizations, Object.keys(tokens).length > 0 ? tokens : undefined, variantOption);
     onClose();
   }
 

@@ -8,6 +8,13 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 export type CustomFieldType = 'text' | 'textarea' | 'select' | 'checkbox' | 'image';
 
+export type PriceOption = {
+  id: string;
+  label_en: string;
+  label_bs: string;
+  price: number;
+};
+
 export type CustomField = {
   id: string;
   label_en: string;
@@ -41,6 +48,7 @@ export type Product = {
   requires_personalization: boolean;
   short_description_en: string | null;
   short_description_bs: string | null;
+  price_options: PriceOption[] | null;
   created_at: string;
 };
 

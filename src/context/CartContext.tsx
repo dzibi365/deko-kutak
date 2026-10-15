@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
-import type { Product } from "../lib/supabase";
+import type { Product, PriceOption } from "../lib/supabase";
 
 export type CartItem = {
   cartKey: string;
@@ -16,6 +16,12 @@ export type CartItem = {
   // They are persisted in localStorage to survive page reloads during the cart session
   // but are stripped from the order JSONB before the DB insert in Checkout.tsx.
   uploadTokens?: Record<string, string>;
+  // Variant fields — set for products with price_options.
+  // option_id is sent as a top-level order item field for server-side price enforcement.
+  // option_label_* are client-only display fields stripped at checkout build time.
+  option_id?: string;
+  option_label_en?: string;
+  option_label_bs?: string;
 };
 
 type CartContextType = {
@@ -29,6 +35,7 @@ type CartContextType = {
     product: Product,
     customizations?: Record<string, string>,
     uploadTokens?: Record<string, string>,
+    variantOption?: PriceOption,
   ) => void;
   removeItem: (cartKey: string) => void;
   updateQty: (cartKey: string, qty: number) => void;
@@ -58,11 +65,17 @@ export function CartProvider({ children }: { children: ReactNode }) {
     product: Product,
     customizations?: Record<string, string>,
     uploadTokens?: Record<string, string>,
+    variantOption?: PriceOption,
   ) {
     setItems((prev) => {
       const hasCustom = customizations && Object.keys(customizations).some((k) => customizations[k]);
+      // Variant items: stable key per product+option so identical variant+product merges.
+      // Customized items: unique key so each set of personalization stays separate.
+      // Plain items: product ID so duplicates merge.
       const cartKey = hasCustom
         ? `${product.id}-${Date.now()}-${Math.random().toString(36).slice(2)}`
+        : variantOption
+        ? `${product.id}-${variantOption.id}`
         : String(product.id);
 
       if (!hasCustom) {
@@ -83,12 +96,17 @@ export function CartProvider({ children }: { children: ReactNode }) {
         name: product.name,
         name_en: product.name_en,
         name_bs: product.name_bs,
-        price: product.price,
+        price: variantOption?.price ?? product.price,
         image_url: product.image_url,
         category: product.category,
         quantity: 1,
         customizations: hasCustom ? customizations : undefined,
         uploadTokens: tokens,
+        ...(variantOption ? {
+          option_id: variantOption.id,
+          option_label_en: variantOption.label_en,
+          option_label_bs: variantOption.label_bs,
+        } : {}),
       }];
     });
     setIsOpen(true);

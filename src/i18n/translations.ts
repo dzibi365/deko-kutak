@@ -90,6 +90,8 @@ export const t = {
     product_share: "Share",
     product_loading: "Loading product…",
     product_not_found: "Product not found.",
+    product_select_variant: "Select an option",
+    product_variant_required: "Please select an option before adding to cart.",
 
     // Auth modal
     auth_signin: "Sign in",
@@ -282,6 +284,8 @@ export const t = {
     product_share: "Podijeli",
     product_loading: "Učitavanje proizvoda…",
     product_not_found: "Proizvod nije pronađen.",
+    product_select_variant: "Odaberite varijantu",
+    product_variant_required: "Odaberite varijantu prije dodavanja u korpu.",
 
     // Auth modal
     auth_signin: "Prijava",

@@ -2,7 +2,7 @@ import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { ShoppingCart, ArrowLeft, CheckCircle, XCircle, Share2, Upload, X as XIcon, ChevronRight, ChevronLeft, Box, ZoomIn } from "lucide-react";
-import { supabase, type Product, type Category, type CustomField, localName, localDesc } from "../lib/supabase";
+import { supabase, type Product, type Category, type CustomField, type PriceOption, localName, localDesc } from "../lib/supabase";
 import { uploadCustomerPhoto } from "../lib/customerUpload";
 import { useSignedImage } from "../hooks/useSignedImage";
 import { RichDescription } from "../components/RichDescription";
@@ -132,6 +132,8 @@ function ProductDetailContent() {
   const [fieldValues, setFieldValues] = useState<Record<string, string>>({});
   const [fieldTokens, setFieldTokens] = useState<Record<string, string>>({});
   const [fieldError, setFieldError] = useState<string | null>(null);
+  const [selectedOption, setSelectedOption] = useState<PriceOption | null>(null);
+  const [variantError, setVariantError] = useState<string | null>(null);
   const [uploadingFields, setUploadingFields] = useState<Record<string, boolean>>({});
   const [similarProducts, setSimilarProducts] = useState<Product[]>([]);
   const [preview3DUrl, setPreview3DUrl] = useState<string | null>(null);
@@ -191,6 +193,8 @@ function ProductDetailContent() {
         setNotFound(true);
       } else {
         setProduct(data);
+        setSelectedOption(null);
+        setVariantError(null);
         setActiveImage(data.image_url ?? data.gallery_images?.[0] ?? null);
         if (data.category) {
           const { data: cat } = await supabase
@@ -399,18 +403,62 @@ function ProductDetailContent() {
             </h1>
 
             {/* Price */}
-            <div className="flex flex-col gap-1">
-              {product.compare_price && product.compare_price > product.price && (
-                <p className="text-sm text-gray-400 line-through">{product.compare_price.toFixed(2)} KM</p>
-              )}
-              <p className="text-3xl font-bold text-navy">
-                {product.price.toFixed(2)} KM
-              </p>
-            </div>
+            {(() => {
+              const hasVariants = product.price_options && product.price_options.length > 0;
+              const displayPrice = selectedOption
+                ? selectedOption.price
+                : hasVariants
+                ? Math.min(...(product.price_options as PriceOption[]).map((o) => o.price))
+                : product.price;
+              const pricePrefix = !selectedOption && hasVariants
+                ? (lang === "bs" ? "Od " : "From ")
+                : "";
+              return (
+                <div className="flex flex-col gap-1">
+                  {!hasVariants && product.compare_price && product.compare_price > product.price && (
+                    <p className="text-sm text-gray-400 line-through">{product.compare_price.toFixed(2)} KM</p>
+                  )}
+                  <p className="text-3xl font-bold text-navy">
+                    {pricePrefix}{displayPrice.toFixed(2)} KM
+                  </p>
+                </div>
+              );
+            })()}
 
             {/* Short description */}
             {shortDesc && (
               <p className="text-sm text-navy/70 leading-relaxed">{shortDesc}</p>
+            )}
+
+            {/* Variant selector — shown for products with price_options */}
+            {product.price_options && product.price_options.length > 0 && (
+              <div className="flex flex-col gap-2" role="radiogroup" aria-label={tr("product_select_variant")}>
+                <p className="text-sm font-medium text-navy">
+                  {tr("product_select_variant")} <span className="text-red-400">*</span>
+                </p>
+                {product.price_options.map((opt) => {
+                  const label = lang === "bs" ? opt.label_bs : opt.label_en;
+                  const isSelected = selectedOption?.id === opt.id;
+                  return (
+                    <button
+                      key={opt.id}
+                      type="button"
+                      role="radio"
+                      aria-checked={isSelected}
+                      onClick={() => { setSelectedOption(opt); setVariantError(null); }}
+                      className={`flex items-center justify-between px-4 py-3 rounded-xl border-2 text-left transition-colors ${
+                        isSelected ? "border-navy bg-navy/5" : "border-gray-200 hover:border-gray-300"
+                      }`}
+                    >
+                      <span className="text-sm font-medium text-navy">{label}</span>
+                      <span className="text-sm font-semibold text-navy">{opt.price.toFixed(2)} KM</span>
+                    </button>
+                  );
+                })}
+                {variantError && (
+                  <p className="text-sm text-red-500 px-3 py-2 bg-red-50 rounded-lg">{variantError}</p>
+                )}
+              </div>
             )}
 
             {product.requires_personalization ? (
@@ -418,7 +466,13 @@ function ProductDetailContent() {
               <div className="flex flex-col gap-3">
                 <button
                   disabled={!product.in_stock}
-                  onClick={() => setPersonalizationOpen(true)}
+                  onClick={() => {
+                    if (product.price_options && product.price_options.length > 0 && !selectedOption) {
+                      setVariantError(tr("product_variant_required"));
+                      return;
+                    }
+                    setPersonalizationOpen(true);
+                  }}
                   className="w-full flex items-center justify-center gap-2 px-6 py-3.5 bg-navy text-white font-semibold rounded-xl hover:bg-navy/90 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                 >
                   <ShoppingCart className="w-5 h-5" strokeWidth={2} />
@@ -469,6 +523,10 @@ function ProductDetailContent() {
                   <button
                     disabled={!product.in_stock || Object.values(uploadingFields).some(Boolean)}
                     onClick={() => {
+                      if (product.price_options && product.price_options.length > 0 && !selectedOption) {
+                        setVariantError(tr("product_variant_required"));
+                        return;
+                      }
                       const missing = (product.custom_fields ?? []).find(
                         (f) => f.required && !fieldValues[f.id]?.trim()
                       );
@@ -490,7 +548,7 @@ function ProductDetailContent() {
                           }
                         }
                       });
-                      addItem(product, labeled, Object.keys(labeledTokens).length > 0 ? labeledTokens : undefined);
+                      addItem(product, labeled, Object.keys(labeledTokens).length > 0 ? labeledTokens : undefined, selectedOption ?? undefined);
                     }}
                     className="flex-1 flex items-center justify-center gap-2 px-6 py-3.5 bg-navy text-white font-semibold rounded-xl hover:bg-navy/90 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                   >
@@ -536,6 +594,7 @@ function ProductDetailContent() {
         <PersonalizationModal
           product={product}
           onClose={() => setPersonalizationOpen(false)}
+          variantOption={selectedOption ?? undefined}
         />
       )}
 
