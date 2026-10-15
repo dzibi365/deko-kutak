@@ -9,6 +9,8 @@ const ICON_OPTIONS_SET = new Set<string>(ICON_OPTIONS);
 export type AiContent = {
   name_en?: string;
   name_bs?: string;
+  short_description_en?: string;
+  short_description_bs?: string;
   description_en?: string;
   description_bs?: string;
 };
@@ -156,6 +158,8 @@ Return ONLY a valid JSON object — no markdown, no code fences, no explanation 
 {
   "name_en": "Product title in English. 20–70 characters. Specific and descriptive — never generic.",
   "name_bs": "Naziv na bosanskom. 20–70 znakova. Konkretan i opisni.",
+  "short_description_en": "One short paragraph in English for display near the price. 120–220 characters. Plain text, no HTML. Warm, specific, mentions key material or occasion.",
+  "short_description_bs": "Jedan kratki odlomak na bosanskom za prikaz uz cijenu. 120–220 znakova. Čisti tekst, bez HTML-a.",
   "headline_en": "One-sentence marketing tagline in English. Max 80 characters. Warm, personal, memorable.",
   "headline_bs": "Jedna rečenica — marketinški slogan na bosanskom. Maks 80 znakova.",
   "paragraph1_en": "First description paragraph in English. 1–3 sentences. Material, occasion, emotional appeal.",
@@ -180,7 +184,8 @@ Rules:
 - Each icon must be one of: ${ICON_OPTIONS.join(", ")}
 - Do not invent personalizations, engravings or features not mentioned in the notes.
 - Both languages are required — do not omit any field.
-- name_en and name_bs must be plain text, 20–70 characters.`;
+- name_en and name_bs must be plain text, 20–70 characters.
+- short_description_en and short_description_bs must be plain text, 120–220 characters.`;
 }
 
 // ── HTML sanitizer ───────────────────────────────────────────────────────────
@@ -216,7 +221,7 @@ function buildDescriptionHtml(
   items: Array<{ icon: string; title: string; desc: string }> | undefined,
 ): string {
   const parts: string[] = [];
-  if (headline?.trim()) parts.push(`<p><strong>${escapeHtml(headline.trim())}</strong></p>`);
+  if (headline?.trim()) parts.push(`<h2>${escapeHtml(headline.trim())}</h2>`);
   if (p1?.trim()) parts.push(`<p>${escapeHtml(p1.trim())}</p>`);
   if (p2?.trim()) parts.push(`<p>${escapeHtml(p2.trim())}</p>`);
   if (items && items.length > 0) {
@@ -231,6 +236,7 @@ function buildDescriptionHtml(
 type RichPreview = {
   headline_en?: string;
   headline_bs?: string;
+  short_description_en?: string;
   paragraph1_en?: string;
   featureCount?: number;
   featureTitles?: string[];
@@ -278,6 +284,8 @@ function parseClaudeResponse(raw: string): ParseResult {
 
   const name_en = getString("name_en");
   const name_bs = getString("name_bs");
+  const short_description_en = getString("short_description_en");
+  const short_description_bs = getString("short_description_bs");
   const headline_en = getString("headline_en");
   const headline_bs = getString("headline_bs");
   const p1_en = getString("paragraph1_en");
@@ -326,6 +334,8 @@ function parseClaudeResponse(raw: string): ParseResult {
   const data: AiContent = {};
   if (name_en) data.name_en = name_en;
   if (name_bs) data.name_bs = name_bs;
+  if (short_description_en) data.short_description_en = short_description_en;
+  if (short_description_bs) data.short_description_bs = short_description_bs;
   if (description_en) data.description_en = description_en;
   if (description_bs) data.description_bs = description_bs;
 
@@ -337,7 +347,7 @@ function parseClaudeResponse(raw: string): ParseResult {
   }
 
   const richPreview: RichPreview | undefined = hasRich
-    ? { headline_en, headline_bs, paragraph1_en: p1_en, featureCount: featEn?.length, featureTitles }
+    ? { headline_en, headline_bs, short_description_en, paragraph1_en: p1_en, featureCount: featEn?.length, featureTitles }
     : undefined;
 
   return { ok: true, data, warnings, richPreview };
@@ -688,9 +698,15 @@ export function AiStudio({ productName, category, hasExistingContent, onApply }:
                       )}
                       {parseResult.richPreview ? (
                         <>
+                          {parseResult.richPreview.short_description_en && (
+                            <div className="px-3 py-2">
+                              <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-0.5">short description</p>
+                              <p className="text-xs text-navy/70 line-clamp-2">{parseResult.richPreview.short_description_en}</p>
+                            </div>
+                          )}
                           {parseResult.richPreview.headline_en && (
                             <div className="px-3 py-2">
-                              <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-0.5">headline</p>
+                              <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-0.5">headline (h2)</p>
                               <p className="text-xs text-navy italic">{parseResult.richPreview.headline_en}</p>
                             </div>
                           )}

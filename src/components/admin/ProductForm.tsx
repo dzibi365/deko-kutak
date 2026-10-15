@@ -14,6 +14,7 @@ type Props = {
 
 const empty = {
   name_en: "", name_bs: "",
+  short_description_en: "", short_description_bs: "",
   description_en: "", description_bs: "",
   category: "",
   price: "",
@@ -66,6 +67,8 @@ export function ProductForm({ product, onClose, onSaved }: Props) {
       setForm({
         name_en: product.name_en ?? product.name ?? "",
         name_bs: product.name_bs ?? "",
+        short_description_en: product.short_description_en ?? "",
+        short_description_bs: product.short_description_bs ?? "",
         description_en: product.description_en ?? product.description ?? "",
         description_bs: product.description_bs ?? "",
         category: product.category ?? "",
@@ -95,6 +98,8 @@ export function ProductForm({ product, onClose, onSaved }: Props) {
   function applyAiContent(data: AiContent) {
     if (data.name_en !== undefined) set("name_en", data.name_en);
     if (data.name_bs !== undefined) set("name_bs", data.name_bs);
+    if (data.short_description_en !== undefined) set("short_description_en", data.short_description_en);
+    if (data.short_description_bs !== undefined) set("short_description_bs", data.short_description_bs);
     if (data.description_en !== undefined) set("description_en", data.description_en);
     if (data.description_bs !== undefined) set("description_bs", data.description_bs);
   }
@@ -194,6 +199,8 @@ export function ProductForm({ product, onClose, onSaved }: Props) {
       name: form.name_en.trim() || form.name_bs.trim(),
       name_en: form.name_en.trim() || null,
       name_bs: form.name_bs.trim() || null,
+      short_description_en: form.short_description_en.trim() || null,
+      short_description_bs: form.short_description_bs.trim() || null,
       description: form.description_en.trim() || form.description_bs.trim() || null,
       description_en: form.description_en.trim() || null,
       description_bs: form.description_bs.trim() || null,
@@ -249,7 +256,7 @@ export function ProductForm({ product, onClose, onSaved }: Props) {
             <AiStudio
               productName={form.name_en || form.name_bs}
               category={form.category}
-              hasExistingContent={!!(form.name_en || form.name_bs || form.description_en || form.description_bs)}
+              hasExistingContent={!!(form.name_en || form.name_bs || form.short_description_en || form.short_description_bs || form.description_en || form.description_bs)}
               onApply={applyAiContent}
             />
 
@@ -271,8 +278,18 @@ export function ProductForm({ product, onClose, onSaved }: Props) {
                     placeholder="e.g. Handmade Candle Set" className={inputCls} />
                   <CharCount value={form.name_en} min={20} max={70} />
                 </Field>
-                <Field label="Description (EN)">
-                  <RichTextEditor value={form.description_en} onChange={(v) => set("description_en", v)} placeholder="Short product description…" />
+                <Field label="Short Description (EN)">
+                  <textarea
+                    value={form.short_description_en}
+                    onChange={(e) => set("short_description_en", e.target.value)}
+                    rows={2}
+                    placeholder="Brief teaser shown near the price — plain text, 120–220 characters."
+                    className={`${inputCls} resize-none`}
+                  />
+                  <CharCount value={form.short_description_en} min={120} max={220} />
+                </Field>
+                <Field label="Long Description (EN)">
+                  <RichTextEditor value={form.description_en} onChange={(v) => set("description_en", v)} placeholder="Full product description with headline, paragraphs and feature cards…" />
                   <CharCount value={form.description_en.replace(/<[^>]*>/g, "")} min={80} max={500} />
                 </Field>
               </>
@@ -283,8 +300,18 @@ export function ProductForm({ product, onClose, onSaved }: Props) {
                     placeholder="npr. Ručno rađeni set svijeća" className={inputCls} />
                   <CharCount value={form.name_bs} min={20} max={70} />
                 </Field>
-                <Field label="Opis (BS)">
-                  <RichTextEditor value={form.description_bs} onChange={(v) => set("description_bs", v)} placeholder="Kratki opis proizvoda…" />
+                <Field label="Kratki opis (BS)">
+                  <textarea
+                    value={form.short_description_bs}
+                    onChange={(e) => set("short_description_bs", e.target.value)}
+                    rows={2}
+                    placeholder="Kratki teaser uz cijenu — čisti tekst, 120–220 znakova."
+                    className={`${inputCls} resize-none`}
+                  />
+                  <CharCount value={form.short_description_bs} min={120} max={220} />
+                </Field>
+                <Field label="Dugi opis (BS)">
+                  <RichTextEditor value={form.description_bs} onChange={(v) => set("description_bs", v)} placeholder="Puni opis sa naslovom, paragrafima i karticama osobina…" />
                   <CharCount value={form.description_bs.replace(/<[^>]*>/g, "")} min={80} max={500} />
                 </Field>
               </>

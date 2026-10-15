@@ -259,6 +259,9 @@ function ProductDetailContent() {
 
   const name = localName(product, lang);
   const desc = localDesc(product, lang);
+  const shortDesc = lang === "bs"
+    ? (product.short_description_bs || product.short_description_en || null)
+    : (product.short_description_en || null);
   const plainDesc = desc ? desc.replace(/<[^>]*>/g, " ").replace(/&nbsp;/g, " ").replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/\s+/g, " ").trim() : undefined;
 
   const productJsonLd: Record<string, unknown> = {
@@ -404,6 +407,11 @@ function ProductDetailContent() {
                 {product.price.toFixed(2)} KM
               </p>
             </div>
+
+            {/* Short description */}
+            {shortDesc && (
+              <p className="text-sm text-navy/70 leading-relaxed">{shortDesc}</p>
+            )}
 
             {product.requires_personalization ? (
               /* Personalized product — modal trigger */

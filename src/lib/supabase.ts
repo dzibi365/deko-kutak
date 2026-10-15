@@ -39,6 +39,8 @@ export type Product = {
   model_3d_url: string | null;
   model_texture_mesh: string | null;
   requires_personalization: boolean;
+  short_description_en: string | null;
+  short_description_bs: string | null;
   created_at: string;
 };
 
