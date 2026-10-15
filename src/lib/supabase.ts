@@ -23,6 +23,8 @@ export type CustomField = {
   placeholder_bs: string;
   type: CustomFieldType;
   options: string[];
+  options_en?: string[];
+  options_bs?: string[];
   required: boolean;
 };
 

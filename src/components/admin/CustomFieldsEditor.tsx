@@ -1,6 +1,29 @@
 import { GripVertical, Trash2, Plus } from "lucide-react";
 import type { CustomField, CustomFieldType } from "../../lib/supabase";
 
+// ─── Bilingual option row helpers ─────────────────────────────────────────────
+
+type OptionRow = { en: string; bs: string };
+
+/** Derive aligned [{ en, bs }] rows from a CustomField's option arrays.
+ *  For legacy fields (only options[], no options_en/bs) both columns are
+ *  pre-populated from options so the admin can see and translate them.
+ *  Empty strings are preserved — the shift invariant is maintained by index. */
+export function fieldToRows(field: CustomField): OptionRow[] {
+  const en = field.options_en ?? field.options;
+  const bs = field.options_bs ?? field.options;
+  const len = Math.max(en.length, bs.length);
+  return Array.from({ length: len }, (_, i) => ({ en: en[i] ?? "", bs: bs[i] ?? "" }));
+}
+
+/** Convert rows back to the three option arrays that live on CustomField.
+ *  options is always kept in sync with options_en for backward compat. */
+export function rowsToField(rows: OptionRow[]): Partial<CustomField> {
+  const options_en = rows.map((r) => r.en);
+  const options_bs = rows.map((r) => r.bs);
+  return { options_en, options_bs, options: options_en };
+}
+
 export { type CustomField };
 
 export const FIELD_TYPES: { value: CustomFieldType; label: string }[] = [
@@ -89,24 +112,59 @@ export function CustomFieldEditor({
         </div>
       )}
 
-      {/* Options — only for select */}
-      {field.type === "select" && (
-        <div className="flex flex-col gap-1">
-          <input
-            value={field.options.join(", ")}
-            onChange={(e) => onChange({ options: e.target.value.split(",").map((s) => s.trim()).filter(Boolean) })}
-            placeholder="Options, comma-separated (e.g. Red, Blue, Green)"
-            className={inputCls}
-          />
-          {field.options.length > 0 && (
-            <div className="flex flex-wrap gap-1 mt-1">
-              {field.options.map((opt) => (
-                <span key={opt} className="px-2 py-0.5 bg-navy/10 text-navy text-xs rounded-full">{opt}</span>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
+      {/* Options — bilingual row editor, only for select */}
+      {field.type === "select" && (() => {
+        const rows = fieldToRows(field);
+        return (
+          <div className="flex flex-col gap-2">
+            {rows.length > 0 && (
+              <div className="grid grid-cols-[1fr_1fr_28px] gap-2">
+                <span className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Options (EN)</span>
+                <span className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Opcije (BS)</span>
+                <span />
+              </div>
+            )}
+            {rows.map((row, i) => (
+              <div key={i} className="grid grid-cols-[1fr_1fr_28px] gap-2 items-center">
+                <input
+                  value={row.en}
+                  onChange={(e) => {
+                    const next = rows.map((r, j) => j === i ? { ...r, en: e.target.value } : r);
+                    onChange(rowsToField(next));
+                  }}
+                  placeholder="e.g. Red"
+                  className={inputCls}
+                />
+                <input
+                  value={row.bs}
+                  onChange={(e) => {
+                    const next = rows.map((r, j) => j === i ? { ...r, bs: e.target.value } : r);
+                    onChange(rowsToField(next));
+                  }}
+                  placeholder="npr. Crvena"
+                  className={inputCls}
+                />
+                <button
+                  type="button"
+                  title="Remove option"
+                  onClick={() => onChange(rowsToField(rows.filter((_, j) => j !== i)))}
+                  className="p-1 text-gray-300 hover:text-red-400 transition-colors"
+                >
+                  <Trash2 className="w-3.5 h-3.5" strokeWidth={1.75} />
+                </button>
+              </div>
+            ))}
+            <button
+              type="button"
+              onClick={() => onChange(rowsToField([...rows, { en: "", bs: "" }]))}
+              className="flex items-center gap-1 self-start text-xs text-navy/60 hover:text-navy transition-colors mt-0.5"
+            >
+              <Plus className="w-3.5 h-3.5" strokeWidth={2} />
+              Add option
+            </button>
+          </div>
+        );
+      })()}
     </div>
   );
 }

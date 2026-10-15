@@ -148,7 +148,19 @@ export function PersonalizationModal({ product, onClose, variantOption }: Props)
         ? (f.label_bs || f.label_en)
         : (f.label_en || f.label_bs);
       if (!label) return;
-      customizations[label] = val;
+
+      // For bilingual select fields, the state holds the EN canonical value.
+      // Convert it to the lang-appropriate display label for storage in the order.
+      // Legacy select fields (no options_en/bs) store the value verbatim — unchanged.
+      let displayVal = val;
+      if (f.type === "select" && (f.options_en || f.options_bs)) {
+        const optEN = f.options_en ?? f.options;
+        const optBS = f.options_bs ?? f.options;
+        const idx = optEN.indexOf(val);
+        if (idx !== -1) displayVal = lang === "bs" ? (optBS[idx] || val) : val;
+      }
+
+      customizations[label] = displayVal;
       if (f.type === "image" && uploadTokens[f.id]) {
         tokens[label] = uploadTokens[f.id];
       }
@@ -253,18 +265,29 @@ export function PersonalizationModal({ product, onClose, variantOption }: Props)
                   />
                 )}
 
-                {field.type === "select" && field.options.length > 0 && (
-                  <select
-                    value={values[field.id] ?? ""}
-                    onChange={(e) => setVal(field.id, e.target.value)}
-                    className={fieldCls(hasError)}
-                  >
-                    <option value="">— {lang === "bs" ? "Odaberi" : "Select"} —</option>
-                    {field.options.map((opt) => (
-                      <option key={opt} value={opt}>{opt}</option>
-                    ))}
-                  </select>
-                )}
+                {field.type === "select" && (() => {
+                  // options_en is the stable internal value (EN canonical).
+                  // options_bs holds the BS display labels at matching indices.
+                  // Legacy fields (no options_en/bs) fall back to options for both.
+                  const optEN = field.options_en ?? field.options;
+                  const optBS = field.options_bs ?? field.options;
+                  const hasOpts = optEN.some((o) => o.trim());
+                  if (!hasOpts) return null;
+                  return (
+                    <select
+                      value={values[field.id] ?? ""}
+                      onChange={(e) => setVal(field.id, e.target.value)}
+                      className={fieldCls(hasError)}
+                    >
+                      <option value="">— {lang === "bs" ? "Odaberi" : "Select"} —</option>
+                      {optEN.map((enOpt, i) => {
+                        if (!enOpt.trim()) return null;
+                        const display = lang === "bs" ? (optBS[i] || enOpt) : enOpt;
+                        return <option key={i} value={enOpt}>{display}</option>;
+                      })}
+                    </select>
+                  );
+                })()}
 
                 {field.type === "checkbox" && (
                   <label className="flex items-center gap-3 cursor-pointer select-none">

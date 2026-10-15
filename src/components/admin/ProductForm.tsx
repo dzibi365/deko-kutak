@@ -218,6 +218,32 @@ export function ProductForm({ product, onClose, onSaved }: Props) {
       return;
     }
 
+    // Validate bilingual dropdown options
+    for (const f of customFields) {
+      if (f.type !== "select") continue;
+      const en = f.options_en ?? f.options;
+      const bs = f.options_bs ?? f.options;
+      const fieldLabel = f.label_en || f.label_bs || "Dropdown";
+      if (en.length === 0) {
+        setError(`Custom field "${fieldLabel}": at least one option is required.`);
+        return;
+      }
+      if (en.length !== bs.length) {
+        setError(`Custom field "${fieldLabel}": EN (${en.length}) and BS (${bs.length}) option counts must match.`);
+        return;
+      }
+      for (let i = 0; i < en.length; i++) {
+        if (!en[i].trim()) {
+          setError(`Custom field "${fieldLabel}": option ${i + 1} EN label is empty.`);
+          return;
+        }
+        if (!bs[i].trim()) {
+          setError(`Custom field "${fieldLabel}": option ${i + 1} BS label is empty.`);
+          return;
+        }
+      }
+    }
+
     let savedPriceOptions: PriceOption[] | null = null;
     if (variantsEnabled) {
       if (priceOptions.length < 2 || priceOptions.length > 10) {
