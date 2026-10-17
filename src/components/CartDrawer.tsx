@@ -91,6 +91,21 @@ export function CartDrawer() {
                             : (item.option_label_en || item.option_label_bs)}
                         </p>
                       )}
+                      {item.addon_display && item.addon_display.length > 0 && (
+                        <div className="flex flex-col gap-0.5">
+                          {item.addon_display.map((s) => {
+                            const gLabel = lang === "bs" ? s.group_label_bs || s.group_label_en : s.group_label_en || s.group_label_bs;
+                            const oLabel = lang === "bs" ? s.option_label_bs || s.option_label_en : s.option_label_en || s.option_label_bs;
+                            const adj = s.price_adjustment > 0 ? ` (+${s.price_adjustment.toFixed(2)} KM)` : "";
+                            const txt = s.text_value ? `: ${s.text_value}` : "";
+                            return (
+                              <p key={s.option_id} className="text-xs text-gray-400">
+                                {gLabel}: {oLabel}{adj}{txt}
+                              </p>
+                            );
+                          })}
+                        </div>
+                      )}
                       <p className="text-sm font-semibold text-copper">{item.price.toFixed(2)} KM</p>
 
                       {/* Customizations */}

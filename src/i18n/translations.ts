@@ -176,6 +176,20 @@ export const t = {
     checkout_shipping: "Shipping",
     checkout_total: "Total",
 
+    // Add-on groups (customer-facing)
+    addon_included: "Included",
+    addon_required: "Required",
+    addon_select_option: "Select an option",
+    addon_select_required: "Please select an option for:",
+    addon_text_placeholder: "Enter your custom text (max 200 characters)",
+    addon_text_required_msg: "Please enter text for this option.",
+    checkout_price_changed_title: "Prices have changed",
+    checkout_price_changed_body: "One or more prices were updated since you added items to your cart. Please review the updated total.",
+    checkout_price_changed_ack: "I accept the updated total and want to continue",
+    checkout_price_changed_place: "Place order at updated price",
+    checkout_price_changed_retry_limit: "The price changed multiple times. Please refresh your cart and try again.",
+    checkout_verifying: "Verifying prices…",
+
     // Load more
     load_more: "Load more products",
 
@@ -369,6 +383,20 @@ export const t = {
     checkout_subtotal: "Međuzbir",
     checkout_shipping: "Dostava",
     checkout_total: "Ukupno",
+
+    // Add-on groups (customer-facing)
+    addon_included: "Uključeno",
+    addon_required: "Obavezno",
+    addon_select_option: "Odaberite opciju",
+    addon_select_required: "Molimo odaberite opciju za:",
+    addon_text_placeholder: "Unesite vaš tekst (max 200 znakova)",
+    addon_text_required_msg: "Molimo unesite tekst za ovu opciju.",
+    checkout_price_changed_title: "Cijene su se promijenile",
+    checkout_price_changed_body: "Jedna ili više cijena je ažurirana od kada ste dodali artikle u korpu. Molimo pregledajte ažurirani iznos.",
+    checkout_price_changed_ack: "Prihvatam ažurirani iznos i želim nastaviti",
+    checkout_price_changed_place: "Naruči po ažuriranoj cijeni",
+    checkout_price_changed_retry_limit: "Cijena se promijenila više puta. Molimo osvježite korpu i pokušajte ponovo.",
+    checkout_verifying: "Provjera cijena…",
 
     // Load more
     load_more: "Učitaj još proizvoda",

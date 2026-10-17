@@ -2,7 +2,7 @@ import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { ShoppingCart, ArrowLeft, CheckCircle, XCircle, Share2, Upload, X as XIcon, ChevronRight, ChevronLeft, Box, ZoomIn } from "lucide-react";
-import { supabase, type Product, type Category, type CustomField, type PriceOption, localName, localDesc } from "../lib/supabase";
+import { supabase, type Product, type Category, type CustomField, type PriceOption, type AddonGroup, localName, localDesc } from "../lib/supabase";
 import { uploadCustomerPhoto } from "../lib/customerUpload";
 import { useSignedImage } from "../hooks/useSignedImage";
 import { RichDescription } from "../components/RichDescription";
@@ -15,8 +15,15 @@ const ThreeDPreviewModal = lazy(() =>
   import("../components/ThreeDPreviewModal").then((m) => ({ default: m.ThreeDPreviewModal }))
 );
 import { PersonalizationModal } from "../components/PersonalizationModal";
+import { AddonGroupSelector } from "../components/AddonGroupSelector";
 import { useLang } from "../context/LanguageContext";
 import { useCart } from "../context/CartContext";
+import {
+  calcAddonSurcharge,
+  buildAddonSelectionsPayload,
+  validateAddonSelectionsState,
+  type AddonSelectionState,
+} from "../lib/addonGroups";
 import { SiteMeta } from "../components/SiteMeta";
 
 function LightboxModal({ images, startIndex, onClose }: { images: string[]; startIndex: number; onClose: () => void }) {
@@ -134,6 +141,8 @@ function ProductDetailContent() {
   const [fieldError, setFieldError] = useState<string | null>(null);
   const [selectedOption, setSelectedOption] = useState<PriceOption | null>(null);
   const [variantError, setVariantError] = useState<string | null>(null);
+  const [pageAddonSelections, setPageAddonSelections] = useState<AddonSelectionState>({});
+  const [addonError, setAddonError] = useState<string | null>(null);
   const [uploadingFields, setUploadingFields] = useState<Record<string, boolean>>({});
   const [similarProducts, setSimilarProducts] = useState<Product[]>([]);
   const [preview3DUrl, setPreview3DUrl] = useState<string | null>(null);
@@ -195,6 +204,8 @@ function ProductDetailContent() {
         setProduct(data);
         setSelectedOption(null);
         setVariantError(null);
+        setPageAddonSelections({});
+        setAddonError(null);
         setActiveImage(data.image_url ?? data.gallery_images?.[0] ?? null);
         if (data.category) {
           const { data: cat } = await supabase
@@ -405,14 +416,21 @@ function ProductDetailContent() {
             {/* Price */}
             {(() => {
               const hasVariants = product.price_options && product.price_options.length > 0;
-              const displayPrice = selectedOption
+              const pageGroups = (product.addon_groups ?? [] as AddonGroup[]).filter(
+                (g) => g.location === "product_page",
+              );
+              const basePrice = selectedOption
                 ? selectedOption.price
                 : hasVariants
                 ? Math.min(...(product.price_options as PriceOption[]).map((o) => o.price))
                 : product.price;
-              const pricePrefix = !selectedOption && hasVariants
-                ? (lang === "bs" ? "Od " : "From ")
-                : "";
+              // Only add addon surcharge when we have a definite base price
+              const surcharge =
+                (selectedOption || !hasVariants)
+                  ? calcAddonSurcharge(pageAddonSelections, pageGroups)
+                  : 0;
+              const displayPrice = basePrice + surcharge;
+              const pricePrefix = !selectedOption && hasVariants ? (lang === "bs" ? "Od " : "From ") : "";
               return (
                 <div className="flex flex-col gap-1">
                   {!hasVariants && product.compare_price && product.compare_price > product.price && (
@@ -461,6 +479,28 @@ function ProductDetailContent() {
               </div>
             )}
 
+            {/* Product-page add-on groups */}
+            {(() => {
+              const pageGroups = (product.addon_groups ?? [] as AddonGroup[]).filter(
+                (g) => g.location === "product_page",
+              );
+              if (pageGroups.length === 0) return null;
+              return (
+                <>
+                  <div className="border-t border-navy/10" />
+                  <AddonGroupSelector
+                    groups={pageGroups}
+                    selections={pageAddonSelections}
+                    onChange={(next) => { setPageAddonSelections(next); setAddonError(null); }}
+                  />
+                </>
+              );
+            })()}
+
+            {addonError && (
+              <p className="text-sm text-red-500 px-3 py-2 bg-red-50 rounded-lg">{addonError}</p>
+            )}
+
             {product.requires_personalization ? (
               /* Personalized product — modal trigger */
               <div className="flex flex-col gap-3">
@@ -469,6 +509,22 @@ function ProductDetailContent() {
                   onClick={() => {
                     if (product.price_options && product.price_options.length > 0 && !selectedOption) {
                       setVariantError(tr("product_variant_required"));
+                      return;
+                    }
+                    // Validate required page-location addon groups before opening modal
+                    const pageGroups = (product.addon_groups ?? [] as AddonGroup[]).filter(
+                      (g) => g.location === "product_page",
+                    );
+                    const addonToken = validateAddonSelectionsState(pageAddonSelections, pageGroups);
+                    if (addonToken) {
+                      const [type, id] = addonToken.split(":");
+                      if (type === "required") {
+                        const grp = pageGroups.find((g) => g.id === id);
+                        const lbl = grp ? (lang === "bs" ? grp.label_bs || grp.label_en : grp.label_en || grp.label_bs) : id;
+                        setAddonError(`${tr("addon_select_required")} ${lbl}`);
+                      } else {
+                        setAddonError(tr("addon_text_required_msg"));
+                      }
                       return;
                     }
                     setPersonalizationOpen(true);
@@ -527,6 +583,22 @@ function ProductDetailContent() {
                         setVariantError(tr("product_variant_required"));
                         return;
                       }
+                      // Validate page addon groups
+                      const pageGroups = (product.addon_groups ?? [] as AddonGroup[]).filter(
+                        (g) => g.location === "product_page",
+                      );
+                      const addonToken = validateAddonSelectionsState(pageAddonSelections, pageGroups);
+                      if (addonToken) {
+                        const [type, id] = addonToken.split(":");
+                        if (type === "required") {
+                          const grp = pageGroups.find((g) => g.id === id);
+                          const lbl = grp ? (lang === "bs" ? grp.label_bs || grp.label_en : grp.label_en || grp.label_bs) : id;
+                          setAddonError(`${tr("addon_select_required")} ${lbl}`);
+                        } else {
+                          setAddonError(tr("addon_text_required_msg"));
+                        }
+                        return;
+                      }
                       const missing = (product.custom_fields ?? []).find(
                         (f) => f.required && !fieldValues[f.id]?.trim()
                       );
@@ -536,6 +608,7 @@ function ProductDetailContent() {
                         return;
                       }
                       setFieldError(null);
+                      setAddonError(null);
                       const labeled: Record<string, string> = {};
                       const labeledTokens: Record<string, string> = {};
                       (product.custom_fields ?? []).forEach((f) => {
@@ -548,7 +621,17 @@ function ProductDetailContent() {
                           }
                         }
                       });
-                      addItem(product, labeled, Object.keys(labeledTokens).length > 0 ? labeledTokens : undefined, selectedOption ?? undefined);
+                      const addonPayload =
+                        pageGroups.length > 0
+                          ? buildAddonSelectionsPayload(pageAddonSelections, pageGroups)
+                          : undefined;
+                      addItem(
+                        product,
+                        labeled,
+                        Object.keys(labeledTokens).length > 0 ? labeledTokens : undefined,
+                        selectedOption ?? undefined,
+                        addonPayload,
+                      );
                     }}
                     className="flex-1 flex items-center justify-center gap-2 px-6 py-3.5 bg-navy text-white font-semibold rounded-xl hover:bg-navy/90 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                   >
@@ -595,6 +678,8 @@ function ProductDetailContent() {
           product={product}
           onClose={() => setPersonalizationOpen(false)}
           variantOption={selectedOption ?? undefined}
+          pageAddonSelections={pageAddonSelections}
+          pageGroups={(product.addon_groups ?? [] as AddonGroup[]).filter((g) => g.location === "product_page")}
         />
       )}
 

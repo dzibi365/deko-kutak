@@ -7,8 +7,13 @@ import {
   validateAddonGroupsDraft,
   buildAddonGroupsPayload,
   addonGroupDraftFromDb,
+  calcAddonSurcharge,
+  buildAddonSelectionsPayload,
+  addonSelectionCartKey,
+  validateAddonSelectionsState,
   type AddonGroupDraft,
   type AddonOptionDraft,
+  type AddonSelectionState,
 } from '../addonGroups';
 import type { AddonGroup } from '../supabase';
 
@@ -410,5 +415,231 @@ describe('legacy product (addon_groups = null)', () => {
 
   it('validateAddonGroupsDraft accepts empty groups (no save blocked for legacy)', () => {
     expect(validateAddonGroupsDraft([], false)).toBeNull();
+  });
+});
+
+// ─── Customer-facing helpers ──────────────────────────────────────────────────
+
+function dbGroup(overrides: Partial<AddonGroup> = {}): AddonGroup {
+  return {
+    id: 'grp-1',
+    label_en: 'Packaging',
+    label_bs: 'Pakovanje',
+    location: 'product_page',
+    options: [
+      { id: 'opt-a', label_en: 'Standard', label_bs: 'Standardno', price_adjustment: 0 },
+      { id: 'opt-b', label_en: 'Premium', label_bs: 'Premium', price_adjustment: 2.5 },
+    ],
+    ...overrides,
+  };
+}
+
+describe('calcAddonSurcharge', () => {
+  it('returns 0 for empty state', () => {
+    expect(calcAddonSurcharge({}, [dbGroup()])).toBe(0);
+  });
+
+  it('returns 0 for zero-adjustment option', () => {
+    const state: AddonSelectionState = { 'grp-1': { option_id: 'opt-a' } };
+    expect(calcAddonSurcharge(state, [dbGroup()])).toBe(0);
+  });
+
+  it('returns price_adjustment for a selected option', () => {
+    const state: AddonSelectionState = { 'grp-1': { option_id: 'opt-b' } };
+    expect(calcAddonSurcharge(state, [dbGroup()])).toBe(2.5);
+  });
+
+  it('sums adjustments across multiple groups', () => {
+    const groups = [
+      dbGroup({ id: 'grp-1' }),
+      dbGroup({ id: 'grp-2', options: [{ id: 'opt-c', label_en: 'X', label_bs: 'X', price_adjustment: 1.5 }] }),
+    ];
+    const state: AddonSelectionState = {
+      'grp-1': { option_id: 'opt-b' },
+      'grp-2': { option_id: 'opt-c' },
+    };
+    expect(calcAddonSurcharge(state, groups)).toBe(4);
+  });
+
+  it('skips groups not in the groups array', () => {
+    const state: AddonSelectionState = { 'grp-unknown': { option_id: 'opt-x' } };
+    expect(calcAddonSurcharge(state, [dbGroup()])).toBe(0);
+  });
+
+  it('skips option IDs not found in a group', () => {
+    const state: AddonSelectionState = { 'grp-1': { option_id: 'opt-nonexistent' } };
+    expect(calcAddonSurcharge(state, [dbGroup()])).toBe(0);
+  });
+});
+
+describe('buildAddonSelectionsPayload', () => {
+  it('returns empty arrays for empty state', () => {
+    const { selections, display } = buildAddonSelectionsPayload({}, [dbGroup()]);
+    expect(selections).toHaveLength(0);
+    expect(display).toHaveLength(0);
+  });
+
+  it('produces correct selection for a chosen option', () => {
+    const state: AddonSelectionState = { 'grp-1': { option_id: 'opt-b' } };
+    const { selections, display } = buildAddonSelectionsPayload(state, [dbGroup()]);
+    expect(selections).toHaveLength(1);
+    expect(selections[0]).toEqual({ group_id: 'grp-1', option_id: 'opt-b' });
+    expect(display[0].price_adjustment).toBe(2.5);
+    expect(display[0].group_label_en).toBe('Packaging');
+    expect(display[0].option_label_en).toBe('Premium');
+  });
+
+  it('includes text_value when text_required and text provided', () => {
+    const grp = dbGroup({
+      options: [{ id: 'opt-t', label_en: 'Custom', label_bs: 'Prilagođeno', price_adjustment: 0, text_required: true }],
+    });
+    const state: AddonSelectionState = { 'grp-1': { option_id: 'opt-t', text_value: 'Hello' } };
+    const { selections, display } = buildAddonSelectionsPayload(state, [grp]);
+    expect(selections[0].text_value).toBe('Hello');
+    expect(display[0].text_value).toBe('Hello');
+  });
+
+  it('omits text_value when text is blank', () => {
+    const grp = dbGroup({
+      options: [{ id: 'opt-t', label_en: 'Custom', label_bs: 'Prilagođeno', price_adjustment: 0, text_required: true }],
+    });
+    const state: AddonSelectionState = { 'grp-1': { option_id: 'opt-t', text_value: '   ' } };
+    const { selections } = buildAddonSelectionsPayload(state, [grp]);
+    expect(selections[0].text_value).toBeUndefined();
+  });
+
+  it('omits text_value when option is not text_required', () => {
+    const state: AddonSelectionState = { 'grp-1': { option_id: 'opt-a', text_value: 'ignored' } };
+    const { selections } = buildAddonSelectionsPayload(state, [dbGroup()]);
+    expect(selections[0].text_value).toBeUndefined();
+  });
+
+  it('preserves group definition order in output', () => {
+    const groups = [
+      dbGroup({ id: 'grp-z', options: [{ id: 'opt-z', label_en: 'Z', label_bs: 'Z', price_adjustment: 0 }] }),
+      dbGroup({ id: 'grp-a', options: [{ id: 'opt-a2', label_en: 'A', label_bs: 'A', price_adjustment: 0 }] }),
+    ];
+    const state: AddonSelectionState = {
+      'grp-z': { option_id: 'opt-z' },
+      'grp-a': { option_id: 'opt-a2' },
+    };
+    const { selections } = buildAddonSelectionsPayload(state, groups);
+    expect(selections[0].group_id).toBe('grp-z');
+    expect(selections[1].group_id).toBe('grp-a');
+  });
+
+  it('skips groups where no option is selected', () => {
+    const groups = [
+      dbGroup({ id: 'grp-1' }),
+      dbGroup({ id: 'grp-2', options: [{ id: 'opt-2', label_en: 'X', label_bs: 'X', price_adjustment: 0 }] }),
+    ];
+    const state: AddonSelectionState = { 'grp-2': { option_id: 'opt-2' } };
+    const { selections } = buildAddonSelectionsPayload(state, groups);
+    expect(selections).toHaveLength(1);
+    expect(selections[0].group_id).toBe('grp-2');
+  });
+});
+
+describe('addonSelectionCartKey', () => {
+  it('returns empty string for empty display array', () => {
+    expect(addonSelectionCartKey([])).toBe('');
+  });
+
+  it('formats single entry as "group_id:option_id"', () => {
+    const display = buildAddonSelectionsPayload(
+      { 'grp-1': { option_id: 'opt-a' } },
+      [dbGroup()],
+    ).display;
+    expect(addonSelectionCartKey(display)).toBe('grp-1:opt-a');
+  });
+
+  it('includes text_value in key when present', () => {
+    const grp = dbGroup({
+      options: [{ id: 'opt-t', label_en: 'C', label_bs: 'C', price_adjustment: 0, text_required: true }],
+    });
+    const { display } = buildAddonSelectionsPayload({ 'grp-1': { option_id: 'opt-t', text_value: 'Hi' } }, [grp]);
+    expect(addonSelectionCartKey(display)).toBe('grp-1:opt-t:Hi');
+  });
+
+  it('sorts entries by group_id for key stability', () => {
+    const groups = [
+      dbGroup({ id: 'grp-z', options: [{ id: 'opt-z', label_en: 'Z', label_bs: 'Z', price_adjustment: 0 }] }),
+      dbGroup({ id: 'grp-a', options: [{ id: 'opt-a2', label_en: 'A', label_bs: 'A', price_adjustment: 0 }] }),
+    ];
+    const state: AddonSelectionState = {
+      'grp-z': { option_id: 'opt-z' },
+      'grp-a': { option_id: 'opt-a2' },
+    };
+    const { display } = buildAddonSelectionsPayload(state, groups);
+    // Regardless of iteration order, sorted alphabetically: grp-a before grp-z
+    expect(addonSelectionCartKey(display)).toBe('grp-a:opt-a2|grp-z:opt-z');
+  });
+
+  it('different text values produce different keys', () => {
+    const grp = dbGroup({
+      options: [{ id: 'opt-t', label_en: 'C', label_bs: 'C', price_adjustment: 0, text_required: true }],
+    });
+    const { display: d1 } = buildAddonSelectionsPayload({ 'grp-1': { option_id: 'opt-t', text_value: 'Alice' } }, [grp]);
+    const { display: d2 } = buildAddonSelectionsPayload({ 'grp-1': { option_id: 'opt-t', text_value: 'Bob' } }, [grp]);
+    expect(addonSelectionCartKey(d1)).not.toBe(addonSelectionCartKey(d2));
+  });
+});
+
+describe('validateAddonSelectionsState', () => {
+  it('returns null when there are no groups', () => {
+    expect(validateAddonSelectionsState({}, [])).toBeNull();
+  });
+
+  it('returns null when all optional groups are unselected', () => {
+    expect(validateAddonSelectionsState({}, [dbGroup({ required: false })])).toBeNull();
+  });
+
+  it('returns null when optional group is selected', () => {
+    const state: AddonSelectionState = { 'grp-1': { option_id: 'opt-a' } };
+    expect(validateAddonSelectionsState(state, [dbGroup({ required: false })])).toBeNull();
+  });
+
+  it('returns "required:<group_id>" for unselected required group', () => {
+    const grp = dbGroup({ required: true });
+    expect(validateAddonSelectionsState({}, [grp])).toBe('required:grp-1');
+  });
+
+  it('returns null when required group is selected', () => {
+    const state: AddonSelectionState = { 'grp-1': { option_id: 'opt-a' } };
+    expect(validateAddonSelectionsState(state, [dbGroup({ required: true })])).toBeNull();
+  });
+
+  it('returns "text_required:<opt_id>:<grp_id>" when text_required option selected without text', () => {
+    const grp = dbGroup({
+      required: true,
+      options: [{ id: 'opt-t', label_en: 'C', label_bs: 'C', price_adjustment: 0, text_required: true }],
+    });
+    const state: AddonSelectionState = { 'grp-1': { option_id: 'opt-t' } };
+    expect(validateAddonSelectionsState(state, [grp])).toBe('text_required:opt-t:grp-1');
+  });
+
+  it('returns text_required error when text is whitespace-only', () => {
+    const grp = dbGroup({
+      options: [{ id: 'opt-t', label_en: 'C', label_bs: 'C', price_adjustment: 0, text_required: true }],
+    });
+    const state: AddonSelectionState = { 'grp-1': { option_id: 'opt-t', text_value: '   ' } };
+    expect(validateAddonSelectionsState(state, [grp])).toBe('text_required:opt-t:grp-1');
+  });
+
+  it('returns null when text_required option has valid text', () => {
+    const grp = dbGroup({
+      options: [{ id: 'opt-t', label_en: 'C', label_bs: 'C', price_adjustment: 0, text_required: true }],
+    });
+    const state: AddonSelectionState = { 'grp-1': { option_id: 'opt-t', text_value: 'Hello' } };
+    expect(validateAddonSelectionsState(state, [grp])).toBeNull();
+  });
+
+  it('returns first error when multiple groups have issues', () => {
+    const groups = [
+      dbGroup({ id: 'grp-1', required: true }),
+      dbGroup({ id: 'grp-2', required: true }),
+    ];
+    // Neither selected — should report first required group
+    expect(validateAddonSelectionsState({}, groups)).toBe('required:grp-1');
   });
 });

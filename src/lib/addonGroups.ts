@@ -133,6 +133,110 @@ export function buildAddonGroupsPayload(groups: AddonGroupDraft[]): AddonGroup[]
   });
 }
 
+// ─── Customer-facing selection types ─────────────────────────────────────────
+
+/** Minimal selection sent to the server (no client prices) */
+export type AddonSelection = {
+  group_id: string;
+  option_id: string;
+  text_value?: string;
+};
+
+/** Cart display snapshot — stripped before DB submission */
+export type AddonSelectionDisplay = {
+  group_id: string;
+  option_id: string;
+  group_label_en: string;
+  group_label_bs: string;
+  option_label_en: string;
+  option_label_bs: string;
+  price_adjustment: number;
+  text_value?: string;
+};
+
+/** Live selection state on the page: group_id → current pick */
+export type AddonSelectionState = Record<string, { option_id: string; text_value?: string }>;
+
+/** Sum of price_adjustments for every currently-selected add-on */
+export function calcAddonSurcharge(state: AddonSelectionState, groups: AddonGroup[]): number {
+  let total = 0;
+  for (const [groupId, sel] of Object.entries(state)) {
+    const grp = groups.find((g) => g.id === groupId);
+    const opt = grp?.options.find((o) => o.id === sel.option_id);
+    if (opt) total += opt.price_adjustment;
+  }
+  return total;
+}
+
+/**
+ * Convert AddonSelectionState into the two arrays stored in CartItem:
+ * - selections: lean server payload (group_id, option_id, text_value?)
+ * - display: cart display snapshot with labels and surcharge
+ * Groups are processed in definition order so the cart preserves order.
+ */
+export function buildAddonSelectionsPayload(
+  state: AddonSelectionState,
+  groups: AddonGroup[],
+): { selections: AddonSelection[]; display: AddonSelectionDisplay[] } {
+  const selections: AddonSelection[] = [];
+  const display: AddonSelectionDisplay[] = [];
+
+  for (const grp of groups) {
+    const sel = state[grp.id];
+    if (!sel) continue;
+    const opt = grp.options.find((o) => o.id === sel.option_id);
+    if (!opt) continue;
+    const textVal = opt.text_required && sel.text_value?.trim() ? sel.text_value.trim() : undefined;
+
+    selections.push({ group_id: grp.id, option_id: opt.id, ...(textVal ? { text_value: textVal } : {}) });
+    display.push({
+      group_id: grp.id,
+      option_id: opt.id,
+      group_label_en: grp.label_en,
+      group_label_bs: grp.label_bs,
+      option_label_en: opt.label_en,
+      option_label_bs: opt.label_bs,
+      price_adjustment: opt.price_adjustment,
+      ...(textVal ? { text_value: textVal } : {}),
+    });
+  }
+
+  return { selections, display };
+}
+
+/** Stable cart-key fragment encoding the selected combination */
+export function addonSelectionCartKey(display: AddonSelectionDisplay[]): string {
+  return [...display]
+    .sort((a, b) => a.group_id.localeCompare(b.group_id))
+    .map((s) => `${s.group_id}:${s.option_id}${s.text_value ? `:${s.text_value}` : ''}`)
+    .join('|');
+}
+
+/**
+ * Returns null if all required groups are selected and all text_required
+ * options have non-blank text.  Otherwise returns a typed error token:
+ *   "required:<group_id>"
+ *   "text_required:<option_id>:<group_id>"
+ */
+export function validateAddonSelectionsState(
+  state: AddonSelectionState,
+  groups: AddonGroup[],
+): string | null {
+  for (const grp of groups) {
+    const sel = state[grp.id];
+    if (grp.required && !sel) return `required:${grp.id}`;
+    if (sel) {
+      const opt = grp.options.find((o) => o.id === sel.option_id);
+      if (opt?.text_required && !sel.text_value?.trim()) {
+        return `text_required:${opt.id}:${grp.id}`;
+      }
+    }
+  }
+  return null;
+}
+
+// ─── Admin draft utilities (unchanged) ───────────────────────────────────────
+
 export function addonGroupDraftFromDb(grp: AddonGroup): AddonGroupDraft {
   return {
     id: grp.id,

@@ -2,19 +2,31 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { X, ShoppingBag, Upload, ChevronDown } from "lucide-react";
 import { useLang } from "../context/LanguageContext";
 import { useCart } from "../context/CartContext";
-import { localName, type CustomField, type Product, type PriceOption } from "../lib/supabase";
+import { localName, type CustomField, type Product, type PriceOption, type AddonGroup } from "../lib/supabase";
 import { uploadCustomerPhoto } from "../lib/customerUpload";
+import { AddonGroupSelector } from "./AddonGroupSelector";
+import {
+  calcAddonSurcharge,
+  buildAddonSelectionsPayload,
+  validateAddonSelectionsState,
+  type AddonSelectionState,
+} from "../lib/addonGroups";
 
 type Props = {
   product: Product;
   onClose: () => void;
   variantOption?: PriceOption;
+  pageAddonSelections?: AddonSelectionState;
+  pageGroups?: AddonGroup[];
 };
 
-export function PersonalizationModal({ product, onClose, variantOption }: Props) {
+export function PersonalizationModal({ product, onClose, variantOption, pageAddonSelections = {}, pageGroups = [] }: Props) {
   const { lang, tr } = useLang();
   const { addItem } = useCart();
   const fields = product.custom_fields ?? [];
+  const modalGroups = (product.addon_groups ?? [] as AddonGroup[]).filter(
+    (g) => g.location === "personalization_modal",
+  );
 
   // All field values stored as strings. Image fields store the storage path (UUID.ext).
   const [values, setValues] = useState<Record<string, string>>(() => {
@@ -30,14 +42,20 @@ export function PersonalizationModal({ product, onClose, variantOption }: Props)
   // field id → plaintext token (keyed by field id, remapped to label on submit)
   const [uploadTokens, setUploadTokens] = useState<Record<string, string>>({});
   const [errors, setErrors] = useState<Record<string, boolean>>({});
+  const [modalAddonSelections, setModalAddonSelections] = useState<AddonSelectionState>({});
+  const [addonError, setAddonError] = useState<string | null>(null);
   const fileRefs = useRef<Record<string, HTMLInputElement | null>>({});
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const [hasMoreBelow, setHasMoreBelow] = useState(false);
 
   const name = localName(product, lang);
-  const price = variantOption
-    ? `${variantOption.price.toFixed(2).replace(".", ",")} KM`
-    : `${product.price.toFixed(2).replace(".", ",")} KM`;
+
+  // Live unit price: base + page addon surcharge + modal addon surcharge
+  const basePrice = variantOption?.price ?? product.price;
+  const pageSurcharge = calcAddonSurcharge(pageAddonSelections, pageGroups);
+  const modalSurcharge = calcAddonSurcharge(modalAddonSelections, modalGroups);
+  const unitPrice = basePrice + pageSurcharge + modalSurcharge;
+  const price = `${unitPrice.toFixed(2).replace(".", ",")} KM`;
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
@@ -126,7 +144,23 @@ export function PersonalizationModal({ product, onClose, variantOption }: Props)
       else if (f.type !== "checkbox" && f.type !== "image" && !values[f.id]?.trim()) next[f.id] = true;
     });
     setErrors(next);
-    return Object.keys(next).length === 0;
+    if (Object.keys(next).length > 0) return false;
+
+    // Validate modal add-on groups
+    const addonToken = validateAddonSelectionsState(modalAddonSelections, modalGroups);
+    if (addonToken) {
+      const [type, id] = addonToken.split(":");
+      if (type === "required") {
+        const grp = modalGroups.find((g) => g.id === id);
+        const lbl = grp ? (lang === "bs" ? grp.label_bs || grp.label_en : grp.label_en || grp.label_bs) : id;
+        setAddonError(`${tr("addon_select_required")} ${lbl}`);
+      } else {
+        setAddonError(tr("addon_text_required_msg"));
+      }
+      return false;
+    }
+
+    return true;
   }
 
   function handleScrollDown() {
@@ -166,7 +200,19 @@ export function PersonalizationModal({ product, onClose, variantOption }: Props)
       }
     });
 
-    addItem(product, customizations, Object.keys(tokens).length > 0 ? tokens : undefined, variantOption);
+    // Merge page + modal addon selections for the cart payload
+    const allGroups = [...pageGroups, ...modalGroups];
+    const allSelections = { ...pageAddonSelections, ...modalAddonSelections };
+    const addonPayload =
+      allGroups.length > 0 ? buildAddonSelectionsPayload(allSelections, allGroups) : undefined;
+
+    addItem(
+      product,
+      customizations,
+      Object.keys(tokens).length > 0 ? tokens : undefined,
+      variantOption,
+      addonPayload,
+    );
     onClose();
   }
 
@@ -377,6 +423,17 @@ export function PersonalizationModal({ product, onClose, variantOption }: Props)
               </div>
             );
           })}
+            {/* Personalization-modal add-on groups */}
+            {modalGroups.length > 0 && (
+              <>
+                <div className="border-t border-gray-100" />
+                <AddonGroupSelector
+                  groups={modalGroups}
+                  selections={modalAddonSelections}
+                  onChange={(next) => { setModalAddonSelections(next); setAddonError(null); }}
+                />
+              </>
+            )}
             </div>{/* end flex flex-col gap-5 */}
           </div>{/* end scroll div */}
 
@@ -396,7 +453,10 @@ export function PersonalizationModal({ product, onClose, variantOption }: Props)
         </div>{/* end fields wrapper */}
 
         {/* Footer — non-scrolling */}
-        <div className="px-6 py-4 border-t border-gray-100 flex-shrink-0">
+        <div className="px-6 py-4 border-t border-gray-100 flex-shrink-0 flex flex-col gap-2">
+          {addonError && (
+            <p className="text-xs text-red-500 bg-red-50 px-3 py-2 rounded-lg">{addonError}</p>
+          )}
           <button
             onClick={handleSubmit}
             disabled={Object.values(uploadingFields).some(Boolean)}

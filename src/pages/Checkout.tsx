@@ -9,8 +9,11 @@ import { calcShipping, centsToKm } from "../lib/shipping";
 import { localName } from "../lib/supabase";
 import { CustomerImageDisplay } from "../components/CustomerImageDisplay";
 import { classifyImageValue } from "../lib/customerUpload";
+import { buildOrderItems } from "../lib/checkoutUtils";
 
 type PaymentMethod = "cod" | "bank_transfer";
+
+const MAX_RETRIES = 3;
 
 export default function Checkout() {
   const { items, total, clearCart, closeCart } = useCart();
@@ -28,61 +31,93 @@ export default function Checkout() {
   });
   const [payment, setPayment] = useState<PaymentMethod>("cod");
   const [placing, setPlacing] = useState(false);
+  const [verifying, setVerifying] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [expandedItems, setExpandedItems] = useState<Record<string, boolean>>({});
   const [expiredPhotos, setExpiredPhotos] = useState<Record<string, boolean>>({});
   const [loadingPhotos, setLoadingPhotos] = useState<Record<string, boolean>>({});
+  const [priceChanged, setPriceChanged] = useState<{
+    subtotal: number; shippingCost: number; total: number;
+  } | null>(null);
+  const [priceAcknowledged, setPriceAcknowledged] = useState(false);
+  const [placeRetries, setPlaceRetries] = useState(0);
 
   function set(key: string, value: string) {
     setForm((f) => ({ ...f, [key]: value }));
   }
 
-  async function handleSubmit(e: FormEvent) {
-    e.preventDefault();
-    if (items.length === 0) return;
-
-    // Pre-submit validation sweep — block if any photo authorization is still
-    // in progress, has failed, or belongs to a legacy (unverified) URL.
-    if (Object.values(loadingPhotos).some(Boolean)) return;
-    if (Object.values(expiredPhotos).some(Boolean)) return;
-    const hasLegacyImage = items.some((item) =>
-      Object.values(item.customizations ?? {}).some(
-        (v) => classifyImageValue(v) === "legacy-url"
-      )
+  function photoCheckFailed() {
+    if (Object.values(loadingPhotos).some(Boolean)) return true;
+    if (Object.values(expiredPhotos).some(Boolean)) return true;
+    return items.some((item) =>
+      Object.values(item.customizations ?? {}).some(v => classifyImageValue(v) === "legacy-url")
     );
-    if (hasLegacyImage) return;
+  }
 
-    setError(null);
-    setPlacing(true);
+  async function runVerify(orderItems: Record<string, unknown>[]) {
+    setVerifying(true);
+    const { data: check, error: verifyErr } = await supabase
+      .rpc("verify_order_pricing", { p_items: orderItems })
+      .single();
+    setVerifying(false);
+    return {
+      check: check as { subtotal: number; shipping_cost: number; total: number } | null,
+      verifyErr,
+    };
+  }
 
-    // Strip client-only fields before persisting.
-    // uploadTokens: credentials — must never reach the DB.
-    // cartKey: local merge key — not meaningful server-side.
-    // option_label_*: display-only; the canonical label is injected into customizations below.
-    const orderItems = items.map(({
-      uploadTokens: _tokens,
-      cartKey: _cartKey,
-      option_label_en,
-      option_label_bs,
-      ...rest
-    }) => {
-      if (rest.option_id && (option_label_en || option_label_bs)) {
-        const variantLabel = lang === "bs"
-          ? (option_label_bs || option_label_en || "")
-          : (option_label_en || option_label_bs || "");
-        const labelKey = lang === "bs" ? "Varijanta" : "Variant";
-        return {
-          ...rest,
-          customizations: { [labelKey]: variantLabel, ...(rest.customizations ?? {}) },
+  async function finishOrder(
+    orderRow: unknown,
+    serverAmounts?: { subtotal: number; shippingCost: number; total: number },
+  ) {
+    const row = orderRow as { order_number: string; email_token: string } | null;
+    const orderNumber = row?.order_number;
+    const emailToken = row?.email_token;
+    if (!orderNumber || !emailToken) {
+      setError("Order placed but confirmation unavailable. Please contact support.");
+      return;
+    }
+
+    // Fire invoice emails (non-blocking — don't wait or fail order if this errors).
+    supabase.functions.invoke("send-order-email", {
+      body: { emailToken, lang },
+    }).catch(() => {});
+
+    // Use server-confirmed amounts when available (price-changed flow); otherwise
+    // fall back to client-computed totals (normal flow where they match server).
+    const confirmedAmounts = serverAmounts
+      ? {
+          subtotal: serverAmounts.subtotal,
+          shippingCost: serverAmounts.shippingCost,
+          orderTotal: serverAmounts.total,
+        }
+      : {
+          subtotal: total,
+          shippingCost: centsToKm(shipping.shippingCents),
+          orderTotal: centsToKm(shipping.totalCents),
         };
-      }
-      return rest;
+
+    // Persist amounts in sessionStorage so the confirmation page can restore
+    // them after a page refresh. Falls back gracefully if sessionStorage is
+    // unavailable (private-browsing restrictions, storage quota, etc.).
+    try {
+      sessionStorage.setItem(`dk-order-${orderNumber}`, JSON.stringify(confirmedAmounts));
+    } catch {}
+
+    clearCart();
+    closeCart();
+    navigate(`/order-confirmation/${orderNumber}?payment=${payment}`, {
+      state: confirmedAmounts,
     });
-    // place_order is a SECURITY DEFINER RPC that inserts the order, generates
-    // order_number from a DB sequence, and returns both order_number and email_token.
-    // Anon users have no SELECT RLS on orders, so INSERT…RETURNING yields 0 rows
-    // for guests via the REST path — the RPC resolves this.
-    // The BEFORE INSERT trigger still recalculates all financial amounts server-side.
+  }
+
+  async function runPlace(
+    orderItems: Record<string, unknown>[],
+    expectedTotal: number,
+    retries: number,
+    serverAmounts?: { subtotal: number; shippingCost: number; total: number },
+  ) {
+    setPlacing(true);
     const { data: orderRow, error: err } = await supabase
       .rpc("place_order", {
         p_customer_name:    form.name.trim(),
@@ -96,11 +131,28 @@ export default function Checkout() {
         p_subtotal:         total,
         p_note:             form.note.trim() || null,
         p_lang:             lang,
+        p_expected_total:   expectedTotal,
       })
       .single();
-
     setPlacing(false);
+
     if (err) {
+      // TOCTOU guard: price changed between verify and place (check_violation)
+      if (err.code === "23514") {
+        if (retries >= MAX_RETRIES) {
+          setError(tr("checkout_price_changed_retry_limit"));
+          return;
+        }
+        const { check: recheck, verifyErr } = await runVerify(orderItems);
+        if (verifyErr || !recheck) {
+          setError(verifyErr?.message ?? "Price verification failed");
+          return;
+        }
+        setPriceChanged({ subtotal: recheck.subtotal, shippingCost: recheck.shipping_cost, total: recheck.total });
+        setPriceAcknowledged(false);
+        setPlaceRetries(retries + 1);
+        return;
+      }
       setError(
         err.message?.includes("order_rate_limit_exceeded")
           ? tr("checkout_rate_limit_error")
@@ -109,36 +161,37 @@ export default function Checkout() {
       return;
     }
 
-    const row = orderRow as { order_number: string; email_token: string } | null;
-    const orderNumber = row?.order_number;
-    const emailToken  = row?.email_token;
-    if (!orderNumber || !emailToken) {
-      setError("Order placed but confirmation unavailable. Please contact support.");
+    await finishOrder(orderRow, serverAmounts);
+  }
+
+  async function handleSubmit(e: FormEvent) {
+    e.preventDefault();
+    if (items.length === 0 || priceChanged || photoCheckFailed()) return;
+
+    setError(null);
+    const orderItems = buildOrderItems(items, lang);
+
+    const { check, verifyErr } = await runVerify(orderItems);
+    if (verifyErr || !check) {
+      setError(verifyErr?.message ?? "Price verification failed");
       return;
     }
 
-    // Fire invoice emails (non-blocking — don't wait or fail order if this errors).
-    supabase.functions.invoke("send-order-email", {
-      body: { emailToken, lang },
-    }).catch(() => {/* silent — order already placed */});
+    const serverTotalCents = Math.round(check.total * 100);
+    if (serverTotalCents !== shipping.totalCents) {
+      setPriceChanged({ subtotal: check.subtotal, shippingCost: check.shipping_cost, total: check.total });
+      setPriceAcknowledged(false);
+      return;
+    }
 
-    // Persist amounts in sessionStorage so the confirmation page can restore
-    // them after a page refresh.  Falls back gracefully if sessionStorage is
-    // unavailable (private-browsing restrictions, storage quota, etc.).
-    const confirmedAmounts = {
-      subtotal: total,
-      shippingCost: centsToKm(shipping.shippingCents),
-      orderTotal: centsToKm(shipping.totalCents),
-    };
-    try {
-      sessionStorage.setItem(`dk-order-${orderNumber}`, JSON.stringify(confirmedAmounts));
-    } catch { /* non-fatal */ }
+    await runPlace(orderItems, check.total, placeRetries);
+  }
 
-    clearCart();
-    closeCart();
-    navigate(`/order-confirmation/${orderNumber}?payment=${payment}`, {
-      state: confirmedAmounts,
-    });
+  async function handleAcknowledgedPlace() {
+    if (!priceChanged || !priceAcknowledged || placing || verifying) return;
+    setError(null);
+    const orderItems = buildOrderItems(items, lang);
+    await runPlace(orderItems, priceChanged.total, placeRetries, priceChanged);
   }
 
   if (items.length === 0) {
@@ -289,6 +342,21 @@ export default function Checkout() {
                                   : (item.option_label_en || item.option_label_bs)}
                               </p>
                             )}
+                            {item.addon_display && item.addon_display.length > 0 && (
+                              <div className="flex flex-col gap-0.5">
+                                {item.addon_display.map((s) => {
+                                  const gLabel = lang === "bs" ? s.group_label_bs || s.group_label_en : s.group_label_en || s.group_label_bs;
+                                  const oLabel = lang === "bs" ? s.option_label_bs || s.option_label_en : s.option_label_en || s.option_label_bs;
+                                  const adj = s.price_adjustment > 0 ? ` (+${s.price_adjustment.toFixed(2)} KM)` : "";
+                                  const txt = s.text_value ? `: ${s.text_value}` : "";
+                                  return (
+                                    <p key={s.option_id} className="text-xs text-gray-400 truncate">
+                                      {gLabel}: {oLabel}{adj}{txt}
+                                    </p>
+                                  );
+                                })}
+                              </div>
+                            )}
                             <p className="text-xs text-gray-400">× {item.quantity}</p>
                           </div>
                           <span className="text-sm font-semibold text-navy flex-shrink-0">
@@ -387,17 +455,67 @@ export default function Checkout() {
                   </p>
                 )}
 
-                <button
-                  type="submit"
-                  disabled={
-                    placing ||
-                    Object.values(expiredPhotos).some(Boolean) ||
-                    Object.values(loadingPhotos).some(Boolean)
-                  }
-                  className="w-full py-3.5 bg-navy text-white font-semibold rounded-xl hover:bg-navy/90 transition-colors disabled:opacity-60"
-                >
-                  {placing ? tr("checkout_placing") : tr("checkout_place_order")}
-                </button>
+                {/* Price changed acknowledgment banner */}
+                {priceChanged && (
+                  <div className="border border-amber-200 bg-amber-50 rounded-xl p-4 flex flex-col gap-3">
+                    <p className="text-sm font-semibold text-amber-800">{tr("checkout_price_changed_title")}</p>
+                    <p className="text-xs text-amber-700">{tr("checkout_price_changed_body")}</p>
+                    <div className="flex flex-col gap-1 text-sm">
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">{tr("checkout_subtotal")}</span>
+                        <span className="font-medium text-navy">{fmtKm(priceChanged.subtotal)} KM</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">{tr("checkout_shipping")}</span>
+                        <span className="font-medium text-navy">
+                          {priceChanged.shippingCost === 0
+                            ? tr("shipping_free")
+                            : `${fmtKm(priceChanged.shippingCost)} KM`}
+                        </span>
+                      </div>
+                      <div className="flex justify-between pt-1 border-t border-amber-200 mt-1">
+                        <span className="font-semibold text-navy">{tr("checkout_total")}</span>
+                        <span className="font-semibold text-navy">{fmtKm(priceChanged.total)} KM</span>
+                      </div>
+                    </div>
+                    <label className="flex items-start gap-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={priceAcknowledged}
+                        onChange={(e) => setPriceAcknowledged(e.target.checked)}
+                        className="mt-0.5 accent-navy"
+                      />
+                      <span className="text-xs text-amber-700">{tr("checkout_price_changed_ack")}</span>
+                    </label>
+                    <button
+                      type="button"
+                      onClick={handleAcknowledgedPlace}
+                      disabled={!priceAcknowledged || placing || verifying}
+                      className="w-full py-3 bg-navy text-white text-sm font-semibold rounded-xl hover:bg-navy/90 transition-colors disabled:opacity-60"
+                    >
+                      {placing ? tr("checkout_placing") : tr("checkout_price_changed_place")}
+                    </button>
+                  </div>
+                )}
+
+                {!priceChanged && (
+                  <button
+                    type="submit"
+                    disabled={
+                      placing ||
+                      verifying ||
+                      Object.values(expiredPhotos).some(Boolean) ||
+                      Object.values(loadingPhotos).some(Boolean)
+                    }
+                    className="w-full py-3.5 bg-navy text-white font-semibold rounded-xl hover:bg-navy/90 transition-colors disabled:opacity-60"
+                  >
+                    {verifying
+                      ? tr("checkout_verifying")
+                      : placing
+                      ? tr("checkout_placing")
+                      : tr("checkout_place_order")}
+                  </button>
+                )}
               </div>
             </div>
           </div>

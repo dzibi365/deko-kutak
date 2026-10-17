@@ -1,5 +1,10 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 import type { Product, PriceOption } from "../lib/supabase";
+import {
+  addonSelectionCartKey,
+  type AddonSelection,
+  type AddonSelectionDisplay,
+} from "../lib/addonGroups";
 
 export type CartItem = {
   cartKey: string;
@@ -22,6 +27,11 @@ export type CartItem = {
   option_id?: string;
   option_label_en?: string;
   option_label_bs?: string;
+  // Add-on selections.
+  // addon_selections: lean payload sent to the server (group_id + option_id + text_value?).
+  // addon_display: display snapshots for cart UI — stripped at checkout build time.
+  addon_selections?: AddonSelection[];
+  addon_display?: AddonSelectionDisplay[];
 };
 
 type CartContextType = {
@@ -36,6 +46,7 @@ type CartContextType = {
     customizations?: Record<string, string>,
     uploadTokens?: Record<string, string>,
     variantOption?: PriceOption,
+    addonContext?: { selections: AddonSelection[]; display: AddonSelectionDisplay[] },
   ) => void;
   removeItem: (cartKey: string) => void;
   updateQty: (cartKey: string, qty: number) => void;
@@ -66,22 +77,33 @@ export function CartProvider({ children }: { children: ReactNode }) {
     customizations?: Record<string, string>,
     uploadTokens?: Record<string, string>,
     variantOption?: PriceOption,
+    addonContext?: { selections: AddonSelection[]; display: AddonSelectionDisplay[] },
   ) {
     setItems((prev) => {
       const hasCustom = customizations && Object.keys(customizations).some((k) => customizations[k]);
-      // Variant items: stable key per product+option so identical variant+product merges.
-      // Customized items: unique key so each set of personalization stays separate.
-      // Plain items: product ID so duplicates merge.
+
+      // Cart key encodes the full combination so distinct combos stay separate
+      // while identical non-personalized combos merge.
+      const addonKey =
+        addonContext && addonContext.display.length > 0
+          ? addonSelectionCartKey(addonContext.display)
+          : "";
       const cartKey = hasCustom
         ? `${product.id}-${Date.now()}-${Math.random().toString(36).slice(2)}`
         : variantOption
-        ? `${product.id}-${variantOption.id}`
+        ? addonKey
+          ? `${product.id}-${variantOption.id}-${addonKey}`
+          : `${product.id}-${variantOption.id}`
+        : addonKey
+        ? `${product.id}-${addonKey}`
         : String(product.id);
 
       if (!hasCustom) {
         const existing = prev.find((i) => i.cartKey === cartKey);
         if (existing) {
-          return prev.map((i) => i.cartKey === cartKey ? { ...i, quantity: i.quantity + 1 } : i);
+          return prev.map((i) =>
+            i.cartKey === cartKey ? { ...i, quantity: i.quantity + 1 } : i,
+          );
         }
       }
 
@@ -90,24 +112,39 @@ export function CartProvider({ children }: { children: ReactNode }) {
           ? uploadTokens
           : undefined;
 
-      return [...prev, {
-        cartKey,
-        id: product.id,
-        name: product.name,
-        name_en: product.name_en,
-        name_bs: product.name_bs,
-        price: variantOption?.price ?? product.price,
-        image_url: product.image_url,
-        category: product.category,
-        quantity: 1,
-        customizations: hasCustom ? customizations : undefined,
-        uploadTokens: tokens,
-        ...(variantOption ? {
-          option_id: variantOption.id,
-          option_label_en: variantOption.label_en,
-          option_label_bs: variantOption.label_bs,
-        } : {}),
-      }];
+      const addonSurcharge = addonContext
+        ? addonContext.display.reduce((s, d) => s + d.price_adjustment, 0)
+        : 0;
+
+      return [
+        ...prev,
+        {
+          cartKey,
+          id: product.id,
+          name: product.name,
+          name_en: product.name_en,
+          name_bs: product.name_bs,
+          price: (variantOption?.price ?? product.price) + addonSurcharge,
+          image_url: product.image_url,
+          category: product.category,
+          quantity: 1,
+          customizations: hasCustom ? customizations : undefined,
+          uploadTokens: tokens,
+          ...(variantOption
+            ? {
+                option_id: variantOption.id,
+                option_label_en: variantOption.label_en,
+                option_label_bs: variantOption.label_bs,
+              }
+            : {}),
+          ...(addonContext && addonContext.selections.length > 0
+            ? {
+                addon_selections: addonContext.selections,
+                addon_display: addonContext.display,
+              }
+            : {}),
+        },
+      ];
     });
     setIsOpen(true);
   }
