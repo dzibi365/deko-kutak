@@ -15,6 +15,23 @@ export type PriceOption = {
   price: number;
 };
 
+export type AddonOption = {
+  id: string;
+  label_en: string;
+  label_bs: string;
+  price_adjustment: number;
+  text_required?: boolean;
+};
+
+export type AddonGroup = {
+  id: string;
+  label_en: string;
+  label_bs: string;
+  location: 'product_page' | 'personalization_modal';
+  required?: boolean;
+  options: AddonOption[];
+};
+
 export type CustomField = {
   id: string;
   label_en: string;
@@ -57,6 +74,7 @@ export type Product = {
   price_options: PriceOption[] | null;
   personalization_note_en: string | null;
   personalization_note_bs: string | null;
+  addon_groups: AddonGroup[] | null;
   created_at: string;
 };
 

@@ -1,8 +1,10 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { X, Upload, Trash2, Plus, Search, Box } from "lucide-react";
 import { MeshPickerCanvas } from "./MeshPickerCanvas";
-import { supabase, type Product, type Category, type CustomField, type FieldGroup, type PriceOption, localName } from "../../lib/supabase";
+import { supabase, type Product, type Category, type CustomField, type FieldGroup, type PriceOption, type AddonGroup, localName } from "../../lib/supabase";
+import { type AddonGroupDraft, validateAddonGroupsDraft, buildAddonGroupsPayload, addonGroupDraftFromDb, newAddonGroup } from "../../lib/addonGroups";
 import { CustomFieldsList, newField } from "./CustomFieldsEditor";
+import { AddonGroupsEditor } from "./AddonGroupsEditor";
 import { RichTextEditor } from "./RichTextEditor";
 import { AiStudio, type AiContent } from "./AiStudio";
 
@@ -54,6 +56,8 @@ export function ProductForm({ product, onClose, onSaved }: Props) {
   const [productSearch, setProductSearch] = useState("");
   const [variantsEnabled, setVariantsEnabled] = useState(false);
   const [priceOptions, setPriceOptions] = useState<PriceOptionDraft[]>([]);
+  const [addonGroupsEnabled, setAddonGroupsEnabled] = useState(false);
+  const [addonGroups, setAddonGroups] = useState<AddonGroupDraft[]>([]);
 
   const mainFileRef = useRef<HTMLInputElement>(null);
   const galleryFileRef = useRef<HTMLInputElement>(null);
@@ -109,12 +113,21 @@ export function ProductForm({ product, onClose, onSaved }: Props) {
         setVariantsEnabled(false);
         setPriceOptions([]);
       }
+      if (product.addon_groups && (product.addon_groups as AddonGroup[]).length > 0) {
+        setAddonGroupsEnabled(true);
+        setAddonGroups((product.addon_groups as AddonGroup[]).map(addonGroupDraftFromDb));
+      } else {
+        setAddonGroupsEnabled(false);
+        setAddonGroups([]);
+      }
     } else {
       setForm({ ...empty });
       setCustomFields([]);
       setSimilarIds([]);
       setVariantsEnabled(false);
       setPriceOptions([]);
+      setAddonGroupsEnabled(false);
+      setAddonGroups([]);
     }
   }, [product]);
 
@@ -278,6 +291,13 @@ export function ProductForm({ product, onClose, onSaved }: Props) {
       }
     }
 
+    let savedAddonGroups: AddonGroup[] | null = null;
+    if (addonGroupsEnabled && addonGroups.length > 0) {
+      const addonError = validateAddonGroupsDraft(addonGroups, form.requires_personalization);
+      if (addonError) { setError(addonError); return; }
+      savedAddonGroups = buildAddonGroupsPayload(addonGroups);
+    }
+
     let savedPriceOptions: PriceOption[] | null = null;
     if (variantsEnabled) {
       if (priceOptions.length < 2 || priceOptions.length > 10) {
@@ -327,6 +347,7 @@ export function ProductForm({ product, onClose, onSaved }: Props) {
       custom_fields: customFields,
       similar_products: similarIds,
       price_options: savedPriceOptions,
+      addon_groups: savedAddonGroups,
     };
 
     setSaving(true);
@@ -566,6 +587,41 @@ export function ProductForm({ product, onClose, onSaved }: Props) {
                   )}
 
                   <p className="text-xs text-gray-400">2–10 options · IDs must be unique alphanumeric slugs · Remove all to disable variants</p>
+                </div>
+              )}
+            </div>
+
+            {/* Add-on Groups */}
+            <div className="flex flex-col gap-3">
+              <label className="flex items-center gap-3 cursor-pointer select-none">
+                <div
+                  onClick={() => {
+                    const next = !addonGroupsEnabled;
+                    setAddonGroupsEnabled(next);
+                    if (next && addonGroups.length === 0) {
+                      setAddonGroups([newAddonGroup()]);
+                    }
+                  }}
+                  className={`w-10 h-6 rounded-full transition-colors flex items-center px-1 cursor-pointer ${addonGroupsEnabled ? "bg-navy" : "bg-gray-200"}`}
+                >
+                  <div className={`w-4 h-4 rounded-full bg-white shadow transition-transform ${addonGroupsEnabled ? "translate-x-4" : "translate-x-0"}`} />
+                </div>
+                <div>
+                  <span className="text-sm font-medium text-navy">Product Add-on Groups</span>
+                  <p className="text-xs text-gray-400">Optional extra selections customers can add (e.g. packaging, colour, engraving).</p>
+                </div>
+              </label>
+
+              {addonGroupsEnabled && (
+                <div className="flex flex-col gap-3 pl-[52px]">
+                  <AddonGroupsEditor
+                    groups={addonGroups}
+                    requiresPersonalization={form.requires_personalization}
+                    onChange={(groups) => {
+                      setAddonGroups(groups);
+                      if (groups.length === 0) setAddonGroupsEnabled(false);
+                    }}
+                  />
                 </div>
               )}
             </div>
