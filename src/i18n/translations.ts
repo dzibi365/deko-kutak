@@ -378,7 +378,7 @@ export const t = {
     // Shipping
     shipping_free: "Besplatno",
     shipping_label: "Dostava",
-    cart_free_shipping_progress: "Još {remaining} KM do besplatne dostave!",
+    cart_free_shipping_progress: "Još {remaining} do besplatne dostave!",
     cart_free_shipping_unlocked: "Ostvarili ste besplatnu dostavu!",
     checkout_subtotal: "Međuzbir",
     checkout_shipping: "Dostava",
