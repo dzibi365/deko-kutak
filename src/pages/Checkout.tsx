@@ -223,7 +223,7 @@ export default function Checkout() {
         </div>
       </header>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 pb-28 lg:pb-10">
         <h1 className="text-2xl font-semibold text-navy mb-8">{tr("checkout_title")}</h1>
 
         <form onSubmit={handleSubmit}>
