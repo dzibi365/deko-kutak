@@ -6,6 +6,7 @@ import { useLang } from "../context/LanguageContext";
 import { useCart } from "../context/CartContext";
 import { useSiteSettings } from "../context/SiteSettingsContext";
 import { useCustomerAuth } from "../context/CustomerAuthContext";
+import { useConsent } from "../context/ConsentContext";
 
 export function TopBar() {
   const { topbar_enabled, topbar_left_text_en, topbar_left_text_bs, topbar_phone, topbar_email, topbar_hours_en, topbar_hours_bs, topbar_right_text_en, topbar_right_text_bs } = useSiteSettings();
@@ -391,6 +392,7 @@ export function NavSpacer() {
 export function Footer() {
   const { tr, lang } = useLang();
   const { store_name, logo_url, footer_logo_url, social_facebook, social_instagram, social_email, footer_desc_en, footer_desc_bs } = useSiteSettings();
+  const { openPreferences } = useConsent();
   const footerDesc = lang === "bs" ? (footer_desc_bs || footer_desc_en) : (footer_desc_en || footer_desc_bs);
   const [publishedSlugs, setPublishedSlugs] = useState<Set<string>>(new Set());
 
@@ -459,16 +461,22 @@ export function Footer() {
 
         <div className="pt-8 border-t-[0.5px] border-cream/10 text-sm text-cream/50 flex flex-wrap items-center justify-between gap-4">
           <p>&copy; {new Date().getFullYear()} {store_name}. {tr("footer_rights")}</p>
-          {(publishedSlugs.has("privacy") || publishedSlugs.has("terms")) && (
-            <div className="flex gap-4">
-              {publishedSlugs.has("privacy") && (
-                <Link to="/privacy" className="hover:text-cream/80 transition-colors">{tr("footer_privacy")}</Link>
-              )}
-              {publishedSlugs.has("terms") && (
-                <Link to="/terms" className="hover:text-cream/80 transition-colors">{tr("footer_terms")}</Link>
-              )}
-            </div>
-          )}
+          <div className="flex flex-wrap gap-4 items-center">
+            {publishedSlugs.has("privacy") && (
+              <Link to="/privacy" className="hover:text-cream/80 transition-colors">{tr("footer_privacy")}</Link>
+            )}
+            {publishedSlugs.has("terms") && (
+              <Link to="/terms" className="hover:text-cream/80 transition-colors">{tr("footer_terms")}</Link>
+            )}
+            <Link to="/cookie-policy" className="hover:text-cream/80 transition-colors">{tr("cookie_policy_link")}</Link>
+            <button
+              type="button"
+              onClick={openPreferences}
+              className="hover:text-cream/80 transition-colors text-left"
+            >
+              {tr("cookie_footer_link")}
+            </button>
+          </div>
         </div>
       </div>
     </footer>

@@ -10,10 +10,12 @@ import { LanguageProvider } from "./context/LanguageContext";
 import { CartProvider } from "./context/CartContext";
 import { SiteSettingsProvider } from "./context/SiteSettingsContext";
 import { CustomerAuthProvider } from "./context/CustomerAuthContext";
+import { ConsentProvider } from "./context/ConsentContext";
 import { AuthModal } from "./components/AuthModal";
 import { SiteMeta } from "./components/SiteMeta";
 import { AdminLayout } from "./components/admin/AdminLayout";
 import { RequireAuth } from "./components/admin/RequireAuth";
+import CookieBanner from "./components/CookieBanner";
 import Login from "./pages/admin/Login";
 const ProductDetail = lazy(() => import("./pages/ProductDetail"));
 const Shop          = lazy(() => import("./pages/Shop"));
@@ -24,6 +26,7 @@ const Account           = lazy(() => import("./pages/Account"));
 const Checkout          = lazy(() => import("./pages/Checkout"));
 const OrderConfirmation = lazy(() => import("./pages/OrderConfirmation"));
 const ResetPassword     = lazy(() => import("./pages/ResetPassword"));
+const CookiePolicy      = lazy(() => import("./pages/CookiePolicy"));
 
 // Admin pages — loaded only when an authenticated user navigates to /admin/*.
 // Keeps the public storefront bundle free of admin code, TipTap and
@@ -55,93 +58,93 @@ function PageFallback() {
 
 function StoreFront() {
   return (
-    <LanguageProvider>
-      <CartProvider>
-        <CustomerAuthProvider>
-          <SiteMeta />
-          <AuthModal />
-          <div className="min-h-screen bg-cream font-sans text-navy flex flex-col overflow-x-hidden">
-            <Navbar />
-            <CartDrawer />
-            <main className="flex-1 flex flex-col">
-              <Hero />
-              <div id="shop" className="max-w-7xl mx-auto w-full px-3 sm:px-6 lg:px-8 py-8 md:py-12">
-                <CategoryShowcase />
-              </div>
-              <PromoBanner />
-              <div id="testimonials" className="max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-16">
-                <Testimonials />
-              </div>
-            </main>
-            <Footer />
-          </div>
-        </CustomerAuthProvider>
-      </CartProvider>
-    </LanguageProvider>
+    <CartProvider>
+      <CustomerAuthProvider>
+        <SiteMeta />
+        <AuthModal />
+        <div className="min-h-screen bg-cream font-sans text-navy flex flex-col overflow-x-hidden">
+          <Navbar />
+          <CartDrawer />
+          <main className="flex-1 flex flex-col">
+            <Hero />
+            <div id="shop" className="max-w-7xl mx-auto w-full px-3 sm:px-6 lg:px-8 py-8 md:py-12">
+              <CategoryShowcase />
+            </div>
+            <PromoBanner />
+            <div id="testimonials" className="max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-16">
+              <Testimonials />
+            </div>
+          </main>
+          <Footer />
+        </div>
+      </CustomerAuthProvider>
+    </CartProvider>
   );
 }
 
 function ProductPage() {
   return (
-    <LanguageProvider>
-      <CartProvider>
-        <CustomerAuthProvider>
-          <Suspense fallback={<PageFallback />}>
-            <ProductDetail />
-          </Suspense>
-        </CustomerAuthProvider>
-      </CartProvider>
-    </LanguageProvider>
+    <CartProvider>
+      <CustomerAuthProvider>
+        <Suspense fallback={<PageFallback />}>
+          <ProductDetail />
+        </Suspense>
+      </CustomerAuthProvider>
+    </CartProvider>
   );
 }
 
 function AccountPage() {
   return (
-    <LanguageProvider>
-      <CartProvider>
-        <CustomerAuthProvider>
-          <Suspense fallback={<PageFallback />}>
-            <Account />
-          </Suspense>
-        </CustomerAuthProvider>
-      </CartProvider>
-    </LanguageProvider>
+    <CartProvider>
+      <CustomerAuthProvider>
+        <Suspense fallback={<PageFallback />}>
+          <Account />
+        </Suspense>
+      </CustomerAuthProvider>
+    </CartProvider>
   );
 }
 
 function CheckoutPage() {
   return (
-    <LanguageProvider>
-      <CartProvider>
-        <Suspense fallback={<PageFallback />}>
-          <Checkout />
-        </Suspense>
-      </CartProvider>
-    </LanguageProvider>
+    <CartProvider>
+      <Suspense fallback={<PageFallback />}>
+        <Checkout />
+      </Suspense>
+    </CartProvider>
   );
 }
 
 function ConfirmationPage() {
   return (
-    <LanguageProvider>
-      <Suspense fallback={<PageFallback />}>
-        <OrderConfirmation />
-      </Suspense>
-    </LanguageProvider>
+    <Suspense fallback={<PageFallback />}>
+      <OrderConfirmation />
+    </Suspense>
   );
 }
 
 function InfoPageWrapper({ slug }: { slug?: string }) {
   return (
-    <LanguageProvider>
-      <CartProvider>
-        <CustomerAuthProvider>
-          <Suspense fallback={<PageFallback />}>
-            <InfoPage slug={slug} />
-          </Suspense>
-        </CustomerAuthProvider>
-      </CartProvider>
-    </LanguageProvider>
+    <CartProvider>
+      <CustomerAuthProvider>
+        <Suspense fallback={<PageFallback />}>
+          <InfoPage slug={slug} />
+        </Suspense>
+      </CustomerAuthProvider>
+    </CartProvider>
+  );
+}
+
+function CookiePolicyPage() {
+  return (
+    <CartProvider>
+      <CustomerAuthProvider>
+        <Suspense fallback={<PageFallback />}>
+          <CookiePolicy />
+        </Suspense>
+      </CustomerAuthProvider>
+    </CartProvider>
   );
 }
 
@@ -150,39 +153,39 @@ export default function App() {
     <HelmetProvider>
     <AuthProvider>
       <SiteSettingsProvider>
+      <ConsentProvider>
+      <LanguageProvider>
       <BrowserRouter>
         <ScrollToTop />
+        <CookieBanner />
         <Routes>
           <Route path="/" element={<StoreFront />} />
 
           <Route path="/shop" element={
-            <LanguageProvider>
-              <CartProvider>
-                <CustomerAuthProvider>
-                  <Suspense fallback={<PageFallback />}>
-                    <Shop />
-                  </Suspense>
-                </CustomerAuthProvider>
-              </CartProvider>
-            </LanguageProvider>
+            <CartProvider>
+              <CustomerAuthProvider>
+                <Suspense fallback={<PageFallback />}>
+                  <Shop />
+                </Suspense>
+              </CustomerAuthProvider>
+            </CartProvider>
           } />
           <Route path="/products/:id" element={<ProductPage />} />
           <Route path="/account" element={<AccountPage />} />
           <Route path="/reset-password" element={
-            <LanguageProvider>
-              <Suspense fallback={<PageFallback />}>
-                <ResetPassword />
-              </Suspense>
-            </LanguageProvider>
+            <Suspense fallback={<PageFallback />}>
+              <ResetPassword />
+            </Suspense>
           } />
           <Route path="/checkout" element={<CheckoutPage />} />
           <Route path="/order-confirmation/:orderNumber" element={<ConfirmationPage />} />
 
-          <Route path="/privacy"  element={<InfoPageWrapper slug="privacy"  />} />
-          <Route path="/terms"    element={<InfoPageWrapper slug="terms"    />} />
-          <Route path="/faq"      element={<InfoPageWrapper slug="faq"      />} />
-          <Route path="/shipping" element={<InfoPageWrapper slug="shipping" />} />
-          <Route path="/page/:slug" element={<InfoPageWrapper />} />
+          <Route path="/privacy"       element={<InfoPageWrapper slug="privacy"  />} />
+          <Route path="/terms"         element={<InfoPageWrapper slug="terms"    />} />
+          <Route path="/faq"           element={<InfoPageWrapper slug="faq"      />} />
+          <Route path="/shipping"      element={<InfoPageWrapper slug="shipping" />} />
+          <Route path="/page/:slug"    element={<InfoPageWrapper />} />
+          <Route path="/cookie-policy" element={<CookiePolicyPage />} />
 
           <Route path="/admin/login" element={<Login />} />
 
@@ -209,6 +212,8 @@ export default function App() {
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </BrowserRouter>
+      </LanguageProvider>
+      </ConsentProvider>
       </SiteSettingsProvider>
     </AuthProvider>
     </HelmetProvider>
