@@ -100,14 +100,14 @@ export default function CookiePreferencesModal() {
               <p className="text-sm font-medium text-gray-900">{tx.cookie_necessary_title}</p>
               <p className="mt-0.5 text-xs text-gray-500">{tx.cookie_necessary_desc}</p>
             </div>
-            <div className="shrink-0 pl-2 flex flex-col items-center gap-1">
+            <div className="shrink-0 pl-2 flex flex-col items-end gap-1">
               <Toggle
                 id="toggle-necessary"
                 checked={true}
                 onChange={() => {}}
                 disabled={true}
               />
-              <span className="text-xs text-gray-400">{tx.cookie_always_active}</span>
+              <span className="text-xs text-gray-400 w-11 text-center">{tx.cookie_always_active}</span>
             </div>
           </div>
 
