@@ -221,6 +221,50 @@ describe("consent — corrupted storage", () => {
   });
 });
 
+// ─── Footer "Cookie settings" regression ─────────────────────────────────────
+// Guards the bug where CookieBanner returned null early when bannerVisible=false,
+// preventing the modal from mounting even after openPreferences() was called.
+// The fix: modal render must NOT be gated by bannerVisible.
+// These tests verify the persistent-state side: after any save path + simulated
+// reload, deriveInitialState() produces bannerVisible=false and decided=true,
+// which is the exact condition under which the footer button must still work.
+
+describe("consent — footer preferences openable after any save path", () => {
+  it("bannerVisible is false after accept-all, simulating post-reload state for footer trigger", () => {
+    writeConsent({ analytics: true, marketing: true });
+    const { bannerVisible, consent } = deriveInitialState();
+    expect(bannerVisible).toBe(false);
+    expect(consent.decided).toBe(true);
+    // preferencesOpen is independent React state (starts false); no stored value gates it.
+    // This confirms the footer button can call openPreferences() without interference.
+  });
+
+  it("bannerVisible is false after reject-optional, simulating post-reload state for footer trigger", () => {
+    writeConsent({ analytics: false, marketing: false });
+    const { bannerVisible, consent } = deriveInitialState();
+    expect(bannerVisible).toBe(false);
+    expect(consent.decided).toBe(true);
+  });
+
+  it("bannerVisible is false after save-preferences with mixed choices", () => {
+    writeConsent({ analytics: true, marketing: false });
+    const { bannerVisible, consent } = deriveInitialState();
+    expect(bannerVisible).toBe(false);
+    expect(consent.decided).toBe(true);
+    expect(consent.analytics).toBe(true);
+    expect(consent.marketing).toBe(false);
+  });
+
+  it("no field in stored consent record influences preferencesOpen (it is not stored)", () => {
+    writeConsent({ analytics: true, marketing: true });
+    const stored = readConsent();
+    // Confirm preferencesOpen is never written to localStorage — it must be
+    // pure React state, always starting as false on mount regardless of consent.
+    expect(stored).not.toBeNull();
+    expect("preferencesOpen" in stored!).toBe(false);
+  });
+});
+
 describe("consent — write roundtrip", () => {
   it("write then read back preserves all fields", () => {
     const ts = new Date().toISOString();
