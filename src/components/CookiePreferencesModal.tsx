@@ -69,9 +69,9 @@ export default function CookiePreferencesModal() {
         onClick={closePreferences}
       />
 
-      <div className="relative z-10 bg-white rounded-xl shadow-2xl w-full max-w-md max-h-[90vh] overflow-y-auto">
+      <div className="relative z-10 bg-white rounded-xl shadow-2xl w-[calc(100vw-32px)] max-w-[920px] max-h-[90vh] overflow-y-auto">
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+        <div className="flex items-center justify-between px-8 py-4 border-b border-gray-100">
           <h2 className="text-base font-semibold text-gray-900">
             {tx.cookie_settings_title}
           </h2>
@@ -88,19 +88,19 @@ export default function CookiePreferencesModal() {
         </div>
 
         {/* Description */}
-        <div className="px-6 pt-4 pb-2">
+        <div className="px-8 pt-4 pb-2">
           <p className="text-sm text-gray-600">{tx.cookie_settings_desc}</p>
         </div>
 
         {/* Categories */}
-        <div className="px-6 pb-4 divide-y divide-gray-100">
+        <div className="px-8 pb-4 divide-y divide-gray-100">
           {/* Necessary — always on */}
-          <div className="py-4 flex items-start justify-between gap-4">
-            <div className="flex-1">
+          <div className="py-4 flex items-start justify-between gap-6">
+            <div className="flex-1 min-w-0 pr-4">
               <p className="text-sm font-medium text-gray-900">{tx.cookie_necessary_title}</p>
               <p className="mt-0.5 text-xs text-gray-500">{tx.cookie_necessary_desc}</p>
             </div>
-            <div className="shrink-0 flex flex-col items-end gap-1">
+            <div className="shrink-0 pl-2 flex flex-col items-center gap-1">
               <Toggle
                 id="toggle-necessary"
                 checked={true}
@@ -112,12 +112,12 @@ export default function CookiePreferencesModal() {
           </div>
 
           {/* Analytics */}
-          <div className="py-4 flex items-start justify-between gap-4">
-            <div className="flex-1">
+          <div className="py-4 flex items-start justify-between gap-6">
+            <div className="flex-1 min-w-0 pr-4">
               <p className="text-sm font-medium text-gray-900">{tx.cookie_analytics_title}</p>
               <p className="mt-0.5 text-xs text-gray-500">{tx.cookie_analytics_desc}</p>
             </div>
-            <div className="shrink-0">
+            <div className="shrink-0 pl-2">
               <Toggle
                 id="toggle-analytics"
                 checked={analytics}
@@ -127,12 +127,12 @@ export default function CookiePreferencesModal() {
           </div>
 
           {/* Marketing */}
-          <div className="py-4 flex items-start justify-between gap-4">
-            <div className="flex-1">
+          <div className="py-4 flex items-start justify-between gap-6">
+            <div className="flex-1 min-w-0 pr-4">
               <p className="text-sm font-medium text-gray-900">{tx.cookie_marketing_title}</p>
               <p className="mt-0.5 text-xs text-gray-500">{tx.cookie_marketing_desc}</p>
             </div>
-            <div className="shrink-0">
+            <div className="shrink-0 pl-2">
               <Toggle
                 id="toggle-marketing"
                 checked={marketing}
@@ -143,7 +143,7 @@ export default function CookiePreferencesModal() {
         </div>
 
         {/* Footer actions */}
-        <div className="px-6 py-4 border-t border-gray-100 flex flex-col gap-2 sm:flex-row sm:justify-between">
+        <div className="px-8 py-4 border-t border-gray-100 flex flex-col gap-3 sm:flex-row sm:justify-between">
           <button
             type="button"
             onClick={rejectOptional}
@@ -151,7 +151,7 @@ export default function CookiePreferencesModal() {
           >
             {tx.cookie_reject_optional}
           </button>
-          <div className="flex gap-2">
+          <div className="flex gap-3">
             <button
               type="button"
               onClick={handleSave}
