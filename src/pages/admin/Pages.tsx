@@ -1,5 +1,5 @@
-import { useEffect, useState, type FormEvent } from "react";
-import { Plus, Trash2, Edit, FileText, X } from "lucide-react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
+import { Plus, Trash2, Edit, FileText, X, ImagePlus } from "lucide-react";
 import { supabase } from "../../lib/supabase";
 import { RichTextEditor } from "../../components/admin/RichTextEditor";
 
@@ -11,6 +11,7 @@ type Page = {
   content_en: string | null;
   content_bs: string | null;
   is_published: boolean;
+  hero_image_url: string | null;
   created_at: string;
 };
 
@@ -35,6 +36,7 @@ const emptyForm = {
   content_bs: "",
   slug: "",
   is_published: false,
+  hero_image_url: null as string | null,
 };
 
 export default function Pages() {
@@ -48,6 +50,8 @@ export default function Pages() {
   const [deleting, setDeleting] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [uploadingHero, setUploadingHero] = useState(false);
+  const heroImageRef = useRef<HTMLInputElement>(null);
 
   async function load() {
     const { data } = await supabase.from("pages").select("*").order("created_at");
@@ -74,6 +78,7 @@ export default function Pages() {
       content_bs: page.content_bs ?? "",
       slug: page.slug,
       is_published: page.is_published,
+      hero_image_url: page.hero_image_url ?? null,
     });
     setTab("en");
     setSlugManual(true);
@@ -116,6 +121,7 @@ export default function Pages() {
       content_en: form.content_en || null,
       content_bs: form.content_bs || null,
       is_published: form.is_published,
+      hero_image_url: form.hero_image_url || null,
       updated_at: new Date().toISOString(),
     };
 
@@ -128,6 +134,30 @@ export default function Pages() {
     if (err) { setError(err.message); return; }
     close();
     load();
+  }
+
+  async function handleHeroUpload(file: File) {
+    const MAX_SIZE = 10 * 1024 * 1024;
+    const ALLOWED = ["image/jpeg", "image/png", "image/webp"];
+    if (!ALLOWED.includes(file.type)) {
+      setError("Hero image must be JPEG, PNG or WebP.");
+      return;
+    }
+    if (file.size > MAX_SIZE) {
+      setError("Hero image must be 10 MB or smaller.");
+      return;
+    }
+    setUploadingHero(true);
+    setError(null);
+    const ext = file.name.split(".").pop()?.toLowerCase() ?? "jpg";
+    const path = `pages/about/hero-${Date.now()}.${ext}`;
+    const { error: uploadErr } = await supabase.storage
+      .from("product-images")
+      .upload(path, file, { contentType: file.type });
+    if (uploadErr) { setError(uploadErr.message); setUploadingHero(false); return; }
+    const { data: { publicUrl } } = supabase.storage.from("product-images").getPublicUrl(path);
+    setForm((f) => ({ ...f, hero_image_url: `${publicUrl}?t=${Date.now()}` }));
+    setUploadingHero(false);
   }
 
   async function handleDelete() {
@@ -243,6 +273,64 @@ export default function Pages() {
                   placeholder={tab === "en" ? "Write page content in English…" : "Napišite sadržaj stranice na bosanskom…"}
                 />
               </div>
+
+              {/* Hero Image — About page only */}
+              {editing !== "new" && (editing as Page).slug === "about" && (
+                <div className="flex flex-col gap-2">
+                  <label className="text-sm font-medium text-navy">Hero Image</label>
+                  <p className="text-xs text-gray-400">Displayed on the right side of the About Us hero. JPEG, PNG or WebP · max 10 MB. Replacing uploads a new file; the old file is kept in storage.</p>
+
+                  {form.hero_image_url ? (
+                    <div className="flex items-start gap-4">
+                      <div className="w-32 h-24 rounded-lg border border-gray-200 bg-gray-50 overflow-hidden flex-shrink-0">
+                        <img src={form.hero_image_url} alt="Hero" className="w-full h-full object-cover" />
+                      </div>
+                      <div className="flex flex-col gap-2 pt-1">
+                        <button
+                          type="button"
+                          onClick={() => heroImageRef.current?.click()}
+                          disabled={uploadingHero}
+                          className="text-xs font-semibold text-navy border border-navy/30 px-3 py-1.5 rounded-lg hover:bg-navy/5 transition-colors disabled:opacity-50"
+                        >
+                          {uploadingHero ? "Uploading…" : "Replace"}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setForm((f) => ({ ...f, hero_image_url: null }))}
+                          className="flex items-center gap-1 text-xs text-red-500 hover:text-red-700 transition-colors"
+                        >
+                          <X className="w-3 h-3" /> Remove
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => heroImageRef.current?.click()}
+                      disabled={uploadingHero}
+                      className="flex flex-col items-center gap-2 border-2 border-dashed border-gray-200 rounded-xl p-6 hover:border-navy/30 hover:bg-gray-50 transition-colors disabled:opacity-50"
+                    >
+                      <ImagePlus className="w-6 h-6 text-gray-300" strokeWidth={1.5} />
+                      <span className="text-sm text-gray-400">
+                        {uploadingHero ? "Uploading…" : "Click to upload hero image"}
+                      </span>
+                      <span className="text-xs text-gray-300">JPEG, PNG or WebP · max 10 MB</span>
+                    </button>
+                  )}
+
+                  <input
+                    ref={heroImageRef}
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp"
+                    className="hidden"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) handleHeroUpload(file);
+                      e.target.value = "";
+                    }}
+                  />
+                </div>
+              )}
 
               {/* Slug */}
               <div className="flex flex-col gap-1.5">

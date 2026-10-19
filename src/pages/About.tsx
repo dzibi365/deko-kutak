@@ -15,6 +15,7 @@ type PageRow = {
   content_en: string | null;
   content_bs: string | null;
   is_published: boolean;
+  hero_image_url: string | null;
 };
 
 type ShowcaseItem = {
@@ -48,7 +49,7 @@ export default function About() {
   useEffect(() => {
     supabase
       .from("pages")
-      .select("content_en, content_bs, is_published")
+      .select("content_en, content_bs, is_published, hero_image_url")
       .eq("slug", "about")
       .maybeSingle()
       .then(({ data }) => setPageData(data ?? null));
@@ -106,24 +107,42 @@ export default function About() {
           <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-copper/5 rounded-full -translate-y-1/3 translate-x-1/3 blur-3xl pointer-events-none" />
           <div className="absolute bottom-0 left-0 w-80 h-80 bg-copper/5 rounded-full translate-y-1/2 -translate-x-1/4 blur-3xl pointer-events-none" />
 
-          <div className="relative z-10 max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-24 lg:py-32">
-            <div className="max-w-2xl">
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border-[0.5px] border-copper/40 bg-copper/10 text-copper text-xs font-semibold tracking-widest uppercase mb-6">
-                {tx.about_hero_badge}
+          <div className="relative z-10 max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-20 lg:py-28">
+            <div className={pageData.hero_image_url
+              ? "grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-16 items-center"
+              : ""
+            }>
+              {/* Text */}
+              <div className={pageData.hero_image_url ? "" : "max-w-2xl"}>
+                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border-[0.5px] border-copper/40 bg-copper/10 text-copper text-xs font-semibold tracking-widest uppercase mb-6">
+                  {tx.about_hero_badge}
+                </div>
+                <h1 className="text-4xl sm:text-5xl lg:text-6xl font-semibold leading-tight tracking-tight text-white mb-6">
+                  {tx.about_hero_heading}
+                </h1>
+                <p className="text-lg text-cream/80 leading-relaxed mb-10 max-w-xl">
+                  {tx.about_hero_sub}
+                </p>
+                <Link
+                  to="/shop"
+                  className="inline-flex items-center gap-2 px-6 py-3 bg-copper text-white font-semibold rounded-lg hover:bg-copper/90 transition-colors"
+                >
+                  {tx.about_hero_cta}
+                  <ArrowRight className="w-4 h-4" />
+                </Link>
               </div>
-              <h1 className="text-4xl sm:text-5xl lg:text-6xl font-semibold leading-tight tracking-tight text-white mb-6">
-                {tx.about_hero_heading}
-              </h1>
-              <p className="text-lg text-cream/80 leading-relaxed mb-10 max-w-xl">
-                {tx.about_hero_sub}
-              </p>
-              <Link
-                to="/shop"
-                className="inline-flex items-center gap-2 px-6 py-3 bg-copper text-white font-semibold rounded-lg hover:bg-copper/90 transition-colors"
-              >
-                {tx.about_hero_cta}
-                <ArrowRight className="w-4 h-4" />
-              </Link>
+
+              {/* Hero image — only rendered when configured via CMS */}
+              {pageData.hero_image_url && (
+                <div className="w-full aspect-[4/5] max-h-[520px] rounded-2xl overflow-hidden shadow-2xl">
+                  <img
+                    src={pageData.hero_image_url}
+                    alt={lang === "bs" ? "Deko Kutak radionica" : "Deko Kutak workshop"}
+                    className="w-full h-full object-cover"
+                    loading="eager"
+                  />
+                </div>
+              )}
             </div>
           </div>
         </section>
