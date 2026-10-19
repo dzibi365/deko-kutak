@@ -27,6 +27,7 @@ const Checkout          = lazy(() => import("./pages/Checkout"));
 const OrderConfirmation = lazy(() => import("./pages/OrderConfirmation"));
 const ResetPassword     = lazy(() => import("./pages/ResetPassword"));
 const CookiePolicy      = lazy(() => import("./pages/CookiePolicy"));
+const About             = lazy(() => import("./pages/About"));
 
 // Admin pages — loaded only when an authenticated user navigates to /admin/*.
 // Keeps the public storefront bundle free of admin code, TipTap and
@@ -148,6 +149,18 @@ function CookiePolicyPage() {
   );
 }
 
+function AboutPage() {
+  return (
+    <CartProvider>
+      <CustomerAuthProvider>
+        <Suspense fallback={<PageFallback />}>
+          <About />
+        </Suspense>
+      </CustomerAuthProvider>
+    </CartProvider>
+  );
+}
+
 export default function App() {
   return (
     <HelmetProvider>
@@ -186,6 +199,7 @@ export default function App() {
           <Route path="/shipping"      element={<InfoPageWrapper slug="shipping" />} />
           <Route path="/page/:slug"    element={<InfoPageWrapper />} />
           <Route path="/cookie-policy" element={<CookiePolicyPage />} />
+          <Route path="/about"        element={<AboutPage />} />
 
           <Route path="/admin/login" element={<Login />} />
 

@@ -93,8 +93,19 @@ export function Navbar() {
   const [langOpen, setLangOpen] = useState(false);
   const langRef = useRef<HTMLDivElement>(null);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [aboutPublished, setAboutPublished] = useState(false);
   const isCustomer = user?.user_metadata?.role === "customer";
   const isAdmin = user && !isCustomer;
+
+  useEffect(() => {
+    supabase
+      .from("pages")
+      .select("slug")
+      .eq("slug", "about")
+      .eq("is_published", true)
+      .maybeSingle()
+      .then(({ data }) => setAboutPublished(!!data));
+  }, []);
 
   useEffect(() => {
     const header = document.querySelector('header');
@@ -171,6 +182,9 @@ export function Navbar() {
 
         <nav className="hidden md:flex items-center gap-7">
           <Link to="/shop" className="text-sm font-semibold text-navy hover:text-copper transition-colors">{tr("nav_shop")}</Link>
+          {aboutPublished && (
+            <Link to="/about" className="text-sm font-semibold text-navy hover:text-copper transition-colors">{tr("nav_story")}</Link>
+          )}
         </nav>
 
         <div className="flex items-center gap-4 text-navy">
@@ -316,6 +330,16 @@ export function Navbar() {
               >
                 {tr("nav_shop")}
               </Link>
+              {aboutPublished && (
+                <Link
+                  to="/about"
+                  onClick={() => setMenuOpen(false)}
+                  className={`px-3 py-3 text-sm rounded-lg hover:bg-navy/5 transition-all duration-200 font-semibold text-navy ${menuOpen ? "opacity-100 translate-y-0" : "opacity-0 -translate-y-1"}`}
+                  style={{ transitionDelay: menuOpen ? "100ms" : "0ms" }}
+                >
+                  {tr("nav_story")}
+                </Link>
+              )}
 
               {/* Language selector */}
               <div
@@ -441,6 +465,9 @@ export function Footer() {
           <div className="flex flex-col gap-4">
             <h4 className="font-semibold text-white tracking-wide">{tr("footer_shop")}</h4>
             <Link to="/shop" className="text-cream/70 hover:text-white transition-colors">{tr("footer_all")}</Link>
+            {publishedSlugs.has("about") && (
+              <Link to="/about" className="text-cream/70 hover:text-white transition-colors">{tr("nav_story")}</Link>
+            )}
           </div>
 
           {(social_email || publishedSlugs.has("faq") || publishedSlugs.has("shipping")) && (

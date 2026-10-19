@@ -30,12 +30,21 @@ type HeroConfig = {
 
 export function Hero() {
   const { lang, tr } = useLang();
+  const navigate = useNavigate();
   const [cfg, setCfg] = useState<HeroConfig | null>(null);
+  const [aboutPublished, setAboutPublished] = useState(false);
 
   useEffect(() => {
     supabase.from("hero_config").select("*").eq("id", 1).single().then(({ data }) => {
       if (data) setCfg(data);
     });
+    supabase
+      .from("pages")
+      .select("slug")
+      .eq("slug", "about")
+      .eq("is_published", true)
+      .maybeSingle()
+      .then(({ data }) => setAboutPublished(!!data));
   }, []);
 
   const heroImageUrl = cfg?.image_url || "https://smlaoqjushalotduuhcx.supabase.co/storage/v1/object/public/product-images/1789044812034-3850160wbvw.webp";
@@ -78,7 +87,13 @@ export function Hero() {
                 )}
                 {showSecondary && (
                   <button
-                    onClick={() => document.getElementById("testimonials")?.scrollIntoView({ behavior: "smooth" })}
+                    onClick={() => {
+                      if (aboutPublished) {
+                        navigate("/about");
+                      } else {
+                        document.getElementById("testimonials")?.scrollIntoView({ behavior: "smooth" });
+                      }
+                    }}
                     className="px-6 py-3 bg-transparent border-[0.5px] border-cream/30 text-cream font-semibold rounded-lg hover:bg-cream/5 transition-colors"
                   >
                     {ctaStory}
