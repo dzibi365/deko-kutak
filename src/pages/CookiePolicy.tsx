@@ -25,47 +25,65 @@ export default function CookiePolicy() {
         {isBS ? (
           <div className="prose prose-navy max-w-none space-y-6 text-navy/80 leading-relaxed">
             <p>
-              Ova stranica objašnjava kako Deko Kutak koristi kolačiće (cookies) i slične tehnologije na
-              web stranici <strong>emir.dekokutak.ba</strong>.
+              Ova stranica objašnjava kako Deko Kutak koristi kolačiće (cookies) i slične tehnologije pohrane
+              podataka na web stranici <strong>dekokutak.ba</strong>.
             </p>
 
             <h2 className="text-xl font-semibold text-navy mt-8 mb-3">Šta su kolačići?</h2>
             <p>
-              Kolačići su male tekstualne datoteke koje se pohranjuju na vašem uređaju kada posjetite web
-              stranicu. Koriste se za pamćenje vaših preferencija i osiguravanje funkcionisanja stranice.
+              Kolačići su male tekstualne datoteke koje web stranica šalje vašem pretraživaču i koje se
+              pohranjuju na vašem uređaju. Pored kolačića, web stranice mogu koristiti i <strong>localStorage</strong>{" "}
+              i <strong>sessionStorage</strong> — slične tehnologije koje pohranjuju podatke direktno u vaš
+              pretraživač bez slanja na server. Deko Kutak ne postavlja HTTP kolačiće putem aplikacijskog koda;
+              umjesto toga koristimo localStorage i sessionStorage za funkcionisanje prodavnice.
             </p>
 
-            <h2 className="text-xl font-semibold text-navy mt-8 mb-3">Koje kolačiće koristimo?</h2>
+            <h2 className="text-xl font-semibold text-navy mt-8 mb-3">Šta pohranjujemo u vašem pretraživaču?</h2>
 
-            <h3 className="text-base font-semibold text-navy mt-5 mb-2">Neophodni kolačići</h3>
+            <h3 className="text-base font-semibold text-navy mt-5 mb-2">Neophodno pohranjeni sadržaj</h3>
             <p>
-              Ovi kolačići su neophodni za funkcionisanje prodavnice. Bez njih stranica ne može ispravno
-              raditi. Uključuju:
+              Sljedeći podaci pohranjuju se kako bi prodavnica ispravno funkcionisala:
             </p>
             <ul className="list-disc list-inside space-y-1 pl-2">
-              <li><code className="text-sm bg-gray-100 px-1 rounded">cart</code> — sadržaj vaše korpe</li>
-              <li><code className="text-sm bg-gray-100 px-1 rounded">lang</code> — preferenca jezika (bosanski/engleski)</li>
-              <li><code className="text-sm bg-gray-100 px-1 rounded">dk-consent</code> — vaš odabir kolačića</li>
-              <li>Supabase sesijski kolačići za prijavljene korisnike</li>
+              <li>
+                <code className="text-sm bg-gray-100 px-1 rounded">cart</code>{" "}
+                (localStorage) — sadržaj vaše korpe, čuva se dok ga ne obrišete
+              </li>
+              <li>
+                <code className="text-sm bg-gray-100 px-1 rounded">lang</code>{" "}
+                (localStorage) — vaša preferenca jezika (bosanski ili engleski)
+              </li>
+              <li>
+                <code className="text-sm bg-gray-100 px-1 rounded">dk-consent</code>{" "}
+                (localStorage) — vaš odabir postavki pohrane, čuva se 365 dana
+              </li>
+              <li>
+                Supabase autentifikacijska sesija (localStorage) — vaša sesija prijave, pohranjena lokalno
+                u vašem pretraživaču kada se prijavite ili registrujete. Briše se odjavom ili automatskim
+                istekom sesije.
+              </li>
+              <li>
+                <code className="text-sm bg-gray-100 px-1 rounded">dk-order-[broj]</code>{" "}
+                (sessionStorage) — iznosi vaše narudžbe, zadržani na stranici potvrde tokom trajanja sesije
+                pretraživača i obrisani zatvaranjem kartice.
+              </li>
             </ul>
 
             <h3 className="text-base font-semibold text-navy mt-5 mb-2">Analitički kolačići</h3>
             <p>
-              Pomažu nam razumjeti kako posjetitelji koriste stranicu. <strong>Trenutno nisu aktivni</strong> —
-              nijedan analitički alat nije instaliran. Ukoliko ih aktiviramo u budućnosti, ažuriraćemo ovu
-              stranicu i tražiti vaš pristanak.
+              <strong>Trenutno nisu aktivni.</strong> Nijedan analitički alat nije instaliran. Ukoliko ih
+              aktiviramo u budućnosti, ažuriraćemo ovu stranicu i tražiti vaš pristanak.
             </p>
 
             <h3 className="text-base font-semibold text-navy mt-5 mb-2">Marketing kolačići</h3>
             <p>
-              Koriste se za prikazivanje relevantnih oglasa. <strong>Trenutno nisu aktivni</strong> — nijedan
-              marketinški alat nije instaliran.
+              <strong>Trenutno nisu aktivni.</strong> Nijedan marketinški ni reklamni alat nije instaliran.
             </p>
 
-            <h2 className="text-xl font-semibold text-navy mt-8 mb-3">Upravljanje kolačićima</h2>
+            <h2 className="text-xl font-semibold text-navy mt-8 mb-3">Upravljanje postavkama</h2>
             <p>
-              Možete u svakom trenutku promijeniti svoje preferencije kolačića klikom na dugme ispod ili
-              putem linka „Postavke kolačića" u dnu svake stranice.
+              Možete u svakom trenutku promijeniti svoje preferencije klikom na dugme ispod ili putem linka
+              „Postavke kolačića" u dnu svake stranice.
             </p>
             <button
               type="button"
@@ -75,16 +93,20 @@ export default function CookiePolicy() {
               Postavke kolačića
             </button>
 
-            <h2 className="text-xl font-semibold text-navy mt-8 mb-3">Kolačići trećih strana</h2>
+            <h2 className="text-xl font-semibold text-navy mt-8 mb-3">Usluge trećih strana</h2>
             <p>
-              Koristimo Supabase za autentifikaciju i bazu podataka. Supabase može postaviti sesijske
-              kolačiće potrebne za prijavu. Fontovi se učitavaju lokalno s naših servera — ne šalju se
-              zahtjevi prema Google Fonts CDN-u.
+              Koristimo Supabase za autentifikaciju, bazu podataka i pohranu fajlova. Supabase upravlja
+              sesijama autentifikacije putem localStorage pretraživača, a ne HTTP kolačićima. Svi fontovi
+              se učitavaju lokalno s naših servera — ne šalju se zahtjevi prema Google Fonts CDN-u niti
+              bilo kojoj drugoj vanjskoj CDN usluzi fontova.
             </p>
 
             <h2 className="text-xl font-semibold text-navy mt-8 mb-3">Kontakt</h2>
             <p>
-              Za pitanja u vezi s kolačićima možete nas kontaktirati putem e-maila navedenog na stranici.
+              Za pitanja u vezi s kolačićima možete nas kontaktirati putem e-maila{" "}
+              <a href="mailto:info@dekokutak.ba" className="underline text-navy hover:text-copper">
+                info@dekokutak.ba
+              </a>.
             </p>
 
             <p className="text-sm text-navy/50 mt-10">
@@ -94,47 +116,65 @@ export default function CookiePolicy() {
         ) : (
           <div className="prose prose-navy max-w-none space-y-6 text-navy/80 leading-relaxed">
             <p>
-              This page explains how Deko Kutak uses cookies and similar technologies on{" "}
-              <strong>emir.dekokutak.ba</strong>.
+              This page explains how Deko Kutak uses cookies and similar browser storage technologies on{" "}
+              <strong>dekokutak.ba</strong>.
             </p>
 
             <h2 className="text-xl font-semibold text-navy mt-8 mb-3">What are cookies?</h2>
             <p>
-              Cookies are small text files stored on your device when you visit a website. They are used
-              to remember your preferences and ensure the site works correctly.
+              Cookies are small text files that a website sends to your browser and stores on your device.
+              In addition to cookies, websites can use <strong>localStorage</strong> and{" "}
+              <strong>sessionStorage</strong> — similar technologies that store data directly in your browser
+              without sending it to a server. Deko Kutak does not set HTTP cookies through application code;
+              instead we use localStorage and sessionStorage to run the shop.
             </p>
 
-            <h2 className="text-xl font-semibold text-navy mt-8 mb-3">What cookies do we use?</h2>
+            <h2 className="text-xl font-semibold text-navy mt-8 mb-3">What do we store in your browser?</h2>
 
-            <h3 className="text-base font-semibold text-navy mt-5 mb-2">Necessary cookies</h3>
+            <h3 className="text-base font-semibold text-navy mt-5 mb-2">Necessary browser storage</h3>
             <p>
-              These cookies are required for the shop to function. Without them, the site cannot work
-              properly. They include:
+              The following data is stored to make the shop work correctly:
             </p>
             <ul className="list-disc list-inside space-y-1 pl-2">
-              <li><code className="text-sm bg-gray-100 px-1 rounded">cart</code> — the contents of your cart</li>
-              <li><code className="text-sm bg-gray-100 px-1 rounded">lang</code> — your language preference (Bosnian/English)</li>
-              <li><code className="text-sm bg-gray-100 px-1 rounded">dk-consent</code> — your cookie choices</li>
-              <li>Supabase session cookies for signed-in users</li>
+              <li>
+                <code className="text-sm bg-gray-100 px-1 rounded">cart</code>{" "}
+                (localStorage) — your shopping cart contents, retained until cleared
+              </li>
+              <li>
+                <code className="text-sm bg-gray-100 px-1 rounded">lang</code>{" "}
+                (localStorage) — your language preference (Bosnian or English)
+              </li>
+              <li>
+                <code className="text-sm bg-gray-100 px-1 rounded">dk-consent</code>{" "}
+                (localStorage) — your storage preference choices, retained for 365 days
+              </li>
+              <li>
+                Supabase authentication session (localStorage) — your sign-in session, stored locally in
+                your browser when you sign in or create an account. Cleared when you sign out or when the
+                session expires automatically.
+              </li>
+              <li>
+                <code className="text-sm bg-gray-100 px-1 rounded">dk-order-[number]</code>{" "}
+                (sessionStorage) — your order totals, kept on the confirmation page for the duration of
+                your browser session and cleared when you close the tab.
+              </li>
             </ul>
 
             <h3 className="text-base font-semibold text-navy mt-5 mb-2">Analytics cookies</h3>
             <p>
-              These help us understand how visitors use the site. <strong>Currently inactive</strong> — no
-              analytics tool is installed. If we activate them in the future, we will update this page and
-              request your consent.
+              <strong>Currently inactive.</strong> No analytics tool is installed. If we activate analytics
+              in the future, we will update this page and ask for your consent first.
             </p>
 
             <h3 className="text-base font-semibold text-navy mt-5 mb-2">Marketing cookies</h3>
             <p>
-              Used to show relevant ads. <strong>Currently inactive</strong> — no marketing tool is
-              installed.
+              <strong>Currently inactive.</strong> No marketing or advertising tool is installed.
             </p>
 
             <h2 className="text-xl font-semibold text-navy mt-8 mb-3">Managing your preferences</h2>
             <p>
-              You can change your cookie preferences at any time by clicking the button below or via the
-              "Cookie settings" link in the footer of every page.
+              You can change your preferences at any time by clicking the button below or via the "Cookie
+              settings" link in the footer of every page.
             </p>
             <button
               type="button"
@@ -144,16 +184,19 @@ export default function CookiePolicy() {
               Cookie settings
             </button>
 
-            <h2 className="text-xl font-semibold text-navy mt-8 mb-3">Third-party cookies</h2>
+            <h2 className="text-xl font-semibold text-navy mt-8 mb-3">Third-party services</h2>
             <p>
-              We use Supabase for authentication and database services. Supabase may set session cookies
-              needed for sign-in. Fonts are loaded locally from our servers — no requests are made to the
-              Google Fonts CDN.
+              We use Supabase for authentication, database and file storage. Supabase manages authentication
+              sessions via browser localStorage, not HTTP cookies. All fonts are self-hosted — no requests
+              are made to Google Fonts or any other external font CDN.
             </p>
 
             <h2 className="text-xl font-semibold text-navy mt-8 mb-3">Contact</h2>
             <p>
-              For questions about cookies, please contact us via the email address listed on the site.
+              For questions about cookies, please contact us at{" "}
+              <a href="mailto:info@dekokutak.ba" className="underline text-navy hover:text-copper">
+                info@dekokutak.ba
+              </a>.
             </p>
 
             <p className="text-sm text-navy/50 mt-10">Last updated: October 2026.</p>
