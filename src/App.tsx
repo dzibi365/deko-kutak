@@ -42,6 +42,8 @@ const AdminReviews   = lazy(() => import("./pages/admin/Reviews"));
 const FieldGroups    = lazy(() => import("./pages/admin/FieldGroups"));
 const ImageTools     = lazy(() => import("./pages/admin/ImageTools"));
 const AdminPages     = lazy(() => import("./pages/admin/Pages"));
+const AdminGallery   = lazy(() => import("./pages/admin/Gallery"));
+const AdminGalleryCats = lazy(() => import("./pages/admin/GalleryCategories"));
 
 function ScrollToTop() {
   const { pathname } = useLocation();
@@ -221,6 +223,8 @@ export default function App() {
             <Route path="settings" element={<StoreSettings />} />
             <Route path="image-tools" element={<ImageTools />} />
             <Route path="pages" element={<AdminPages />} />
+            <Route path="gallery" element={<AdminGallery />} />
+            <Route path="gallery-categories" element={<AdminGalleryCats />} />
           </Route>
 
           <Route path="*" element={<Navigate to="/" replace />} />

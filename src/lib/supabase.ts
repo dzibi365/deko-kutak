@@ -103,3 +103,36 @@ export function localDesc(obj: { description?: string | null; description_en?: s
   if (lang === 'bs') return obj.description_bs || obj.description_en || obj.description || null;
   return obj.description_en || obj.description || null;
 }
+
+export type GalleryCategory = {
+  id: number;
+  name_en: string;
+  name_bs: string;
+  display_order: number;
+  created_at: string;
+};
+
+export type GalleryItem = {
+  id: number;
+  title_en: string;
+  title_bs: string;
+  description_en: string | null;
+  description_bs: string | null;
+  cover_image_url: string | null;
+  category_id: number | null;
+  is_published: boolean;
+  display_order: number;
+  related_product_id: number | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type GalleryImage = {
+  id: number;
+  gallery_item_id: number;
+  image_url: string;
+  caption_en: string | null;
+  caption_bs: string | null;
+  display_order: number;
+  created_at: string;
+};
