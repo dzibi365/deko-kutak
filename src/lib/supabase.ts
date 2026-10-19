@@ -136,3 +136,14 @@ export type GalleryImage = {
   display_order: number;
   created_at: string;
 };
+
+export type GalleryVideo = {
+  id: number;
+  gallery_item_id: number;
+  video_url: string;
+  poster_url: string | null;
+  caption_en: string | null;
+  caption_bs: string | null;
+  display_order: number;
+  created_at: string;
+};

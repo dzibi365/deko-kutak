@@ -1,14 +1,19 @@
 import { useEffect, useRef, useState } from "react";
-import { Plus, Pencil, Trash2, X, ChevronUp, ChevronDown, ImageIcon } from "lucide-react";
+import { Plus, Pencil, Trash2, X, ChevronUp, ChevronDown, ImageIcon, Video } from "lucide-react";
 import { supabase } from "../../lib/supabase";
-import type { GalleryCategory, GalleryImage, GalleryItem } from "../../lib/supabase";
+import type { GalleryCategory, GalleryImage, GalleryItem, GalleryVideo } from "../../lib/supabase";
 
 const inputCls =
   "px-3 py-2 border border-gray-200 rounded-lg text-sm text-navy placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-navy/20 focus:border-navy transition w-full";
 
 const MAX_IMAGES = 10;
+const MAX_VIDEOS = 2;
 const MAX_BYTES = 10 * 1024 * 1024;
+const MAX_VIDEO_BYTES = 52428800; // 50 MB — Free tier limit
 const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp"];
+const ALLOWED_VIDEO_TYPES = ["video/mp4", "video/webm"];
+const VIDEO_EXT_MAP: Record<string, string> = { "video/mp4": "mp4", "video/webm": "webm" };
+const POSTER_EXT_MAP: Record<string, string> = { "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp" };
 
 type Filter = "all" | "published" | "draft";
 
@@ -34,6 +39,17 @@ type LocalImage = {
   key: string;
   id?: number;
   url: string;
+  caption_en: string;
+  caption_bs: string;
+  display_order: number;
+  toDelete: boolean;
+};
+
+type LocalVideo = {
+  key: string;
+  id?: number;
+  url: string;
+  poster_url: string;
   caption_en: string;
   caption_bs: string;
   display_order: number;
@@ -72,17 +88,26 @@ export default function Gallery() {
   const [tab, setTab] = useState<"en" | "bs">("en");
   const [form, setForm] = useState<FormState>(emptyForm());
   const [localImages, setLocalImages] = useState<LocalImage[]>([]);
+  const [localVideos, setLocalVideos] = useState<LocalVideo[]>([]);
   const [imagesLoading, setImagesLoading] = useState(false);
+  const [videosLoading, setVideosLoading] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [coverUploading, setCoverUploading] = useState(false);
   const [imagesUploading, setImagesUploading] = useState(false);
+  const [videoUploading, setVideoUploading] = useState(false);
+  const [posterUploading, setPosterUploading] = useState(false);
 
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
   const coverInputRef = useRef<HTMLInputElement>(null);
   const imagesInputRef = useRef<HTMLInputElement>(null);
+  const videoInputRef = useRef<HTMLInputElement>(null);
+  const posterInputRef = useRef<HTMLInputElement>(null);
+  // Track which video key is being replaced/poster-updated via the shared file inputs
+  const replaceVideoKeyRef = useRef<string | null>(null);
+  const posterTargetKeyRef = useRef<string | null>(null);
 
   async function load() {
     setLoading(true);
@@ -121,18 +146,20 @@ export default function Gallery() {
       is_published: item.is_published,
     });
     setLocalImages([]);
+    setLocalVideos([]);
     setFormError(null);
     setConfirmDelete(false);
     setTab("en");
     setModalOpen(true);
 
     setImagesLoading(true);
-    const { data } = await supabase
-      .from("gallery_images")
-      .select("*")
-      .eq("gallery_item_id", item.id)
-      .order("display_order");
-    const imgs: LocalImage[] = ((data as GalleryImage[]) ?? []).map((img) => ({
+    setVideosLoading(true);
+    const [{ data: imgData }, { data: vidData }] = await Promise.all([
+      supabase.from("gallery_images").select("*").eq("gallery_item_id", item.id).order("display_order"),
+      supabase.from("gallery_videos").select("*").eq("gallery_item_id", item.id).order("display_order"),
+    ]);
+
+    const imgs: LocalImage[] = ((imgData as GalleryImage[]) ?? []).map((img) => ({
       key: String(img.id),
       id: img.id,
       url: img.image_url,
@@ -143,12 +170,26 @@ export default function Gallery() {
     }));
     setLocalImages(imgs);
     setImagesLoading(false);
+
+    const vids: LocalVideo[] = ((vidData as GalleryVideo[]) ?? []).map((v) => ({
+      key: String(v.id),
+      id: v.id,
+      url: v.video_url,
+      poster_url: v.poster_url ?? "",
+      caption_en: v.caption_en ?? "",
+      caption_bs: v.caption_bs ?? "",
+      display_order: v.display_order,
+      toDelete: false,
+    }));
+    setLocalVideos(vids);
+    setVideosLoading(false);
   }
 
   function openNew() {
     setEditingItem(null);
     setForm(emptyForm());
     setLocalImages([]);
+    setLocalVideos([]);
     setFormError(null);
     setConfirmDelete(false);
     setTab("en");
@@ -158,6 +199,7 @@ export default function Gallery() {
   function closeModal() {
     setModalOpen(false);
     setEditingItem(null);
+    setLocalVideos([]);
     setFormError(null);
     setConfirmDelete(false);
   }
@@ -204,6 +246,75 @@ export default function Gallery() {
     setImagesUploading(false);
   }
 
+  async function handleVideoUpload(file: File) {
+    if (!ALLOWED_VIDEO_TYPES.includes(file.type)) {
+      setFormError("Video must be MP4 or WebM.");
+      return;
+    }
+    if (file.size > MAX_VIDEO_BYTES) {
+      setFormError("Video must be 50 MB or smaller.");
+      return;
+    }
+    setVideoUploading(true);
+    setFormError(null);
+    const ext = VIDEO_EXT_MAP[file.type] ?? "mp4";
+    const path = `gallery/items/vid-${Date.now()}.${ext}`;
+    const { error: upErr } = await supabase.storage
+      .from("videos")
+      .upload(path, file, { contentType: file.type });
+    if (upErr) { setFormError(upErr.message); setVideoUploading(false); return; }
+    const { data: { publicUrl } } = supabase.storage.from("videos").getPublicUrl(path);
+
+    const replaceKey = replaceVideoKeyRef.current;
+    replaceVideoKeyRef.current = null;
+    if (replaceKey) {
+      setLocalVideos((prev) =>
+        prev.map((v) => v.key === replaceKey ? { ...v, url: publicUrl } : v)
+      );
+    } else {
+      setLocalVideos((prev) => {
+        const activeCount = prev.filter((v) => !v.toDelete).length;
+        return [...prev, {
+          key: crypto.randomUUID(),
+          url: publicUrl,
+          poster_url: "",
+          caption_en: "",
+          caption_bs: "",
+          display_order: activeCount,
+          toDelete: false,
+        }];
+      });
+    }
+    setVideoUploading(false);
+  }
+
+  async function handlePosterUpload(file: File) {
+    const key = posterTargetKeyRef.current;
+    if (!key) return;
+    if (!ALLOWED_TYPES.includes(file.type)) {
+      setFormError("Poster must be JPEG, PNG or WebP.");
+      return;
+    }
+    if (file.size > MAX_BYTES) {
+      setFormError("Poster must be 10 MB or smaller.");
+      return;
+    }
+    setPosterUploading(true);
+    setFormError(null);
+    const ext = POSTER_EXT_MAP[file.type] ?? "jpg";
+    const path = `gallery/items/poster-${Date.now()}.${ext}`;
+    const { error: upErr } = await supabase.storage
+      .from("product-images")
+      .upload(path, file, { contentType: file.type });
+    if (upErr) { setFormError(upErr.message); setPosterUploading(false); return; }
+    const { data: { publicUrl } } = supabase.storage.from("product-images").getPublicUrl(path);
+    setLocalVideos((prev) =>
+      prev.map((v) => v.key === key ? { ...v, poster_url: publicUrl } : v)
+    );
+    posterTargetKeyRef.current = null;
+    setPosterUploading(false);
+  }
+
   function removeImage(key: string) {
     setLocalImages((prev) =>
       prev.map((img) => img.key === key ? { ...img, toDelete: true } : img)
@@ -223,16 +334,49 @@ export default function Gallery() {
       if (idx === -1) return prev;
       const swapIdx = direction === "up" ? idx - 1 : idx + 1;
       if (swapIdx < 0 || swapIdx >= active.length) return prev;
-
       const aOrder = active[idx].display_order;
       const bOrder = active[swapIdx].display_order;
-
       return prev.map((img) => {
         if (img.key === active[idx].key) return { ...img, display_order: bOrder };
         if (img.key === active[swapIdx].key) return { ...img, display_order: aOrder };
         return img;
       });
     });
+  }
+
+  function removeVideo(key: string) {
+    setLocalVideos((prev) =>
+      prev.map((v) => v.key === key ? { ...v, toDelete: true } : v)
+    );
+  }
+
+  function updateVideoCaption(key: string, field: "caption_en" | "caption_bs", value: string) {
+    setLocalVideos((prev) =>
+      prev.map((v) => v.key === key ? { ...v, [field]: value } : v)
+    );
+  }
+
+  function moveVideo(key: string, direction: "up" | "down") {
+    setLocalVideos((prev) => {
+      const active = prev.filter((v) => !v.toDelete).sort((a, b) => a.display_order - b.display_order);
+      const idx = active.findIndex((v) => v.key === key);
+      if (idx === -1) return prev;
+      const swapIdx = direction === "up" ? idx - 1 : idx + 1;
+      if (swapIdx < 0 || swapIdx >= active.length) return prev;
+      const aOrder = active[idx].display_order;
+      const bOrder = active[swapIdx].display_order;
+      return prev.map((v) => {
+        if (v.key === active[idx].key) return { ...v, display_order: bOrder };
+        if (v.key === active[swapIdx].key) return { ...v, display_order: aOrder };
+        return v;
+      });
+    });
+  }
+
+  function removePoster(key: string) {
+    setLocalVideos((prev) =>
+      prev.map((v) => v.key === key ? { ...v, poster_url: "" } : v)
+    );
   }
 
   async function handleSave(e: React.FormEvent) {
@@ -263,15 +407,17 @@ export default function Gallery() {
       const { error: updErr } = await supabase.from("gallery_items").update(payload).eq("id", editingItem.id);
       if (updErr) { setFormError(updErr.message); setSaving(false); return; }
 
-      const toDelete = localImages.filter((img) => img.toDelete && img.id);
-      if (toDelete.length > 0) {
-        const ids = toDelete.map((img) => img.id!);
+      // Images: delete removed
+      const imgsToDelete = localImages.filter((img) => img.toDelete && img.id);
+      if (imgsToDelete.length > 0) {
+        const ids = imgsToDelete.map((img) => img.id!);
         const { error: delErr } = await supabase.from("gallery_images").delete().in("id", ids);
         if (delErr) { setFormError(delErr.message); setSaving(false); return; }
       }
 
-      const existing = localImages.filter((img) => !img.toDelete && img.id);
-      for (const img of existing) {
+      // Images: update existing
+      const existingImgs = localImages.filter((img) => !img.toDelete && img.id);
+      for (const img of existingImgs) {
         const { error: imgErr } = await supabase
           .from("gallery_images")
           .update({ caption_en: img.caption_en || null, caption_bs: img.caption_bs || null, display_order: img.display_order })
@@ -279,6 +425,7 @@ export default function Gallery() {
         if (imgErr) { setFormError(imgErr.message); setSaving(false); return; }
       }
 
+      // Images: insert new
       const newImgs = localImages.filter((img) => !img.toDelete && !img.id);
       if (newImgs.length > 0) {
         const { error: insErr } = await supabase.from("gallery_images").insert(
@@ -292,6 +439,46 @@ export default function Gallery() {
         );
         if (insErr) { setFormError(insErr.message); setSaving(false); return; }
       }
+
+      // Videos: delete removed
+      const vidsToDelete = localVideos.filter((v) => v.toDelete && v.id);
+      if (vidsToDelete.length > 0) {
+        const ids = vidsToDelete.map((v) => v.id!);
+        const { error: vDelErr } = await supabase.from("gallery_videos").delete().in("id", ids);
+        if (vDelErr) { setFormError(vDelErr.message); setSaving(false); return; }
+      }
+
+      // Videos: update existing
+      const existingVids = localVideos.filter((v) => !v.toDelete && v.id);
+      for (const v of existingVids) {
+        const { error: vUpdErr } = await supabase
+          .from("gallery_videos")
+          .update({
+            video_url: v.url,
+            poster_url: v.poster_url || null,
+            caption_en: v.caption_en || null,
+            caption_bs: v.caption_bs || null,
+            display_order: v.display_order,
+          })
+          .eq("id", v.id!);
+        if (vUpdErr) { setFormError(vUpdErr.message); setSaving(false); return; }
+      }
+
+      // Videos: insert new
+      const newVids = localVideos.filter((v) => !v.toDelete && !v.id);
+      if (newVids.length > 0) {
+        const { error: vInsErr } = await supabase.from("gallery_videos").insert(
+          newVids.map((v) => ({
+            gallery_item_id: editingItem.id,
+            video_url: v.url,
+            poster_url: v.poster_url || null,
+            caption_en: v.caption_en || null,
+            caption_bs: v.caption_bs || null,
+            display_order: v.display_order,
+          }))
+        );
+        if (vInsErr) { setFormError(vInsErr.message); setSaving(false); return; }
+      }
     } else {
       const { data: inserted, error: insErr } = await supabase
         .from("gallery_items")
@@ -300,11 +487,13 @@ export default function Gallery() {
         .single();
       if (insErr || !inserted) { setFormError(insErr?.message ?? "Insert failed"); setSaving(false); return; }
 
+      const newItemId = (inserted as { id: number }).id;
+
       const newImgs = localImages.filter((img) => !img.toDelete);
       if (newImgs.length > 0) {
         const { error: imgInsErr } = await supabase.from("gallery_images").insert(
           newImgs.map((img) => ({
-            gallery_item_id: (inserted as { id: number }).id,
+            gallery_item_id: newItemId,
             image_url: img.url,
             caption_en: img.caption_en || null,
             caption_bs: img.caption_bs || null,
@@ -312,6 +501,21 @@ export default function Gallery() {
           }))
         );
         if (imgInsErr) { setFormError(imgInsErr.message); setSaving(false); return; }
+      }
+
+      const newVids = localVideos.filter((v) => !v.toDelete);
+      if (newVids.length > 0) {
+        const { error: vInsErr } = await supabase.from("gallery_videos").insert(
+          newVids.map((v) => ({
+            gallery_item_id: newItemId,
+            video_url: v.url,
+            poster_url: v.poster_url || null,
+            caption_en: v.caption_en || null,
+            caption_bs: v.caption_bs || null,
+            display_order: v.display_order,
+          }))
+        );
+        if (vInsErr) { setFormError(vInsErr.message); setSaving(false); return; }
       }
     }
 
@@ -336,6 +540,7 @@ export default function Gallery() {
   );
 
   const activeImages = localImages.filter((img) => !img.toDelete).sort((a, b) => a.display_order - b.display_order);
+  const activeVideos = localVideos.filter((v) => !v.toDelete).sort((a, b) => a.display_order - b.display_order);
 
   return (
     <div className="p-6 max-w-6xl mx-auto">
@@ -519,7 +724,7 @@ export default function Gallery() {
 
               <hr className="border-gray-100" />
 
-              {/* Category */}
+              {/* Category + Related Product */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">
@@ -603,7 +808,6 @@ export default function Gallery() {
                   <span className="text-xs text-gray-400">(required to publish)</span>
                 </div>
 
-                {/* Storage warning */}
                 <div className="mb-3 px-4 py-3 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-800 leading-relaxed space-y-1">
                   <p><strong>EN:</strong> Gallery photographs are accessible through their direct URLs even when the item is unpublished. Do not upload private customer photos or unapproved materials.</p>
                   <p><strong>BS:</strong> Fotografije galerije su javno dostupne putem direktnog linka, čak i kada rad nije objavljen. Nemojte postavljati privatne fotografije kupaca ili neodobrene materijale.</p>
@@ -748,6 +952,146 @@ export default function Gallery() {
                   </>
                 )}
               </div>
+
+              <hr className="border-gray-100" />
+
+              {/* Videos */}
+              <div>
+                <div className="flex items-baseline gap-2 mb-3">
+                  <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Videos</span>
+                  <span className="text-xs text-gray-400">{activeVideos.length}/{MAX_VIDEOS}</span>
+                </div>
+
+                <div className="mb-3 px-4 py-3 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-800 leading-relaxed space-y-1">
+                  <p><strong>EN:</strong> Videos are accessible through their direct URLs even before the item is published. Replacing a video does not delete the previous file from storage.</p>
+                  <p><strong>BS:</strong> Videozapisi su javno dostupni putem direktnog linka, čak i prije objave rada. Zamjena videa ne briše prethodnu datoteku iz pohrane.</p>
+                </div>
+
+                {videosLoading ? (
+                  <div className="flex items-center justify-center h-16">
+                    <div className="w-5 h-5 border-2 border-navy/20 border-t-navy rounded-full animate-spin" />
+                  </div>
+                ) : (
+                  <>
+                    {activeVideos.length > 0 && (
+                      <div className="flex flex-col gap-3 mb-3">
+                        {activeVideos.map((vid, idx) => (
+                          <div key={vid.key} className="flex flex-col gap-2 p-3 bg-gray-50 rounded-xl border border-gray-100">
+                            <div className="flex gap-3">
+                              {/* Poster thumbnail or video icon */}
+                              <div className="w-16 h-16 rounded-lg flex-shrink-0 relative overflow-hidden bg-navy/10 flex items-center justify-center">
+                                {vid.poster_url ? (
+                                  <img src={vid.poster_url} alt="" className="w-full h-full object-cover" />
+                                ) : (
+                                  <Video className="w-5 h-5 text-navy/30" strokeWidth={1.5} />
+                                )}
+                              </div>
+                              {/* Captions */}
+                              <div className="flex-1 min-w-0 flex flex-col gap-2">
+                                <input
+                                  className="px-2 py-1.5 border border-gray-200 rounded-md text-xs text-navy placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-navy/20 focus:border-navy transition w-full"
+                                  value={vid.caption_en}
+                                  onChange={(e) => updateVideoCaption(vid.key, "caption_en", e.target.value)}
+                                  placeholder="Caption EN"
+                                />
+                                <input
+                                  className="px-2 py-1.5 border border-gray-200 rounded-md text-xs text-navy placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-navy/20 focus:border-navy transition w-full"
+                                  value={vid.caption_bs}
+                                  onChange={(e) => updateVideoCaption(vid.key, "caption_bs", e.target.value)}
+                                  placeholder="Caption BS"
+                                />
+                              </div>
+                              {/* Order + remove */}
+                              <div className="flex flex-col gap-1 flex-shrink-0">
+                                <button
+                                  type="button"
+                                  disabled={idx === 0}
+                                  onClick={() => moveVideo(vid.key, "up")}
+                                  className="p-1 text-gray-400 hover:text-navy hover:bg-white rounded transition-colors disabled:opacity-30"
+                                >
+                                  <ChevronUp className="w-4 h-4" />
+                                </button>
+                                <button
+                                  type="button"
+                                  disabled={idx === activeVideos.length - 1}
+                                  onClick={() => moveVideo(vid.key, "down")}
+                                  className="p-1 text-gray-400 hover:text-navy hover:bg-white rounded transition-colors disabled:opacity-30"
+                                >
+                                  <ChevronDown className="w-4 h-4" />
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => removeVideo(vid.key)}
+                                  className="p-1 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded transition-colors"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </button>
+                              </div>
+                            </div>
+                            {/* Video action buttons */}
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <button
+                                type="button"
+                                disabled={videoUploading}
+                                onClick={() => { replaceVideoKeyRef.current = vid.key; videoInputRef.current?.click(); }}
+                                className="px-2.5 py-1 text-xs text-navy border border-navy/20 rounded-lg hover:bg-navy/5 transition-colors disabled:opacity-60"
+                              >
+                                {videoUploading ? "Uploading…" : "Replace video"}
+                              </button>
+                              <button
+                                type="button"
+                                disabled={posterUploading}
+                                onClick={() => { posterTargetKeyRef.current = vid.key; posterInputRef.current?.click(); }}
+                                className="px-2.5 py-1 text-xs text-navy border border-navy/20 rounded-lg hover:bg-navy/5 transition-colors disabled:opacity-60"
+                              >
+                                {posterUploading ? "Uploading…" : vid.poster_url ? "Replace poster" : "Add poster"}
+                              </button>
+                              {vid.poster_url && (
+                                <button
+                                  type="button"
+                                  onClick={() => removePoster(vid.key)}
+                                  className="px-2.5 py-1 text-xs text-red-500 border border-red-200 rounded-lg hover:bg-red-50 transition-colors"
+                                >
+                                  Remove poster
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {activeVideos.length < MAX_VIDEOS && (
+                      <button
+                        type="button"
+                        disabled={videoUploading}
+                        onClick={() => { replaceVideoKeyRef.current = null; videoInputRef.current?.click(); }}
+                        className="flex items-center gap-2 px-3 py-2 text-xs text-gray-500 border border-dashed border-gray-300 rounded-lg hover:border-navy/30 hover:text-navy/60 transition-colors disabled:opacity-60"
+                      >
+                        <Plus className="w-3.5 h-3.5" />
+                        {videoUploading
+                          ? "Uploading…"
+                          : `Add Video (${MAX_VIDEOS - activeVideos.length} remaining) · MP4 or WebM · max 50 MB`}
+                      </button>
+                    )}
+
+                    <input
+                      ref={videoInputRef}
+                      type="file"
+                      accept="video/mp4,video/webm"
+                      className="hidden"
+                      onChange={(e) => { if (e.target.files?.[0]) handleVideoUpload(e.target.files[0]); e.target.value = ""; }}
+                    />
+                    <input
+                      ref={posterInputRef}
+                      type="file"
+                      accept="image/jpeg,image/png,image/webp"
+                      className="hidden"
+                      onChange={(e) => { if (e.target.files?.[0]) handlePosterUpload(e.target.files[0]); e.target.value = ""; }}
+                    />
+                  </>
+                )}
+              </div>
             </div>
 
             {/* Footer */}
@@ -779,7 +1123,7 @@ export default function Gallery() {
                 </button>
                 <button
                   type="submit"
-                  disabled={saving || coverUploading || imagesUploading}
+                  disabled={saving || coverUploading || imagesUploading || videoUploading || posterUploading}
                   className="flex items-center gap-2 px-4 py-2 bg-navy text-white text-sm font-semibold rounded-lg hover:bg-navy/90 transition-colors disabled:opacity-60"
                 >
                   {saving ? "Saving…" : editingItem ? "Save Changes" : "Create Item"}

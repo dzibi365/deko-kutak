@@ -1,13 +1,13 @@
 import { useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { useParams, Navigate, Link } from "react-router-dom";
-import { ArrowLeft, ChevronLeft, ChevronRight, X as XIcon, ImageIcon, ExternalLink } from "lucide-react";
+import { ArrowLeft, ChevronLeft, ChevronRight, X as XIcon, ImageIcon, ExternalLink, Play } from "lucide-react";
 import { Navbar, Footer } from "../components/Layout";
 import { CartDrawer } from "../components/CartDrawer";
 import { AuthModal } from "../components/AuthModal";
 import { SiteMeta } from "../components/SiteMeta";
 import { supabase } from "../lib/supabase";
-import type { GalleryItem, GalleryImage } from "../lib/supabase";
+import type { GalleryItem, GalleryImage, GalleryVideo } from "../lib/supabase";
 import { useLang } from "../context/LanguageContext";
 import { t } from "../i18n/translations";
 
@@ -16,10 +16,13 @@ type GalleryItemFull = GalleryItem & {
   products: { id: number; name: string; name_en: string | null } | null;
 };
 
-// Media entry for the viewer and lightbox.
-// Intentionally extensible: a future { kind: 'video'; ... } branch
-// can be added here without restructuring the media area.
-type MediaItem = { url: string; caption: string };
+// Lightbox accepts plain url+caption entries (photos only).
+type LightboxEntry = { url: string; caption: string };
+
+// Discriminated union — image items open the photo lightbox; video items play inline.
+type MediaItem =
+  | { kind: "image"; url: string; caption: string }
+  | { kind: "video"; url: string; poster: string | null; caption: string };
 
 function localTitle(item: GalleryItem, lang: string) {
   return lang === "bs" ? (item.title_bs || item.title_en) : (item.title_en || item.title_bs);
@@ -36,7 +39,7 @@ function GalleryLightboxModal({
   startIndex,
   onClose,
 }: {
-  images: MediaItem[];
+  images: LightboxEntry[];
   startIndex: number;
   onClose: () => void;
 }) {
@@ -159,12 +162,15 @@ export default function GalleryDetail() {
 
   const [item, setItem] = useState<GalleryItemFull | null | undefined>(undefined);
   const [images, setImages] = useState<GalleryImage[]>([]);
+  const [videos, setVideos] = useState<GalleryVideo[]>([]);
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [lightboxIndex, setLightboxIndex] = useState(0);
   const [selectedIndex, setSelectedIndex] = useState(0);
 
   useEffect(() => {
     setSelectedIndex(0);
+    setImages([]);
+    setVideos([]);
     if (!id) { setItem(null); return; }
     supabase
       .from("gallery_items")
@@ -180,6 +186,13 @@ export default function GalleryDetail() {
       .eq("gallery_item_id", id)
       .order("display_order")
       .then(({ data }) => setImages((data as GalleryImage[]) ?? []));
+
+    supabase
+      .from("gallery_videos")
+      .select("*")
+      .eq("gallery_item_id", id)
+      .order("display_order")
+      .then(({ data }) => setVideos((data as GalleryVideo[]) ?? []));
   }, [id]);
 
   if (item === undefined) {
@@ -207,23 +220,42 @@ export default function GalleryDetail() {
     ? (item.products.name_en || item.products.name)
     : null;
 
-  // cover at index 0, gallery_images in display_order
+  // cover → photos (display_order asc) → videos (display_order asc)
   const mediaItems: MediaItem[] = [
     ...(item.cover_image_url
-      ? [{ url: item.cover_image_url, caption: title }]
+      ? [{ kind: "image" as const, url: item.cover_image_url, caption: title }]
       : []),
     ...images.map((img) => ({
+      kind: "image" as const,
       url: img.image_url,
       caption: lang === "bs"
         ? (img.caption_bs || img.caption_en || "")
         : (img.caption_en || img.caption_bs || ""),
     })),
+    ...videos.map((vid) => ({
+      kind: "video" as const,
+      url: vid.video_url,
+      poster: vid.poster_url ?? null,
+      caption: lang === "bs"
+        ? (vid.caption_bs || vid.caption_en || "")
+        : (vid.caption_en || vid.caption_bs || ""),
+    })),
   ];
+
+  // Lightbox operates on photos only — compute a photo-only subset and map indices.
+  const lightboxImages: LightboxEntry[] = mediaItems
+    .filter((m): m is { kind: "image"; url: string; caption: string } => m.kind === "image")
+    .map(({ url, caption }) => ({ url, caption }));
 
   const currentMedia = mediaItems[selectedIndex] ?? mediaItems[0] ?? null;
 
-  function openLightbox(index: number) {
-    setLightboxIndex(index);
+  function openLightbox(mediaIndex: number) {
+    if (mediaItems[mediaIndex]?.kind !== "image") return;
+    let lbIdx = 0;
+    for (let i = 0; i < mediaIndex; i++) {
+      if (mediaItems[i].kind === "image") lbIdx++;
+    }
+    setLightboxIndex(lbIdx);
     setLightboxOpen(true);
   }
 
@@ -257,21 +289,39 @@ export default function GalleryDetail() {
             {/* LEFT: media viewer — 3/5 on desktop, full width on mobile */}
             <div className="lg:col-span-3 flex flex-col gap-3">
 
-              {/* Main image area — prepared for future video support */}
+              {/* Main viewer — photo opens lightbox, video plays inline */}
               {currentMedia ? (
-                <button
-                  type="button"
-                  onClick={() => openLightbox(selectedIndex)}
-                  aria-label={lang === "bs" ? "Otvori u punom prikazu" : "Open full view"}
-                  className="w-full bg-[#f2f1ef] rounded-2xl overflow-hidden flex items-center justify-center cursor-zoom-in focus:outline-none focus:ring-2 focus:ring-copper/40"
-                >
-                  <img
-                    src={currentMedia.url}
-                    alt={currentMedia.caption || title}
-                    loading={selectedIndex === 0 ? "eager" : "lazy"}
-                    className="w-full min-h-[240px] max-h-[560px] object-contain"
-                  />
-                </button>
+                currentMedia.kind === "video" ? (
+                  <div className="w-full bg-[#f2f1ef] rounded-2xl overflow-hidden flex items-center justify-center">
+                    <video
+                      key={currentMedia.url}
+                      controls
+                      preload="none"
+                      playsInline
+                      poster={currentMedia.poster ?? undefined}
+                      className="w-full min-h-[240px] max-h-[560px] object-contain"
+                    >
+                      <source
+                        src={currentMedia.url}
+                        type={currentMedia.url.endsWith(".webm") ? "video/webm" : "video/mp4"}
+                      />
+                    </video>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => openLightbox(selectedIndex)}
+                    aria-label={lang === "bs" ? "Otvori u punom prikazu" : "Open full view"}
+                    className="w-full bg-[#f2f1ef] rounded-2xl overflow-hidden flex items-center justify-center cursor-zoom-in focus:outline-none focus:ring-2 focus:ring-copper/40"
+                  >
+                    <img
+                      src={currentMedia.url}
+                      alt={currentMedia.caption || title}
+                      loading={selectedIndex === 0 ? "eager" : "lazy"}
+                      className="w-full min-h-[240px] max-h-[560px] object-contain"
+                    />
+                  </button>
+                )
               ) : (
                 <div
                   className="w-full bg-[#f2f1ef] rounded-2xl flex items-center justify-center"
@@ -296,7 +346,12 @@ export default function GalleryDetail() {
                       key={i}
                       type="button"
                       onClick={() => setSelectedIndex(i)}
-                      aria-label={media.caption || `${lang === "bs" ? "Fotografija" : "Image"} ${i + 1}`}
+                      aria-label={
+                        media.caption ||
+                        (media.kind === "video"
+                          ? `Video ${i + 1}`
+                          : `${lang === "bs" ? "Fotografija" : "Image"} ${i + 1}`)
+                      }
                       aria-pressed={i === selectedIndex}
                       className={`flex-shrink-0 w-20 h-20 sm:w-24 sm:h-24 rounded-xl overflow-hidden bg-gray-100 transition-all focus:outline-none ${
                         i === selectedIndex
@@ -304,12 +359,28 @@ export default function GalleryDetail() {
                           : "ring-1 ring-transparent opacity-50 hover:opacity-100 hover:ring-navy/20"
                       }`}
                     >
-                      <img
-                        src={media.url}
-                        alt={media.caption || ""}
-                        loading="lazy"
-                        className="w-full h-full object-cover"
-                      />
+                      {media.kind === "video" ? (
+                        <div className="w-full h-full relative bg-navy/10 flex items-center justify-center">
+                          {media.poster && (
+                            <img
+                              src={media.poster}
+                              alt=""
+                              loading="lazy"
+                              className="absolute inset-0 w-full h-full object-cover"
+                            />
+                          )}
+                          <div className="relative z-10 w-7 h-7 rounded-full bg-black/50 flex items-center justify-center">
+                            <Play className="w-3.5 h-3.5 text-white ml-0.5" fill="currentColor" strokeWidth={0} />
+                          </div>
+                        </div>
+                      ) : (
+                        <img
+                          src={media.url}
+                          alt={media.caption || ""}
+                          loading="lazy"
+                          className="w-full h-full object-cover"
+                        />
+                      )}
                     </button>
                   ))}
                 </div>
@@ -373,7 +444,7 @@ export default function GalleryDetail() {
       <AnimatePresence>
         {lightboxOpen && (
           <GalleryLightboxModal
-            images={mediaItems}
+            images={lightboxImages}
             startIndex={lightboxIndex}
             onClose={() => setLightboxOpen(false)}
           />
