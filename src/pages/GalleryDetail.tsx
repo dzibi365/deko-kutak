@@ -16,7 +16,10 @@ type GalleryItemFull = GalleryItem & {
   products: { id: number; name: string; name_en: string | null } | null;
 };
 
-type LightboxImage = { url: string; caption: string };
+// Media entry for the viewer and lightbox.
+// Intentionally extensible: a future { kind: 'video'; ... } branch
+// can be added here without restructuring the media area.
+type MediaItem = { url: string; caption: string };
 
 function localTitle(item: GalleryItem, lang: string) {
   return lang === "bs" ? (item.title_bs || item.title_en) : (item.title_en || item.title_bs);
@@ -33,7 +36,7 @@ function GalleryLightboxModal({
   startIndex,
   onClose,
 }: {
-  images: LightboxImage[];
+  images: MediaItem[];
   startIndex: number;
   onClose: () => void;
 }) {
@@ -41,10 +44,7 @@ function GalleryLightboxModal({
   const [dir, setDir] = useState<"left" | "right">("left");
   const touchStartX = useRef(0);
 
-  function go(next: number, d: "left" | "right") {
-    setDir(d);
-    setIdx(next);
-  }
+  function go(next: number, d: "left" | "right") { setDir(d); setIdx(next); }
   function prev() { if (idx > 0) go(idx - 1, "right"); }
   function next() { if (idx < images.length - 1) go(idx + 1, "left"); }
 
@@ -161,8 +161,10 @@ export default function GalleryDetail() {
   const [images, setImages] = useState<GalleryImage[]>([]);
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [lightboxIndex, setLightboxIndex] = useState(0);
+  const [selectedIndex, setSelectedIndex] = useState(0);
 
   useEffect(() => {
+    setSelectedIndex(0);
     if (!id) { setItem(null); return; }
     supabase
       .from("gallery_items")
@@ -195,18 +197,18 @@ export default function GalleryDetail() {
   const title = localTitle(item, lang);
   const desc = localDesc(item, lang);
 
-  const catName =
-    item.gallery_categories
-      ? lang === "bs"
-        ? (item.gallery_categories.name_bs || item.gallery_categories.name_en)
-        : (item.gallery_categories.name_en || item.gallery_categories.name_bs)
-      : null;
+  const catName = item.gallery_categories
+    ? lang === "bs"
+      ? (item.gallery_categories.name_bs || item.gallery_categories.name_en)
+      : (item.gallery_categories.name_en || item.gallery_categories.name_bs)
+    : null;
 
   const productName = item.products
     ? (item.products.name_en || item.products.name)
     : null;
 
-  const lightboxImages: LightboxImage[] = [
+  // cover at index 0, gallery_images in display_order
+  const mediaItems: MediaItem[] = [
     ...(item.cover_image_url
       ? [{ url: item.cover_image_url, caption: title }]
       : []),
@@ -217,6 +219,8 @@ export default function GalleryDetail() {
         : (img.caption_en || img.caption_bs || ""),
     })),
   ];
+
+  const currentMedia = mediaItems[selectedIndex] ?? mediaItems[0] ?? null;
 
   function openLightbox(index: number) {
     setLightboxIndex(index);
@@ -236,82 +240,100 @@ export default function GalleryDetail() {
       <AuthModal />
 
       <main className="flex-1">
-        {/* Hero cover */}
-        <div className="relative w-full bg-navy overflow-hidden" style={{ maxHeight: 560 }}>
-          {item.cover_image_url ? (
-            <img
-              src={item.cover_image_url}
-              alt={title}
-              loading="eager"
-              className="w-full object-cover cursor-zoom-in"
-              style={{ maxHeight: 560 }}
-              onClick={() => openLightbox(0)}
-            />
-          ) : (
-            <div className="w-full flex items-center justify-center" style={{ height: 320 }}>
-              <ImageIcon className="w-16 h-16 text-white/20" strokeWidth={0.75} />
-            </div>
-          )}
-        </div>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 lg:py-14">
 
-        {/* Content */}
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 lg:py-16">
           {/* Back link */}
           <Link
             to="/gallery"
-            className="inline-flex items-center gap-2 text-sm text-navy/50 hover:text-navy transition-colors mb-10 focus:outline-none focus:underline"
+            className="inline-flex items-center gap-2 text-sm text-navy/50 hover:text-navy transition-colors focus:outline-none focus:underline"
           >
             <ArrowLeft className="w-4 h-4" strokeWidth={1.75} />
             {tx.gallery_back}
           </Link>
 
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-12 lg:gap-16 items-start">
-            {/* Left: title, description, images */}
-            <div className="lg:col-span-2">
-              {catName && (
-                <span className="inline-flex items-center px-3 py-1 rounded-full bg-copper/10 text-copper text-xs font-semibold uppercase tracking-widest mb-4">
-                  {catName}
-                </span>
+          {/* Two-column portfolio layout */}
+          <div className="mt-8 grid grid-cols-1 lg:grid-cols-5 gap-10 lg:gap-14 items-start">
+
+            {/* LEFT: media viewer — 3/5 on desktop, full width on mobile */}
+            <div className="lg:col-span-3 flex flex-col gap-3">
+
+              {/* Main image area — prepared for future video support */}
+              {currentMedia ? (
+                <button
+                  type="button"
+                  onClick={() => openLightbox(selectedIndex)}
+                  aria-label={lang === "bs" ? "Otvori u punom prikazu" : "Open full view"}
+                  className="w-full bg-[#f2f1ef] rounded-2xl overflow-hidden flex items-center justify-center cursor-zoom-in focus:outline-none focus:ring-2 focus:ring-copper/40"
+                >
+                  <img
+                    src={currentMedia.url}
+                    alt={currentMedia.caption || title}
+                    loading={selectedIndex === 0 ? "eager" : "lazy"}
+                    className="w-full min-h-[240px] max-h-[560px] object-contain"
+                  />
+                </button>
+              ) : (
+                <div
+                  className="w-full bg-[#f2f1ef] rounded-2xl flex items-center justify-center"
+                  style={{ minHeight: 320 }}
+                >
+                  <ImageIcon className="w-12 h-12 text-navy/10" strokeWidth={0.75} />
+                </div>
               )}
-              <h1 className="text-3xl sm:text-4xl font-semibold leading-tight mb-4">{title}</h1>
-              {desc && (
-                <p className="text-navy/70 leading-relaxed whitespace-pre-line mb-8">{desc}</p>
+
+              {/* Caption — shown for additional images only, not the cover (title already in right column) */}
+              {currentMedia?.caption && currentMedia.caption !== title && (
+                <p className="text-sm text-navy/50 text-center px-2 leading-relaxed">
+                  {currentMedia.caption}
+                </p>
               )}
 
               {/* Thumbnail strip */}
-              {lightboxImages.length > 0 && (
-                <div className="mt-6">
-                  <div className="flex gap-3 overflow-x-auto pb-2">
-                    {lightboxImages.map((img, i) => (
-                      <button
-                        key={i}
-                        onClick={() => openLightbox(i)}
-                        aria-label={img.caption || `Image ${i + 1}`}
-                        className="flex-shrink-0 w-24 h-24 rounded-xl overflow-hidden bg-gray-100 ring-2 ring-transparent hover:ring-copper focus:outline-none focus:ring-copper transition-all"
-                      >
-                        <img
-                          src={img.url}
-                          alt={img.caption || ""}
-                          loading="lazy"
-                          className="w-full h-full object-cover"
-                        />
-                      </button>
-                    ))}
-                  </div>
-                  {lightboxImages.length > 1 && (
-                    <p className="text-xs text-navy/40 mt-2">
-                      {lang === "bs"
-                        ? `${lightboxImages.length} fotografija — kliknite za pregled`
-                        : `${lightboxImages.length} photos — click to view`}
-                    </p>
-                  )}
+              {mediaItems.length > 1 && (
+                <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1">
+                  {mediaItems.map((media, i) => (
+                    <button
+                      key={i}
+                      type="button"
+                      onClick={() => setSelectedIndex(i)}
+                      aria-label={media.caption || `${lang === "bs" ? "Fotografija" : "Image"} ${i + 1}`}
+                      aria-pressed={i === selectedIndex}
+                      className={`flex-shrink-0 w-20 h-20 sm:w-24 sm:h-24 rounded-xl overflow-hidden bg-gray-100 transition-all focus:outline-none ${
+                        i === selectedIndex
+                          ? "ring-2 ring-copper ring-offset-2 ring-offset-cream"
+                          : "ring-1 ring-transparent opacity-50 hover:opacity-100 hover:ring-navy/20"
+                      }`}
+                    >
+                      <img
+                        src={media.url}
+                        alt={media.caption || ""}
+                        loading="lazy"
+                        className="w-full h-full object-cover"
+                      />
+                    </button>
+                  ))}
                 </div>
               )}
             </div>
 
-            {/* Right: CTA + related product */}
-            <div className="flex flex-col gap-5">
-              {/* Similar CTA box */}
+            {/* RIGHT: title, description, CTA — 2/5 on desktop, full width on mobile */}
+            <div className="lg:col-span-2 flex flex-col gap-5">
+
+              {catName && (
+                <span className="inline-flex items-center self-start px-3 py-1 rounded-full bg-copper/10 text-copper text-xs font-semibold uppercase tracking-widest">
+                  {catName}
+                </span>
+              )}
+
+              <h1 className="text-2xl sm:text-3xl font-semibold leading-tight">{title}</h1>
+
+              {desc && (
+                <p className="text-navy/70 leading-relaxed whitespace-pre-line">{desc}</p>
+              )}
+
+              <hr className="border-gray-100" />
+
+              {/* "I'd like something similar" CTA */}
               <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 flex flex-col gap-4">
                 <div>
                   <h2 className="font-semibold text-navy mb-1">{tx.gallery_similar_cta_heading}</h2>
@@ -351,7 +373,7 @@ export default function GalleryDetail() {
       <AnimatePresence>
         {lightboxOpen && (
           <GalleryLightboxModal
-            images={lightboxImages}
+            images={mediaItems}
             startIndex={lightboxIndex}
             onClose={() => setLightboxOpen(false)}
           />
