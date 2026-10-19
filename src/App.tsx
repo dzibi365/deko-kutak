@@ -44,6 +44,8 @@ const ImageTools     = lazy(() => import("./pages/admin/ImageTools"));
 const AdminPages     = lazy(() => import("./pages/admin/Pages"));
 const AdminGallery   = lazy(() => import("./pages/admin/Gallery"));
 const AdminGalleryCats = lazy(() => import("./pages/admin/GalleryCategories"));
+const GalleryList    = lazy(() => import("./pages/GalleryList"));
+const GalleryDetail  = lazy(() => import("./pages/GalleryDetail"));
 
 function ScrollToTop() {
   const { pathname } = useLocation();
@@ -163,6 +165,30 @@ function AboutPage() {
   );
 }
 
+function GalleryPage() {
+  return (
+    <CartProvider>
+      <CustomerAuthProvider>
+        <Suspense fallback={<PageFallback />}>
+          <GalleryList />
+        </Suspense>
+      </CustomerAuthProvider>
+    </CartProvider>
+  );
+}
+
+function GalleryDetailPage() {
+  return (
+    <CartProvider>
+      <CustomerAuthProvider>
+        <Suspense fallback={<PageFallback />}>
+          <GalleryDetail />
+        </Suspense>
+      </CustomerAuthProvider>
+    </CartProvider>
+  );
+}
+
 export default function App() {
   return (
     <HelmetProvider>
@@ -202,6 +228,8 @@ export default function App() {
           <Route path="/page/:slug"    element={<InfoPageWrapper />} />
           <Route path="/cookie-policy" element={<CookiePolicyPage />} />
           <Route path="/about"        element={<AboutPage />} />
+          <Route path="/gallery"      element={<GalleryPage />} />
+          <Route path="/gallery/:id"  element={<GalleryDetailPage />} />
 
           <Route path="/admin/login" element={<Login />} />
 

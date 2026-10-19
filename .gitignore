@@ -7,3 +7,4 @@ server.js
 *.log
 .DS_Store
 .vite/
+.vercel

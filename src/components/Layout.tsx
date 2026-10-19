@@ -94,6 +94,7 @@ export function Navbar() {
   const langRef = useRef<HTMLDivElement>(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const [aboutPublished, setAboutPublished] = useState(false);
+  const [galleryPublished, setGalleryPublished] = useState(false);
   const isCustomer = user?.user_metadata?.role === "customer";
   const isAdmin = user && !isCustomer;
 
@@ -105,6 +106,12 @@ export function Navbar() {
       .eq("is_published", true)
       .maybeSingle()
       .then(({ data }) => setAboutPublished(!!data));
+    supabase
+      .from("gallery_items")
+      .select("id", { count: "exact", head: true })
+      .eq("is_published", true)
+      .limit(1)
+      .then(({ count }) => setGalleryPublished((count ?? 0) > 0));
   }, []);
 
   useEffect(() => {
@@ -184,6 +191,9 @@ export function Navbar() {
           <Link to="/shop" className="text-sm font-semibold text-navy hover:text-copper transition-colors">{tr("nav_shop")}</Link>
           {aboutPublished && (
             <Link to="/about" className="text-sm font-semibold text-navy hover:text-copper transition-colors">{tr("nav_story")}</Link>
+          )}
+          {galleryPublished && (
+            <Link to="/gallery" className="text-sm font-semibold text-navy hover:text-copper transition-colors">{tr("nav_gallery")}</Link>
           )}
         </nav>
 
@@ -340,6 +350,16 @@ export function Navbar() {
                   {tr("nav_story")}
                 </Link>
               )}
+              {galleryPublished && (
+                <Link
+                  to="/gallery"
+                  onClick={() => setMenuOpen(false)}
+                  className={`px-3 py-3 text-sm rounded-lg hover:bg-navy/5 transition-all duration-200 font-semibold text-navy ${menuOpen ? "opacity-100 translate-y-0" : "opacity-0 -translate-y-1"}`}
+                  style={{ transitionDelay: menuOpen ? "140ms" : "0ms" }}
+                >
+                  {tr("nav_gallery")}
+                </Link>
+              )}
 
               {/* Language selector */}
               <div
@@ -419,6 +439,7 @@ export function Footer() {
   const { openPreferences } = useConsent();
   const footerDesc = lang === "bs" ? (footer_desc_bs || footer_desc_en) : (footer_desc_en || footer_desc_bs);
   const [publishedSlugs, setPublishedSlugs] = useState<Set<string>>(new Set());
+  const [galleryPublished, setGalleryPublished] = useState(false);
 
   useEffect(() => {
     supabase
@@ -428,6 +449,12 @@ export function Footer() {
       .then(({ data }) => {
         setPublishedSlugs(new Set((data ?? []).map((r: { slug: string }) => r.slug)));
       });
+    supabase
+      .from("gallery_items")
+      .select("id", { count: "exact", head: true })
+      .eq("is_published", true)
+      .limit(1)
+      .then(({ count }) => setGalleryPublished((count ?? 0) > 0));
   }, []);
 
   return (
@@ -467,6 +494,9 @@ export function Footer() {
             <Link to="/shop" className="text-cream/70 hover:text-white transition-colors">{tr("footer_all")}</Link>
             {publishedSlugs.has("about") && (
               <Link to="/about" className="text-cream/70 hover:text-white transition-colors">{tr("nav_story")}</Link>
+            )}
+            {galleryPublished && (
+              <Link to="/gallery" className="text-cream/70 hover:text-white transition-colors">{tr("nav_gallery")}</Link>
             )}
           </div>
 
