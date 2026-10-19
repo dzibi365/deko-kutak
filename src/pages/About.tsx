@@ -16,6 +16,8 @@ type PageRow = {
   content_bs: string | null;
   is_published: boolean;
   hero_image_url: string | null;
+  workshop_video_url: string | null;
+  workshop_video_poster_url: string | null;
 };
 
 type ShowcaseItem = {
@@ -49,7 +51,7 @@ export default function About() {
   useEffect(() => {
     supabase
       .from("pages")
-      .select("content_en, content_bs, is_published, hero_image_url")
+      .select("content_en, content_bs, is_published, hero_image_url, workshop_video_url, workshop_video_poster_url")
       .eq("slug", "about")
       .maybeSingle()
       .then(({ data }) => setPageData(data ?? null));
@@ -206,6 +208,32 @@ export default function About() {
             </div>
           </div>
         </section>
+
+        {/* ── WORKSHOP VIDEO ───────────────────────────────────────────── */}
+        {pageData.workshop_video_url && (!isDraft || isAdmin) && (
+          <section className="bg-cream py-16 lg:py-20">
+            <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+              <p className="text-copper text-xs font-semibold uppercase tracking-widest mb-3 text-center">
+                {tx.about_video_label}
+              </p>
+              <h2 className="text-2xl sm:text-3xl font-semibold text-navy mb-8 text-center">
+                {tx.about_video_heading}
+              </h2>
+              <div className="aspect-video bg-black/5 rounded-2xl overflow-hidden shadow-lg">
+                <video
+                  key={pageData.workshop_video_url}
+                  controls
+                  preload="none"
+                  playsInline
+                  poster={pageData.workshop_video_poster_url ?? undefined}
+                  className="w-full h-full object-contain"
+                >
+                  <source src={pageData.workshop_video_url} type={pageData.workshop_video_url.endsWith(".webm") ? "video/webm" : "video/mp4"} />
+                </video>
+              </div>
+            </div>
+          </section>
+        )}
 
         {/* ── WORKSHOP ─────────────────────────────────────────────────── */}
         <section className="bg-[#f7f5f2] py-20 lg:py-28">

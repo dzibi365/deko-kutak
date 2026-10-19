@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
-import { Plus, Trash2, Edit, FileText, X, ImagePlus } from "lucide-react";
+import { Plus, Trash2, Edit, FileText, X, ImagePlus, Video } from "lucide-react";
 import { supabase } from "../../lib/supabase";
 import { RichTextEditor } from "../../components/admin/RichTextEditor";
 
@@ -12,6 +12,8 @@ type Page = {
   content_bs: string | null;
   is_published: boolean;
   hero_image_url: string | null;
+  workshop_video_url: string | null;
+  workshop_video_poster_url: string | null;
   created_at: string;
 };
 
@@ -37,6 +39,8 @@ const emptyForm = {
   slug: "",
   is_published: false,
   hero_image_url: null as string | null,
+  workshop_video_url: null as string | null,
+  workshop_video_poster_url: null as string | null,
 };
 
 export default function Pages() {
@@ -51,7 +55,11 @@ export default function Pages() {
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [uploadingHero, setUploadingHero] = useState(false);
+  const [uploadingVideo, setUploadingVideo] = useState(false);
+  const [uploadingPoster, setUploadingPoster] = useState(false);
   const heroImageRef = useRef<HTMLInputElement>(null);
+  const videoRef = useRef<HTMLInputElement>(null);
+  const posterRef = useRef<HTMLInputElement>(null);
 
   async function load() {
     const { data } = await supabase.from("pages").select("*").order("created_at");
@@ -79,6 +87,8 @@ export default function Pages() {
       slug: page.slug,
       is_published: page.is_published,
       hero_image_url: page.hero_image_url ?? null,
+      workshop_video_url: page.workshop_video_url ?? null,
+      workshop_video_poster_url: page.workshop_video_poster_url ?? null,
     });
     setTab("en");
     setSlugManual(true);
@@ -122,6 +132,8 @@ export default function Pages() {
       content_bs: form.content_bs || null,
       is_published: form.is_published,
       hero_image_url: form.hero_image_url || null,
+      workshop_video_url: form.workshop_video_url || null,
+      workshop_video_poster_url: form.workshop_video_poster_url || null,
       updated_at: new Date().toISOString(),
     };
 
@@ -158,6 +170,55 @@ export default function Pages() {
     const { data: { publicUrl } } = supabase.storage.from("product-images").getPublicUrl(path);
     setForm((f) => ({ ...f, hero_image_url: `${publicUrl}?t=${Date.now()}` }));
     setUploadingHero(false);
+  }
+
+  async function handleVideoUpload(file: File) {
+    const MAX_SIZE = 52428800;
+    const ALLOWED = ["video/mp4", "video/webm"];
+    if (!ALLOWED.includes(file.type)) {
+      setError("Workshop video must be MP4 or WebM.");
+      return;
+    }
+    if (file.size > MAX_SIZE) {
+      setError("Workshop video must be 50 MB or smaller.");
+      return;
+    }
+    setUploadingVideo(true);
+    setError(null);
+    const ext = file.type === "video/webm" ? "webm" : "mp4";
+    const path = `pages/about/workshop-${Date.now()}.${ext}`;
+    const { error: uploadErr } = await supabase.storage
+      .from("videos")
+      .upload(path, file, { contentType: file.type });
+    if (uploadErr) { setError(uploadErr.message); setUploadingVideo(false); return; }
+    const { data: { publicUrl } } = supabase.storage.from("videos").getPublicUrl(path);
+    setForm((f) => ({ ...f, workshop_video_url: publicUrl }));
+    setUploadingVideo(false);
+  }
+
+  async function handlePosterUpload(file: File) {
+    const MAX_SIZE = 10 * 1024 * 1024;
+    const ALLOWED = ["image/jpeg", "image/png", "image/webp"];
+    if (!ALLOWED.includes(file.type)) {
+      setError("Poster must be JPEG, PNG or WebP.");
+      return;
+    }
+    if (file.size > MAX_SIZE) {
+      setError("Poster must be 10 MB or smaller.");
+      return;
+    }
+    setUploadingPoster(true);
+    setError(null);
+    const extMap: Record<string, string> = { "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp" };
+    const ext = extMap[file.type] ?? "jpg";
+    const path = `pages/about/workshop-poster-${Date.now()}.${ext}`;
+    const { error: uploadErr } = await supabase.storage
+      .from("product-images")
+      .upload(path, file, { contentType: file.type });
+    if (uploadErr) { setError(uploadErr.message); setUploadingPoster(false); return; }
+    const { data: { publicUrl } } = supabase.storage.from("product-images").getPublicUrl(path);
+    setForm((f) => ({ ...f, workshop_video_poster_url: publicUrl }));
+    setUploadingPoster(false);
   }
 
   async function handleDelete() {
@@ -332,6 +393,99 @@ export default function Pages() {
                 </div>
               )}
 
+              {/* Workshop Video — About page only */}
+              {editing !== "new" && (editing as Page).slug === "about" && (
+                <div className="flex flex-col gap-2">
+                  <label className="text-sm font-medium text-navy">Workshop Video</label>
+                  <p className="text-xs text-gray-400">
+                    Displayed on the About Us page between the story and workshop sections. MP4 or WebM · max 50 MB.
+                    Uploading a replacement does not delete the old file from storage.
+                  </p>
+
+                  {form.workshop_video_url ? (
+                    <div className="flex flex-col gap-3">
+                      <video
+                        src={form.workshop_video_url}
+                        poster={form.workshop_video_poster_url ?? undefined}
+                        controls
+                        preload="none"
+                        className="w-full rounded-xl bg-black/5 max-h-48"
+                      />
+                      <div className="flex items-center gap-3 flex-wrap">
+                        <button
+                          type="button"
+                          onClick={() => videoRef.current?.click()}
+                          disabled={uploadingVideo}
+                          className="text-xs font-semibold text-navy border border-navy/30 px-3 py-1.5 rounded-lg hover:bg-navy/5 transition-colors disabled:opacity-50"
+                        >
+                          {uploadingVideo ? "Uploading…" : "Replace video"}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => posterRef.current?.click()}
+                          disabled={uploadingPoster}
+                          className="text-xs font-semibold text-navy border border-navy/30 px-3 py-1.5 rounded-lg hover:bg-navy/5 transition-colors disabled:opacity-50"
+                        >
+                          {uploadingPoster ? "Uploading…" : form.workshop_video_poster_url ? "Replace poster" : "Add poster"}
+                        </button>
+                        {form.workshop_video_poster_url && (
+                          <button
+                            type="button"
+                            onClick={() => setForm((f) => ({ ...f, workshop_video_poster_url: null }))}
+                            className="flex items-center gap-1 text-xs text-red-500 hover:text-red-700 transition-colors"
+                          >
+                            <X className="w-3 h-3" /> Remove poster
+                          </button>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => setForm((f) => ({ ...f, workshop_video_url: null, workshop_video_poster_url: null }))}
+                          className="flex items-center gap-1 text-xs text-red-500 hover:text-red-700 transition-colors"
+                        >
+                          <X className="w-3 h-3" /> Remove video
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => videoRef.current?.click()}
+                      disabled={uploadingVideo}
+                      className="flex flex-col items-center gap-2 border-2 border-dashed border-gray-200 rounded-xl p-6 hover:border-navy/30 hover:bg-gray-50 transition-colors disabled:opacity-50"
+                    >
+                      <Video className="w-6 h-6 text-gray-300" strokeWidth={1.5} />
+                      <span className="text-sm text-gray-400">
+                        {uploadingVideo ? "Uploading…" : "Click to upload workshop video"}
+                      </span>
+                      <span className="text-xs text-gray-300">MP4 or WebM · max 50 MB</span>
+                    </button>
+                  )}
+
+                  <input
+                    ref={videoRef}
+                    type="file"
+                    accept="video/mp4,video/webm"
+                    className="hidden"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) handleVideoUpload(file);
+                      e.target.value = "";
+                    }}
+                  />
+                  <input
+                    ref={posterRef}
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp"
+                    className="hidden"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) handlePosterUpload(file);
+                      e.target.value = "";
+                    }}
+                  />
+                </div>
+              )}
+
               {/* Slug */}
               <div className="flex flex-col gap-1.5">
                 <label className="text-sm font-medium text-navy">Slug</label>
@@ -389,7 +543,7 @@ export default function Pages() {
                 </button>
                 <button
                   type="submit"
-                  disabled={saving}
+                  disabled={saving || uploadingVideo || uploadingPoster}
                   className="flex items-center gap-2 px-4 py-2 bg-navy text-white text-sm font-semibold rounded-lg hover:bg-navy/90 transition-colors disabled:opacity-60"
                 >
                   {saving ? "Saving…" : "Save Page"}

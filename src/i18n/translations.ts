@@ -247,6 +247,8 @@ export const t = {
     about_cta_idea: "Share Your Idea",
     about_draft_banner: "Draft — not yet published. Visible to admin only.",
     about_no_content: "Story content coming soon.",
+    about_video_label: "Workshop",
+    about_video_heading: "See how our products are made",
 
     // Cookie consent
     cookie_banner_title: "We use cookies",
@@ -536,6 +538,8 @@ export const t = {
     about_cta_idea: "Pošaljite ideju",
     about_draft_banner: "Nacrt — još nije objavljeno. Vidljivo samo adminu.",
     about_no_content: "Sadržaj priče uskoro.",
+    about_video_label: "Radionica",
+    about_video_heading: "Pogledajte kako nastaju naši proizvodi",
 
     // Cookie consent
     cookie_banner_title: "Koristimo kolačiće",
