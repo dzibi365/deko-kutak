@@ -9,6 +9,7 @@ import { SiteMeta } from "../components/SiteMeta";
 import { supabase } from "../lib/supabase";
 import type { GalleryItem, GalleryImage, GalleryVideo } from "../lib/supabase";
 import { useLang } from "../context/LanguageContext";
+import { useSiteSettings } from "../context/SiteSettingsContext";
 import { t } from "../i18n/translations";
 
 type GalleryItemFull = GalleryItem & {
@@ -159,6 +160,7 @@ export default function GalleryDetail() {
   const { id } = useParams<{ id: string }>();
   const { lang } = useLang();
   const tx = t[lang];
+  const { custom_creation_enabled } = useSiteSettings();
 
   const [item, setItem] = useState<GalleryItemFull | null | undefined>(undefined);
   const [images, setImages] = useState<GalleryImage[]>([]);
@@ -410,12 +412,21 @@ export default function GalleryDetail() {
                   <h2 className="font-semibold text-navy mb-1">{tx.gallery_similar_cta_heading}</h2>
                   <p className="text-sm text-navy/60 leading-relaxed">{tx.gallery_similar_cta_sub}</p>
                 </div>
-                <a
-                  href={`mailto:info@dekokutak.ba?subject=${mailtoSubject}`}
-                  className="inline-flex items-center justify-center gap-2 px-5 py-3 bg-copper text-white font-semibold rounded-lg hover:bg-copper/90 transition-colors focus:outline-none focus:ring-2 focus:ring-copper/50 text-sm"
-                >
-                  {tx.gallery_similar_btn}
-                </a>
+                {custom_creation_enabled ? (
+                  <Link
+                    to={`/custom?gallery_item_id=${item.id}`}
+                    className="inline-flex items-center justify-center gap-2 px-5 py-3 bg-copper text-white font-semibold rounded-lg hover:bg-copper/90 transition-colors focus:outline-none focus:ring-2 focus:ring-copper/50 text-sm"
+                  >
+                    {tx.gallery_similar_btn}
+                  </Link>
+                ) : (
+                  <a
+                    href={`mailto:info@dekokutak.ba?subject=${mailtoSubject}`}
+                    className="inline-flex items-center justify-center gap-2 px-5 py-3 bg-copper text-white font-semibold rounded-lg hover:bg-copper/90 transition-colors focus:outline-none focus:ring-2 focus:ring-copper/50 text-sm"
+                  >
+                    {tx.gallery_similar_btn}
+                  </a>
+                )}
               </div>
 
               {/* Related product */}

@@ -44,8 +44,9 @@ const ImageTools     = lazy(() => import("./pages/admin/ImageTools"));
 const AdminPages     = lazy(() => import("./pages/admin/Pages"));
 const AdminGallery   = lazy(() => import("./pages/admin/Gallery"));
 const AdminGalleryCats = lazy(() => import("./pages/admin/GalleryCategories"));
-const GalleryList    = lazy(() => import("./pages/GalleryList"));
-const GalleryDetail  = lazy(() => import("./pages/GalleryDetail"));
+const GalleryList       = lazy(() => import("./pages/GalleryList"));
+const GalleryDetail     = lazy(() => import("./pages/GalleryDetail"));
+const CustomCreation    = lazy(() => import("./pages/CustomCreation"));
 
 function ScrollToTop() {
   const { pathname } = useLocation();
@@ -189,6 +190,18 @@ function GalleryDetailPage() {
   );
 }
 
+function CustomCreationPage() {
+  return (
+    <CartProvider>
+      <CustomerAuthProvider>
+        <Suspense fallback={<PageFallback />}>
+          <CustomCreation />
+        </Suspense>
+      </CustomerAuthProvider>
+    </CartProvider>
+  );
+}
+
 export default function App() {
   return (
     <HelmetProvider>
@@ -230,6 +243,7 @@ export default function App() {
           <Route path="/about"        element={<AboutPage />} />
           <Route path="/gallery"      element={<GalleryPage />} />
           <Route path="/gallery/:id"  element={<GalleryDetailPage />} />
+          <Route path="/custom"       element={<CustomCreationPage />} />
 
           <Route path="/admin/login" element={<Login />} />
 

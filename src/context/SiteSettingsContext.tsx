@@ -30,6 +30,7 @@ type SiteSettings = {
   promo_banner_enabled: boolean;
   shipping_cost: number;
   free_shipping_threshold: number;
+  custom_creation_enabled: boolean;
 };
 
 const defaults: SiteSettings = {
@@ -61,6 +62,7 @@ const defaults: SiteSettings = {
   promo_banner_enabled: true,
   shipping_cost: 10,
   free_shipping_threshold: 100,
+  custom_creation_enabled: false,
 };
 
 const SiteSettingsContext = createContext<SiteSettings>(defaults);
@@ -71,7 +73,7 @@ export function SiteSettingsProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     supabase
       .from("store_settings")
-      .select("store_name, logo_url, footer_logo_url, social_facebook, social_instagram, social_email, footer_desc_en, footer_desc_bs, seo_title, seo_description_en, seo_description_bs, og_image, topbar_enabled, topbar_left_text_en, topbar_left_text_bs, topbar_phone, topbar_email, topbar_hours_en, topbar_hours_bs, topbar_right_text_en, topbar_right_text_bs, contact_viber, contact_whatsapp, promo_banner_en, promo_banner_bs, promo_banner_enabled, shipping_cost, free_shipping_threshold")
+      .select("store_name, logo_url, footer_logo_url, social_facebook, social_instagram, social_email, footer_desc_en, footer_desc_bs, seo_title, seo_description_en, seo_description_bs, og_image, topbar_enabled, topbar_left_text_en, topbar_left_text_bs, topbar_phone, topbar_email, topbar_hours_en, topbar_hours_bs, topbar_right_text_en, topbar_right_text_bs, contact_viber, contact_whatsapp, promo_banner_en, promo_banner_bs, promo_banner_enabled, shipping_cost, free_shipping_threshold, custom_creation_enabled")
       .eq("id", 1)
       .single()
       .then(({ data }) => {
@@ -105,6 +107,7 @@ export function SiteSettingsProvider({ children }: { children: ReactNode }) {
             promo_banner_enabled: data.promo_banner_enabled ?? true,
             shipping_cost: data.shipping_cost ?? 10,
             free_shipping_threshold: data.free_shipping_threshold ?? 100,
+            custom_creation_enabled: data.custom_creation_enabled ?? false,
           });
         }
       });
