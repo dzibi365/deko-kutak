@@ -250,6 +250,19 @@ export default function CustomCreation() {
   const { custom_creation_enabled } = useSiteSettings();
   const [searchParams] = useSearchParams();
 
+  // TEMPORARY TEST MODE: show form only to verified admins while
+  // custom_creation_enabled=false. No secret embedded here — admin status
+  // is read from the live Supabase Auth session.
+  // REVERT after testing: remove isAdmin state and replace formEnabled
+  // with custom_creation_enabled in the three JSX conditions below.
+  const [isAdmin, setIsAdmin] = useState(false);
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      setIsAdmin(user?.app_metadata?.role === "admin");
+    });
+  }, []);
+  const formEnabled = isAdmin;
+
   const siteKey = import.meta.env.VITE_TURNSTILE_SITE_KEY as string | undefined;
 
   // Idempotency key — stable per submission, rotated on edit-after-attempt
@@ -514,7 +527,7 @@ export default function CustomCreation() {
           </div>
 
           {/* Unavailable */}
-          {!custom_creation_enabled && (
+          {!formEnabled && (
             <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-8 text-center">
               <h2 className="text-xl font-semibold text-navy mb-3">
                 {tx.custom_unavailable_heading}
@@ -526,7 +539,7 @@ export default function CustomCreation() {
           )}
 
           {/* Success */}
-          {custom_creation_enabled && success && (
+          {formEnabled && success && (
             <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-8 text-center flex flex-col items-center gap-4">
               <div className="w-14 h-14 rounded-full bg-green-50 flex items-center justify-center">
                 <CheckCircle2 className="w-7 h-7 text-green-500" strokeWidth={1.75} />
@@ -556,7 +569,7 @@ export default function CustomCreation() {
           )}
 
           {/* Form */}
-          {custom_creation_enabled && !success && (
+          {formEnabled && !success && (
             <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-6">
 
               {/* Gallery preview */}
