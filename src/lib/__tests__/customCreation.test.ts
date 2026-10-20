@@ -158,6 +158,84 @@ describe("idempotency key rotation", () => {
   });
 });
 
+// ─── Turnstile siteverify response parsing ───────────────────────────────────
+// Mirrors the safe-parse logic in submit-creation-request/index.ts
+
+function parseSiteverifyBody(
+  rawText: string,
+  httpStatus: number,
+): { success: boolean; errorCodes: string[] } {
+  if (!rawText || rawText.length === 0 || httpStatus < 200 || httpStatus >= 300) {
+    return { success: false, errorCodes: ["empty-or-http-error"] };
+  }
+  let data: { success?: boolean; "error-codes"?: string[] };
+  try {
+    data = JSON.parse(rawText);
+  } catch {
+    return { success: false, errorCodes: ["json-parse-error"] };
+  }
+  return {
+    success: data?.success === true,
+    errorCodes: data?.["error-codes"] ?? [],
+  };
+}
+
+describe("verifyTurnstile — response parsing", () => {
+  it("returns success=true for valid Cloudflare success response", () => {
+    const result = parseSiteverifyBody(
+      JSON.stringify({ success: true, "error-codes": [] }),
+      200,
+    );
+    expect(result.success).toBe(true);
+    expect(result.errorCodes).toEqual([]);
+  });
+
+  it("returns success=false for invalid-input-secret error", () => {
+    const result = parseSiteverifyBody(
+      JSON.stringify({ success: false, "error-codes": ["invalid-input-secret"] }),
+      200,
+    );
+    expect(result.success).toBe(false);
+    expect(result.errorCodes).toContain("invalid-input-secret");
+  });
+
+  it("returns success=false for timeout-or-duplicate error", () => {
+    const result = parseSiteverifyBody(
+      JSON.stringify({ success: false, "error-codes": ["timeout-or-duplicate"] }),
+      200,
+    );
+    expect(result.success).toBe(false);
+    expect(result.errorCodes).toContain("timeout-or-duplicate");
+  });
+
+  it("returns success=false and logs error on empty body", () => {
+    const result = parseSiteverifyBody("", 200);
+    expect(result.success).toBe(false);
+  });
+
+  it("returns success=false on non-2xx HTTP status", () => {
+    const result = parseSiteverifyBody('{"success":true}', 503);
+    expect(result.success).toBe(false);
+  });
+
+  it("returns success=false on malformed JSON", () => {
+    const result = parseSiteverifyBody("not json", 200);
+    expect(result.success).toBe(false);
+    expect(result.errorCodes).toContain("json-parse-error");
+  });
+
+  it("returns success=false on truncated JSON (the original crash case)", () => {
+    const result = parseSiteverifyBody("{", 200);
+    expect(result.success).toBe(false);
+    expect(result.errorCodes).toContain("json-parse-error");
+  });
+
+  it("returns success=false when success field is missing", () => {
+    const result = parseSiteverifyBody(JSON.stringify({ "error-codes": [] }), 200);
+    expect(result.success).toBe(false);
+  });
+});
+
 // ─── Turnstile widget reset key ──────────────────────────────────────────────
 
 describe("widgetResetKey — retry behavior", () => {

@@ -324,12 +324,49 @@ async function verifyTurnstile(
     const body = new URLSearchParams({ secret, response: token, remoteip: ip });
     const resp = await fetch(
       "https://challenges.cloudflare.com/turnstile/v1/siteverify",
-      { method: "POST", body },
+      {
+        method: "POST",
+        body,
+        headers: { "Accept": "application/json" },
+      },
     );
-    const data = await resp.json();
+
+    // Read body once as text; resp.json() throws on empty or non-JSON bodies.
+    const rawText = await resp.text();
+
+    if (!resp.ok || rawText.length === 0) {
+      console.error(
+        "Turnstile siteverify HTTP error:",
+        resp.status,
+        resp.headers.get("content-type") ?? "no content-type",
+        "body_length:", rawText.length,
+      );
+      return false;
+    }
+
+    let data: { success?: boolean; "error-codes"?: string[] };
+    try {
+      data = JSON.parse(rawText);
+    } catch (parseErr) {
+      console.error(
+        "Turnstile siteverify JSON parse error:",
+        resp.status,
+        resp.headers.get("content-type") ?? "no content-type",
+        "body_length:", rawText.length,
+        parseErr,
+      );
+      return false;
+    }
+
+    if (!data?.success) {
+      console.error(
+        "Turnstile siteverify failed — http:", resp.status,
+        "error-codes:", JSON.stringify(data?.["error-codes"] ?? []),
+      );
+    }
     return data?.success === true;
   } catch (err) {
-    console.error("Turnstile verification error:", err);
+    console.error("Turnstile network error:", err);
     return false;
   }
 }
