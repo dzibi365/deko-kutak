@@ -269,6 +269,7 @@ export default function CustomCreation() {
   const [idempotencyKey, setIdempotencyKey] = useState(() => crypto.randomUUID());
   const [attempted, setAttempted] = useState(false);
   const [resetNotice, setResetNotice] = useState(false);
+  const [widgetResetKey, setWidgetResetKey] = useState(0);
 
   // Form fields
   const [form, setFormState] = useState({
@@ -472,6 +473,8 @@ export default function CustomCreation() {
       if (status === 503) setSubmitError(tx.custom_err_service);
       else if (status === 429) setSubmitError(tx.custom_err_rate_limit);
       else setSubmitError(serverMsg ?? tx.custom_err_generic);
+      setTurnstileToken(null);
+      setWidgetResetKey((k) => k + 1);
       return;
     }
 
@@ -744,7 +747,7 @@ export default function CustomCreation() {
               <section className="flex flex-col gap-4">
                 {siteKey ? (
                   <TurnstileWidget
-                    key={idempotencyKey}
+                    key={`${idempotencyKey}-${widgetResetKey}`}
                     siteKey={siteKey}
                     onSolve={(token) => {
                       setTurnstileToken(token);
