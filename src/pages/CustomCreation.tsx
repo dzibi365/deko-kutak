@@ -751,7 +751,11 @@ export default function CustomCreation() {
                 )}
 
                 <p className="text-xs text-navy/40 leading-relaxed">
-                  {tx.custom_privacy}
+                  {tx.custom_privacy_before}
+                  <Link to="/privacy" className="underline hover:text-navy/60">
+                    {tx.custom_privacy_link}
+                  </Link>
+                  {tx.custom_privacy_after}
                 </p>
 
                 {submitError && (
