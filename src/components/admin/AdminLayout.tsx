@@ -1,6 +1,6 @@
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import { Suspense, useEffect, useState } from "react";
-import { LayoutDashboard, Package, Tag, LogOut, Store, ImagePlay, ShoppingBag, Settings, MessageSquare, Layers, Scissors, FileText, Images, FolderOpen } from "lucide-react";
+import { LayoutDashboard, Package, Tag, LogOut, Store, ImagePlay, ShoppingBag, Settings, MessageSquare, Layers, Scissors, FileText, Images, FolderOpen, Paintbrush } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
 import { supabase } from "../../lib/supabase";
 
@@ -17,6 +17,7 @@ const navItems = [
   { to: "/admin/pages", label: "Pages", icon: FileText, end: false },
   { to: "/admin/gallery", label: "Gallery", icon: Images, end: false },
   { to: "/admin/gallery-categories", label: "Gallery Categories", icon: FolderOpen, end: false },
+  { to: "/admin/creation-requests", label: "Upiti za izradu", icon: Paintbrush, end: false },
 ];
 
 export function AdminLayout() {

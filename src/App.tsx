@@ -43,8 +43,9 @@ const FieldGroups    = lazy(() => import("./pages/admin/FieldGroups"));
 const ImageTools     = lazy(() => import("./pages/admin/ImageTools"));
 const AdminPages     = lazy(() => import("./pages/admin/Pages"));
 const AdminGallery   = lazy(() => import("./pages/admin/Gallery"));
-const AdminGalleryCats = lazy(() => import("./pages/admin/GalleryCategories"));
-const GalleryList       = lazy(() => import("./pages/GalleryList"));
+const AdminGalleryCats   = lazy(() => import("./pages/admin/GalleryCategories"));
+const CreationRequests   = lazy(() => import("./pages/admin/CreationRequests"));
+const GalleryList        = lazy(() => import("./pages/GalleryList"));
 const GalleryDetail     = lazy(() => import("./pages/GalleryDetail"));
 const CustomCreation    = lazy(() => import("./pages/CustomCreation"));
 
@@ -267,6 +268,7 @@ export default function App() {
             <Route path="pages" element={<AdminPages />} />
             <Route path="gallery" element={<AdminGallery />} />
             <Route path="gallery-categories" element={<AdminGalleryCats />} />
+            <Route path="creation-requests" element={<CreationRequests />} />
           </Route>
 
           <Route path="*" element={<Navigate to="/" replace />} />
