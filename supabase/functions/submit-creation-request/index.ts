@@ -323,7 +323,7 @@ async function verifyTurnstile(
   try {
     const body = new URLSearchParams({ secret, response: token, remoteip: ip });
     const resp = await fetch(
-      "https://challenges.cloudflare.com/turnstile/v1/siteverify",
+      "https://challenges.cloudflare.com/turnstile/v0/siteverify",
       {
         method: "POST",
         body,

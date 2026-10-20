@@ -180,6 +180,23 @@ function parseSiteverifyBody(
   };
 }
 
+describe("verifyTurnstile — siteverify endpoint URL", () => {
+  const CORRECT_URL = "https://challenges.cloudflare.com/turnstile/v0/siteverify";
+
+  it("uses v0 path, not v1", () => {
+    expect(CORRECT_URL).toContain("/v0/siteverify");
+    expect(CORRECT_URL).not.toContain("/v1/");
+  });
+
+  it("uses HTTPS", () => {
+    expect(CORRECT_URL.startsWith("https://")).toBe(true);
+  });
+
+  it("targets challenges.cloudflare.com", () => {
+    expect(new URL(CORRECT_URL).hostname).toBe("challenges.cloudflare.com");
+  });
+});
+
 describe("verifyTurnstile — response parsing", () => {
   it("returns success=true for valid Cloudflare success response", () => {
     const result = parseSiteverifyBody(
