@@ -86,36 +86,17 @@ serve(async (req: Request) => {
       auth: { persistSession: false },
     });
 
-    // ── Feature flag gate (with temporary admin test bypass) ─────────────────
-    // Normal path: checked before Turnstile and rate limiting so neither
-    // Cloudflare API calls nor rate-limit counters are consumed when off.
-    // A DB error is treated as disabled (fail-closed) in all paths.
-    //
-    // CREATION_ADMIN_TEST_MODE (staging-only Supabase secret):
-    //   When true, non-admin callers are rejected regardless of flag state.
-    //   Admin callers (verified server-side via auth.getUser) bypass the flag.
-    //   Absent in production → this branch is unreachable there.
-    //   REMOVE this block and restore the original gate after testing.
+    // ── Feature flag gate ────────────────────────────────────────────────────
+    // Checked before Turnstile and rate limiting so neither Cloudflare API
+    // calls nor rate-limit counters are consumed when the feature is off.
+    // A DB error is treated as disabled (fail-closed).
     const { data: flagRow, error: flagErr } = await supabase
       .from("store_settings")
       .select("custom_creation_enabled")
       .eq("id", 1)
       .single();
 
-    const testMode = Deno.env.get("CREATION_ADMIN_TEST_MODE") === "true";
-
-    if (testMode) {
-      // Reject immediately on store_settings query error (fail-closed).
-      if (flagErr) return json({ error: "Service not available." }, 503);
-      // Verify admin JWT server-side — not from decoded client claims alone.
-      const jwt = (req.headers.get("Authorization") ?? "").replace(/^Bearer\s+/i, "").trim();
-      if (!jwt) return json({ error: "Service not available." }, 503);
-      const { data: { user }, error: authErr } = await supabase.auth.getUser(jwt);
-      if (authErr || !user || user.app_metadata?.role !== "admin") {
-        return json({ error: "Service not available." }, 503);
-      }
-      // Verified admin. Turnstile, rate limit and all other checks remain active.
-    } else if (flagErr || !flagRow?.custom_creation_enabled) {
+    if (flagErr || !flagRow?.custom_creation_enabled) {
       return json({ error: "Service not available." }, 503);
     }
 
