@@ -3,12 +3,15 @@ import { useParams, useNavigate, useSearchParams, useLocation } from "react-rout
 import { CheckCircle, Truck, Building2, Copy, Check } from "lucide-react";
 import { supabase } from "../lib/supabase";
 import { useLang } from "../context/LanguageContext";
+import { formatAccountDisplay } from "../lib/bankAccount";
 
 type BankSettings = {
   bank_name: string | null;
   bank_account_holder: string | null;
   bank_iban: string | null;
   bank_note: string | null;
+  bank_transfer_note_bs: string | null;
+  bank_transfer_note_en: string | null;
 };
 
 type OrderAmounts = {
@@ -81,13 +84,18 @@ export default function OrderConfirmation() {
 
   useEffect(() => {
     if (payment === "bank_transfer") {
-      supabase.from("store_settings").select("*").eq("id", 1).single().then(({ data }) => {
-        if (data) setBank(data);
-      });
+      supabase
+        .from("store_settings")
+        .select("bank_name, bank_account_holder, bank_iban, bank_note, bank_transfer_note_bs, bank_transfer_note_en")
+        .eq("id", 1)
+        .single()
+        .then(({ data }) => {
+          if (data) setBank(data as BankSettings);
+        });
     }
   }, [payment]);
 
-  function copyIban() {
+  function copyAccount() {
     if (!bank?.bank_iban) return;
     navigator.clipboard.writeText(bank.bank_iban);
     setCopied(true);
@@ -156,28 +164,38 @@ export default function OrderConfirmation() {
               {bank ? (
                 <div className="flex flex-col gap-3">
                   {bank.bank_account_holder && (
-                    <Row label="Account Holder" value={bank.bank_account_holder} />
+                    <Row label={tr("confirm_bank_holder")} value={bank.bank_account_holder} />
                   )}
                   {bank.bank_name && (
-                    <Row label="Bank" value={bank.bank_name} />
+                    <Row label={tr("confirm_bank_name")} value={bank.bank_name} />
                   )}
                   {bank.bank_iban && (
                     <div className="flex items-center justify-between bg-gray-50 rounded-xl px-4 py-3">
                       <div>
-                        <p className="text-xs text-gray-400 mb-0.5">IBAN</p>
-                        <p className="font-semibold text-navy tracking-wide font-mono">{bank.bank_iban}</p>
+                        <p className="text-xs text-gray-400 mb-0.5">{tr("confirm_bank_account")}</p>
+                        <p className="font-semibold text-navy tracking-wide font-mono">{formatAccountDisplay(bank.bank_iban)}</p>
                       </div>
-                      <button onClick={copyIban}
+                      <button onClick={copyAccount}
                         className="p-2 text-gray-400 hover:text-navy hover:bg-gray-200 rounded-lg transition-colors">
                         {copied ? <Check className="w-4 h-4 text-green-500" /> : <Copy className="w-4 h-4" strokeWidth={1.75} />}
                       </button>
                     </div>
                   )}
-                  {bank.bank_note && (
-                    <p className="text-xs text-gray-500 bg-amber-50 border border-amber-100 rounded-lg px-4 py-3">
-                      {bank.bank_note}
-                    </p>
+                  {orderNumber && (
+                    <Row label={tr("confirm_payment_ref")} value={orderNumber} />
                   )}
+                  {(() => {
+                    const note = lang === "bs" ? bank.bank_transfer_note_bs : bank.bank_transfer_note_en;
+                    return note ? (
+                      <p className="text-xs text-gray-500 bg-amber-50 border border-amber-100 rounded-lg px-4 py-3">
+                        {note}
+                      </p>
+                    ) : bank.bank_note ? (
+                      <p className="text-xs text-gray-500 bg-amber-50 border border-amber-100 rounded-lg px-4 py-3">
+                        {bank.bank_note}
+                      </p>
+                    ) : null;
+                  })()}
                 </div>
               ) : (
                 <p className="text-sm text-gray-400">Loading bank details…</p>

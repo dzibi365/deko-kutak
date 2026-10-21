@@ -31,6 +31,10 @@ type SiteSettings = {
   shipping_cost: number;
   free_shipping_threshold: number;
   custom_creation_enabled: boolean;
+  bank_account_holder: string | null;
+  bank_iban: string | null;
+  bank_transfer_note_bs: string | null;
+  bank_transfer_note_en: string | null;
 };
 
 const defaults: SiteSettings = {
@@ -63,6 +67,10 @@ const defaults: SiteSettings = {
   shipping_cost: 10,
   free_shipping_threshold: 100,
   custom_creation_enabled: false,
+  bank_account_holder: null,
+  bank_iban: null,
+  bank_transfer_note_bs: null,
+  bank_transfer_note_en: null,
 };
 
 const SiteSettingsContext = createContext<SiteSettings>(defaults);
@@ -73,7 +81,7 @@ export function SiteSettingsProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     supabase
       .from("store_settings")
-      .select("store_name, logo_url, footer_logo_url, social_facebook, social_instagram, social_email, footer_desc_en, footer_desc_bs, seo_title, seo_description_en, seo_description_bs, og_image, topbar_enabled, topbar_left_text_en, topbar_left_text_bs, topbar_phone, topbar_email, topbar_hours_en, topbar_hours_bs, topbar_right_text_en, topbar_right_text_bs, contact_viber, contact_whatsapp, promo_banner_en, promo_banner_bs, promo_banner_enabled, shipping_cost, free_shipping_threshold, custom_creation_enabled")
+      .select("store_name, logo_url, footer_logo_url, social_facebook, social_instagram, social_email, footer_desc_en, footer_desc_bs, seo_title, seo_description_en, seo_description_bs, og_image, topbar_enabled, topbar_left_text_en, topbar_left_text_bs, topbar_phone, topbar_email, topbar_hours_en, topbar_hours_bs, topbar_right_text_en, topbar_right_text_bs, contact_viber, contact_whatsapp, promo_banner_en, promo_banner_bs, promo_banner_enabled, shipping_cost, free_shipping_threshold, custom_creation_enabled, bank_account_holder, bank_iban, bank_transfer_note_bs, bank_transfer_note_en")
       .eq("id", 1)
       .single()
       .then(({ data }) => {
@@ -108,6 +116,10 @@ export function SiteSettingsProvider({ children }: { children: ReactNode }) {
             shipping_cost: data.shipping_cost ?? 10,
             free_shipping_threshold: data.free_shipping_threshold ?? 100,
             custom_creation_enabled: data.custom_creation_enabled ?? false,
+            bank_account_holder: data.bank_account_holder ?? null,
+            bank_iban: data.bank_iban ?? null,
+            bank_transfer_note_bs: data.bank_transfer_note_bs ?? null,
+            bank_transfer_note_en: data.bank_transfer_note_en ?? null,
           });
         }
       });

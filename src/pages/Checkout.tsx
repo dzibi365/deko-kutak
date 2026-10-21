@@ -5,6 +5,7 @@ import { supabase } from "../lib/supabase";
 import { useCart } from "../context/CartContext";
 import { useLang } from "../context/LanguageContext";
 import { useSiteSettings } from "../context/SiteSettingsContext";
+import { isValidBiHAccountFormat } from "../lib/bankAccount";
 import { calcShipping, centsToKm } from "../lib/shipping";
 import { localName } from "../lib/supabase";
 import { CustomerImageDisplay } from "../components/CustomerImageDisplay";
@@ -18,7 +19,8 @@ const MAX_RETRIES = 3;
 export default function Checkout() {
   const { items, total, clearCart, closeCart } = useCart();
   const { lang, tr } = useLang();
-  const { shipping_cost, free_shipping_threshold } = useSiteSettings();
+  const { shipping_cost, free_shipping_threshold, bank_iban, bank_account_holder } = useSiteSettings();
+  const bankTransferAvailable = !!bank_iban && !!bank_account_holder && isValidBiHAccountFormat(bank_iban);
   const navigate = useNavigate();
 
   const shipping = calcShipping(total, shipping_cost, free_shipping_threshold);
@@ -279,33 +281,41 @@ export default function Checkout() {
                 <h2 className="font-semibold text-navy">{tr("checkout_payment")}</h2>
 
                 {(["cod", "bank_transfer"] as PaymentMethod[]).map((method) => {
+                  const disabled = method === "bank_transfer" && !bankTransferAvailable;
                   const isSelected = payment === method;
                   const Icon = method === "cod" ? Truck : Building2;
                   const label = method === "cod" ? tr("checkout_cod") : tr("checkout_bank");
                   const desc = method === "cod" ? tr("checkout_cod_desc") : tr("checkout_bank_desc");
 
                   return (
-                    <button
-                      key={method}
-                      type="button"
-                      onClick={() => setPayment(method)}
-                      className={`flex items-start gap-4 p-4 rounded-xl border-2 text-left transition-colors ${
-                        isSelected ? "border-navy bg-navy/5" : "border-gray-100 hover:border-gray-200"
-                      }`}
-                    >
-                      <div className={`mt-0.5 p-2 rounded-lg ${isSelected ? "bg-navy text-white" : "bg-gray-100 text-gray-400"}`}>
-                        <Icon className="w-4 h-4" strokeWidth={1.75} />
-                      </div>
-                      <div>
-                        <p className={`font-semibold text-sm ${isSelected ? "text-navy" : "text-gray-600"}`}>{label}</p>
-                        <p className="text-xs text-gray-400 mt-0.5">{desc}</p>
-                      </div>
-                      <div className={`ml-auto mt-1 w-4 h-4 rounded-full border-2 flex-shrink-0 flex items-center justify-center ${
-                        isSelected ? "border-navy" : "border-gray-300"
-                      }`}>
-                        {isSelected && <div className="w-2 h-2 rounded-full bg-navy" />}
-                      </div>
-                    </button>
+                    <div key={method} className="flex flex-col gap-1">
+                      <button
+                        type="button"
+                        disabled={disabled}
+                        onClick={() => !disabled && setPayment(method)}
+                        className={`flex items-start gap-4 p-4 rounded-xl border-2 text-left transition-colors ${
+                          disabled
+                            ? "border-gray-100 opacity-50 cursor-not-allowed"
+                            : isSelected ? "border-navy bg-navy/5" : "border-gray-100 hover:border-gray-200"
+                        }`}
+                      >
+                        <div className={`mt-0.5 p-2 rounded-lg ${isSelected && !disabled ? "bg-navy text-white" : "bg-gray-100 text-gray-400"}`}>
+                          <Icon className="w-4 h-4" strokeWidth={1.75} />
+                        </div>
+                        <div>
+                          <p className={`font-semibold text-sm ${isSelected && !disabled ? "text-navy" : "text-gray-600"}`}>{label}</p>
+                          <p className="text-xs text-gray-400 mt-0.5">{desc}</p>
+                        </div>
+                        <div className={`ml-auto mt-1 w-4 h-4 rounded-full border-2 flex-shrink-0 flex items-center justify-center ${
+                          isSelected && !disabled ? "border-navy" : "border-gray-300"
+                        }`}>
+                          {isSelected && !disabled && <div className="w-2 h-2 rounded-full bg-navy" />}
+                        </div>
+                      </button>
+                      {disabled && (
+                        <p className="text-xs text-gray-400 px-1">{tr("checkout_bank_unavailable")}</p>
+                      )}
+                    </div>
                   );
                 })}
               </section>

@@ -100,6 +100,19 @@ export default function CookiePolicy() {
               se učitavaju lokalno s naših servera — ne šalju se zahtjevi prema Google Fonts CDN-u niti
               bilo kojoj drugoj vanjskoj CDN usluzi fontova.
             </p>
+            <p>
+              Na obrascu za upite za izradu po narudžbi koristimo <strong>Cloudflare Turnstile</strong> —
+              alat za zaštitu od automatizovanih slanja. Turnstile ne postavlja trajne kolačiće u vašem
+              pretraživaču. Cloudflare widget učitava se s{" "}
+              <code className="text-sm bg-gray-100 px-1 rounded">challenges.cloudflare.com</code> i
+              obrađuje određene tehničke podatke o vašem pretraživaču i uređaju (poput tipa pretraživača i
+              podataka o interakciji) kako bi procijenio je li slanje automatizovano. Ovi podaci šalju se
+              Cloudflareovim serverima. Cloudflare je američka kompanija; detalji o njihovim praksama zaštite
+              podataka dostupni su na{" "}
+              <a href="https://www.cloudflare.com/privacypolicy/" target="_blank" rel="noopener noreferrer" className="underline text-navy hover:text-copper">
+                cloudflare.com/privacypolicy
+              </a>.
+            </p>
 
             <h2 className="text-xl font-semibold text-navy mt-8 mb-3">Kontakt</h2>
             <p>
@@ -189,6 +202,19 @@ export default function CookiePolicy() {
               We use Supabase for authentication, database and file storage. Supabase manages authentication
               sessions via browser localStorage, not HTTP cookies. All fonts are self-hosted — no requests
               are made to Google Fonts or any other external font CDN.
+            </p>
+            <p>
+              Our custom creation enquiry form uses <strong>Cloudflare Turnstile</strong> to protect against
+              automated submissions. Turnstile does not set persistent cookies in your browser. The Cloudflare
+              widget is loaded from{" "}
+              <code className="text-sm bg-gray-100 px-1 rounded">challenges.cloudflare.com</code> and
+              processes certain technical information about your browser and device (such as browser type and
+              interaction data) to assess whether a submission is automated. This information is sent to
+              Cloudflare's servers. Cloudflare is a US-based company; details of their data protection
+              practices are available at{" "}
+              <a href="https://www.cloudflare.com/privacypolicy/" target="_blank" rel="noopener noreferrer" className="underline text-navy hover:text-copper">
+                cloudflare.com/privacypolicy
+              </a>.
             </p>
 
             <h2 className="text-xl font-semibold text-navy mt-8 mb-3">Contact</h2>

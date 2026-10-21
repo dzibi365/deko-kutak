@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Save, Mail, Info, ImagePlus, X, Instagram, Facebook, Search, Phone, Clock, KeyRound } from "lucide-react";
 import { supabase } from "../../lib/supabase";
+import { validateBiHAccount, stripSeparators } from "../../lib/bankAccount";
 
 type Settings = {
   store_name: string;
@@ -15,6 +16,8 @@ type Settings = {
   bank_account_holder: string;
   bank_iban: string;
   bank_note: string;
+  bank_transfer_note_bs: string;
+  bank_transfer_note_en: string;
   email_enabled: boolean;
   owner_email: string;
   seo_title: string;
@@ -46,6 +49,7 @@ const empty: Settings = {
   footer_desc_en: "", footer_desc_bs: "",
   social_facebook: "", social_instagram: "", social_email: "",
   bank_name: "", bank_account_holder: "", bank_iban: "", bank_note: "",
+  bank_transfer_note_bs: "", bank_transfer_note_en: "",
   email_enabled: false, owner_email: "",
   seo_title: "", seo_description_en: "", seo_description_bs: "", og_image: "",
   topbar_enabled: false,
@@ -75,6 +79,8 @@ export default function StoreSettings() {
   const [footerTab, setFooterTab] = useState<"en" | "bs">("en");
   const [seoDescTab, setSeoDescTab] = useState<"en" | "bs">("en");
   const [topbarTab, setTopbarTab] = useState<"en" | "bs">("en");
+  const [bankNoteTab, setBankNoteTab] = useState<"en" | "bs">("en");
+  const [accountError, setAccountError] = useState<string | null>(null);
   const logoRef = useRef<HTMLInputElement>(null);
   const footerLogoRef = useRef<HTMLInputElement>(null);
   const ogRef = useRef<HTMLInputElement>(null);
@@ -95,6 +101,8 @@ export default function StoreSettings() {
           bank_account_holder: data.bank_account_holder ?? "",
           bank_iban: data.bank_iban ?? "",
           bank_note: data.bank_note ?? "",
+          bank_transfer_note_bs: data.bank_transfer_note_bs ?? "",
+          bank_transfer_note_en: data.bank_transfer_note_en ?? "",
           email_enabled: data.email_enabled ?? false,
           owner_email: data.owner_email ?? "",
           seo_title: data.seo_title ?? "",
@@ -186,6 +194,26 @@ export default function StoreSettings() {
       return;
     }
 
+    // Validate and normalize the transaction account if provided.
+    // Only hard-block on format errors (non-digits, wrong length) — not on checksum,
+    // because the BiH domestic account checksum algorithm is unconfirmed and a false
+    // rejection would prevent the admin saving a real account.
+    let normalizedAccount: string | null = null;
+    if (form.bank_iban.trim()) {
+      const v = validateBiHAccount(form.bank_iban);
+      const vFail = !v.valid ? (v as { valid: false; reason: string }) : null;
+      if (vFail && vFail.reason !== "bad_checksum") {
+        const msg: Record<string, string> = {
+          non_digits: "Transaction account must contain digits only (spaces and dashes are allowed).",
+          wrong_length: "Transaction account must be exactly 16 digits.",
+        };
+        setError(msg[vFail.reason] ?? "Invalid transaction account.");
+        setSaving(false);
+        return;
+      }
+      normalizedAccount = stripSeparators(form.bank_iban);
+    }
+
     const { error: err } = await supabase.from("store_settings").upsert({
       id: 1,
       store_name: form.store_name || "Deko Kutak",
@@ -198,8 +226,10 @@ export default function StoreSettings() {
       social_email: form.social_email || null,
       bank_name: form.bank_name || null,
       bank_account_holder: form.bank_account_holder || null,
-      bank_iban: form.bank_iban || null,
+      bank_iban: normalizedAccount,
       bank_note: form.bank_note || null,
+      bank_transfer_note_bs: form.bank_transfer_note_bs || null,
+      bank_transfer_note_en: form.bank_transfer_note_en || null,
       email_enabled: form.email_enabled,
       owner_email: form.owner_email || null,
       seo_title: form.seo_title || null,
@@ -879,21 +909,62 @@ export default function StoreSettings() {
 
         <Field label="Account Holder Name">
           <input value={form.bank_account_holder} onChange={(e) => set("bank_account_holder", e.target.value)}
-            placeholder="e.g. Deko Kutak d.o.o." className={inputCls} />
+            placeholder="e.g. Deko Kutak" className={inputCls} />
         </Field>
         <Field label="Bank Name">
           <input value={form.bank_name} onChange={(e) => set("bank_name", e.target.value)}
             placeholder="e.g. Raiffeisen Bank" className={inputCls} />
         </Field>
-        <Field label="IBAN">
-          <input value={form.bank_iban} onChange={(e) => set("bank_iban", e.target.value)}
-            placeholder="BA39 1234 5678 9012 3456" className={`${inputCls} font-mono`} />
+        <Field label="Transaction Account (Transakcijski račun)">
+          <input
+            value={form.bank_iban}
+            onChange={(e) => {
+              set("bank_iban", e.target.value);
+              setAccountError(null);
+              const stripped = stripSeparators(e.target.value);
+              if (stripped) {
+                const v = validateBiHAccount(e.target.value);
+                const vFail = !v.valid ? (v as { valid: false; reason: string }) : null;
+                if (vFail && vFail.reason !== "bad_checksum") {
+                  const msg: Record<string, string> = {
+                    non_digits: "Digits only (spaces and dashes are allowed).",
+                    wrong_length: "Must be exactly 16 digits.",
+                  };
+                  setAccountError(msg[vFail.reason] ?? "Invalid format.");
+                }
+              }
+            }}
+            placeholder="1234 5678 9012 3456"
+            className={`${inputCls} font-mono ${accountError ? "border-red-400 focus:ring-red-300" : ""}`}
+          />
+          {accountError && <p className="text-xs text-red-500 mt-1">{accountError}</p>}
+          <p className="text-xs text-gray-400 mt-1">16-digit BiH domestic transaction account. Separators (spaces, dashes) are stripped on save.</p>
         </Field>
-        <Field label="Additional Note (optional)">
-          <textarea value={form.bank_note} onChange={(e) => set("bank_note", e.target.value)}
-            rows={2} placeholder="e.g. Use your order number as the payment reference."
-            className={`${inputCls} resize-none`} />
-        </Field>
+
+        <div className="flex flex-col gap-2">
+          <div className="flex items-center justify-between">
+            <span className="text-sm font-medium text-navy">Additional Note</span>
+            <div className="flex gap-1">
+              {(["en", "bs"] as const).map((t) => (
+                <button key={t} type="button" onClick={() => setBankNoteTab(t)}
+                  className={`px-3 py-1 rounded text-xs font-semibold transition-colors ${bankNoteTab === t ? "bg-navy text-white" : "bg-gray-100 text-gray-500 hover:bg-gray-200"}`}>
+                  {t.toUpperCase()}
+                </button>
+              ))}
+            </div>
+          </div>
+          {bankNoteTab === "en" ? (
+            <textarea value={form.bank_transfer_note_en}
+              onChange={(e) => set("bank_transfer_note_en", e.target.value)}
+              rows={3} placeholder="Please include your order number in the payment reference field when making the transfer."
+              className={`${inputCls} resize-none`} />
+          ) : (
+            <textarea value={form.bank_transfer_note_bs}
+              onChange={(e) => set("bank_transfer_note_bs", e.target.value)}
+              rows={3} placeholder="Molimo da u polju Svrha placanja navedete broj svoje naruzbe."
+              className={`${inputCls} resize-none`} />
+          )}
+        </div>
       </div>
 
       {/* Change Password */}
