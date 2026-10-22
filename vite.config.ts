@@ -31,6 +31,12 @@ export default defineConfig(() => {
       // intentionally large deferred chunks — suppress warning for them.
       chunkSizeWarningLimit: 1600,
       rollupOptions: {
+        input: {
+          main: path.resolve(__dirname, 'index.html'),
+          // 404.html is served by Vercel with HTTP 404 status for unmatched
+          // routes. The React app loads, React Router renders NotFound.
+          '404': path.resolve(__dirname, '404.html'),
+        },
         output: {
           manualChunks: {
             // Supabase and Motion are legitimately part of the initial load

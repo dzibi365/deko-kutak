@@ -53,9 +53,38 @@ const securityHeaders = [
 
 export const config: VercelConfig = {
   rewrites: [
+    // API handlers
     { source: "/robots.txt",  destination: "/api/robots"  },
     { source: "/sitemap.xml", destination: "/api/sitemap" },
-    { source: "/(.*)",        destination: "/index.html"  },
+
+    // Static SPA routes — must be explicit so unknown paths fall through to
+    // dist/404.html, which Vercel serves with HTTP 404 status.
+    { source: "/shop",           destination: "/index.html" },
+    { source: "/account",        destination: "/index.html" },
+    { source: "/reset-password", destination: "/index.html" },
+    { source: "/checkout",       destination: "/index.html" },
+    { source: "/privacy",        destination: "/index.html" },
+    { source: "/terms",          destination: "/index.html" },
+    { source: "/faq",            destination: "/index.html" },
+    { source: "/shipping",       destination: "/index.html" },
+    { source: "/cookie-policy",  destination: "/index.html" },
+    { source: "/about",          destination: "/index.html" },
+    { source: "/gallery",        destination: "/index.html" },
+    { source: "/custom",         destination: "/index.html" },
+    { source: "/admin/login",    destination: "/index.html" },
+
+    // Dynamic routes
+    { source: "/products/:id",                    destination: "/index.html" },
+    { source: "/order-confirmation/:orderNumber", destination: "/index.html" },
+    { source: "/gallery/:id",                     destination: "/index.html" },
+    { source: "/page/:slug",                      destination: "/index.html" },
+
+    // Admin — index and all nested routes
+    { source: "/admin",          destination: "/index.html" },
+    { source: "/admin/(.*)",     destination: "/index.html" },
+
+    // No catch-all. Anything not listed above has no matching file in dist/
+    // and no matching rewrite, so Vercel serves dist/404.html with HTTP 404.
   ],
   headers: [
     {

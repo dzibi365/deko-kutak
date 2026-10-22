@@ -28,13 +28,20 @@ export default async function handler(
 
   const today = new Date().toISOString().slice(0, 10);
 
+  // Some CMS page slugs map to dedicated routes rather than /page/:slug.
+  // These are only included when is_published=true (already filtered by the
+  // pages query above). Others fall through to the generic /page/:slug URL.
+  const FIXED_ROUTES: Record<string, { url: string; priority: string }> = {
+    faq:      { url: `${BASE}/faq`,      priority: "0.5" },
+    shipping: { url: `${BASE}/shipping`, priority: "0.4" },
+    privacy:  { url: `${BASE}/privacy`,  priority: "0.3" },
+    terms:    { url: `${BASE}/terms`,    priority: "0.3" },
+    about:    { url: `${BASE}/about`,    priority: "0.5" },
+  };
+
   const entries: string[] = [
-    urlEntry(`${BASE}/`,         { priority: "1.0", changefreq: "weekly",  lastmod: today }),
-    urlEntry(`${BASE}/shop`,     { priority: "0.9", changefreq: "daily" }),
-    urlEntry(`${BASE}/faq`,      { priority: "0.5", changefreq: "monthly" }),
-    urlEntry(`${BASE}/shipping`, { priority: "0.4", changefreq: "monthly" }),
-    urlEntry(`${BASE}/privacy`,  { priority: "0.3", changefreq: "monthly" }),
-    urlEntry(`${BASE}/terms`,    { priority: "0.3", changefreq: "monthly" }),
+    urlEntry(`${BASE}/`,     { priority: "1.0", changefreq: "weekly",  lastmod: today }),
+    urlEntry(`${BASE}/shop`, { priority: "0.9", changefreq: "daily" }),
     ...(products ?? []).map((p) =>
       urlEntry(`${BASE}/products/${p.id}`, {
         lastmod:    p.created_at?.slice(0, 10) ?? today,
@@ -48,13 +55,14 @@ export default async function handler(
         changefreq: "weekly",
       })
     ),
-    ...(pages ?? []).map((p) =>
-      urlEntry(`${BASE}/page/${encodeURIComponent(p.slug)}`, {
+    ...(pages ?? []).map((p) => {
+      const fixed = FIXED_ROUTES[p.slug];
+      return urlEntry(fixed ? fixed.url : `${BASE}/page/${encodeURIComponent(p.slug)}`, {
         lastmod:    p.updated_at?.slice(0, 10) ?? today,
-        priority:   "0.5",
+        priority:   fixed ? fixed.priority : "0.5",
         changefreq: "monthly",
-      })
-    ),
+      });
+    }),
   ];
 
   const xml =

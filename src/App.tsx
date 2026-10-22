@@ -1,5 +1,5 @@
 import { lazy, Suspense } from "react";
-import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
+import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
 import { useEffect } from "react";
 import { HelmetProvider } from "react-helmet-async";
 import { Navbar, Footer } from "./components/Layout";
@@ -48,6 +48,7 @@ const CreationRequests   = lazy(() => import("./pages/admin/CreationRequests"));
 const GalleryList        = lazy(() => import("./pages/GalleryList"));
 const GalleryDetail     = lazy(() => import("./pages/GalleryDetail"));
 const CustomCreation    = lazy(() => import("./pages/CustomCreation"));
+const NotFoundPage       = lazy(() => import("./pages/NotFound"));
 
 function ScrollToTop() {
   const { pathname } = useLocation();
@@ -203,6 +204,18 @@ function CustomCreationPage() {
   );
 }
 
+function NotFoundWrapper() {
+  return (
+    <CartProvider>
+      <CustomerAuthProvider>
+        <Suspense fallback={<PageFallback />}>
+          <NotFoundPage />
+        </Suspense>
+      </CustomerAuthProvider>
+    </CartProvider>
+  );
+}
+
 export default function App() {
   return (
     <HelmetProvider>
@@ -271,7 +284,7 @@ export default function App() {
             <Route path="creation-requests" element={<CreationRequests />} />
           </Route>
 
-          <Route path="*" element={<Navigate to="/" replace />} />
+          <Route path="*" element={<NotFoundWrapper />} />
         </Routes>
       </BrowserRouter>
       </LanguageProvider>
