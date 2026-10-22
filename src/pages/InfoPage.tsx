@@ -47,9 +47,13 @@ export default function InfoPage({ slug: slugProp }: Props) {
     ? (lang === "bs" ? (page.content_bs || page.content_en) : (page.content_en || page.content_bs))
     : null;
 
+  const metaTitle = notFound
+    ? (lang === "bs" ? "Stranica nije pronađena" : "Page not found")
+    : (title ?? undefined);
+
   return (
     <div className="min-h-screen bg-cream font-sans text-navy flex flex-col overflow-x-hidden">
-      {title && <SiteMeta title={title} />}
+      <SiteMeta title={metaTitle} />
       <Navbar />
       <CartDrawer />
       <AuthModal />

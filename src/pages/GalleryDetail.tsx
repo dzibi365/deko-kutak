@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
-import { useParams, Navigate, Link } from "react-router-dom";
+import { useParams, Link } from "react-router-dom";
 import { ArrowLeft, ChevronLeft, ChevronRight, X as XIcon, ImageIcon, ExternalLink, Play } from "lucide-react";
 import { Navbar, Footer } from "../components/Layout";
 import { CartDrawer } from "../components/CartDrawer";
@@ -9,6 +9,7 @@ import { SiteMeta } from "../components/SiteMeta";
 import { supabase } from "../lib/supabase";
 import type { GalleryItem, GalleryImage, GalleryVideo } from "../lib/supabase";
 import { useLang } from "../context/LanguageContext";
+import NotFound from "./NotFound";
 import { useSiteSettings } from "../context/SiteSettingsContext";
 import { t } from "../i18n/translations";
 
@@ -206,7 +207,7 @@ export default function GalleryDetail() {
   }
 
   if (item === null) {
-    return <Navigate to="/gallery" replace />;
+    return <NotFound />;
   }
 
   const title = localTitle(item, lang);

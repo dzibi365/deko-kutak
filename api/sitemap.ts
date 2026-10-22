@@ -19,51 +19,14 @@ export default async function handler(
     { auth: { persistSession: false } }
   );
 
-  const [{ data: products }, { data: categories }, { data: pages }] =
+  const [{ data: products }, { data: pages }] =
     await Promise.all([
       sb.from("products").select("id, created_at").eq("in_stock", true).order("id"),
-      sb.from("categories").select("name, name_en").order("name"),
       sb.from("pages").select("slug, updated_at").eq("is_published", true).order("slug"),
     ]);
 
   const today = new Date().toISOString().slice(0, 10);
-
-  // Some CMS page slugs map to dedicated routes rather than /page/:slug.
-  // These are only included when is_published=true (already filtered by the
-  // pages query above). Others fall through to the generic /page/:slug URL.
-  const FIXED_ROUTES: Record<string, { url: string; priority: string }> = {
-    faq:      { url: `${BASE}/faq`,      priority: "0.5" },
-    shipping: { url: `${BASE}/shipping`, priority: "0.4" },
-    privacy:  { url: `${BASE}/privacy`,  priority: "0.3" },
-    terms:    { url: `${BASE}/terms`,    priority: "0.3" },
-    about:    { url: `${BASE}/about`,    priority: "0.5" },
-  };
-
-  const entries: string[] = [
-    urlEntry(`${BASE}/`,     { priority: "1.0", changefreq: "weekly",  lastmod: today }),
-    urlEntry(`${BASE}/shop`, { priority: "0.9", changefreq: "daily" }),
-    ...(products ?? []).map((p) =>
-      urlEntry(`${BASE}/products/${p.id}`, {
-        lastmod:    p.created_at?.slice(0, 10) ?? today,
-        priority:   "0.8",
-        changefreq: "weekly",
-      })
-    ),
-    ...(categories ?? []).map((c) =>
-      urlEntry(`${BASE}/shop?category=${encodeURIComponent(c.name_en ?? c.name)}`, {
-        priority:   "0.7",
-        changefreq: "weekly",
-      })
-    ),
-    ...(pages ?? []).map((p) => {
-      const fixed = FIXED_ROUTES[p.slug];
-      return urlEntry(fixed ? fixed.url : `${BASE}/page/${encodeURIComponent(p.slug)}`, {
-        lastmod:    p.updated_at?.slice(0, 10) ?? today,
-        priority:   fixed ? fixed.priority : "0.5",
-        changefreq: "monthly",
-      });
-    }),
-  ];
+  const entries = buildEntries(products ?? [], pages ?? [], today);
 
   const xml =
     `<?xml version="1.0" encoding="UTF-8"?>\n` +
@@ -76,7 +39,43 @@ export default async function handler(
   res.end(xml);
 }
 
-function urlEntry(
+// Some CMS page slugs map to dedicated routes rather than /page/:slug.
+// Only included when is_published=true (already filtered by the pages query).
+const FIXED_ROUTES: Record<string, { url: string; priority: string }> = {
+  faq:      { url: `${BASE}/faq`,      priority: "0.5" },
+  shipping: { url: `${BASE}/shipping`, priority: "0.4" },
+  privacy:  { url: `${BASE}/privacy`,  priority: "0.3" },
+  terms:    { url: `${BASE}/terms`,    priority: "0.3" },
+  about:    { url: `${BASE}/about`,    priority: "0.5" },
+};
+
+export function buildEntries(
+  products: Array<{ id: number | string; created_at?: string | null }>,
+  pages: Array<{ slug: string; updated_at?: string | null }>,
+  today = new Date().toISOString().slice(0, 10)
+): string[] {
+  return [
+    urlEntry(`${BASE}/`,     { priority: "1.0", changefreq: "weekly",  lastmod: today }),
+    urlEntry(`${BASE}/shop`, { priority: "0.9", changefreq: "daily" }),
+    ...products.map((p) =>
+      urlEntry(`${BASE}/products/${p.id}`, {
+        lastmod:    p.created_at?.slice(0, 10) ?? today,
+        priority:   "0.8",
+        changefreq: "weekly",
+      })
+    ),
+    ...pages.map((p) => {
+      const fixed = FIXED_ROUTES[p.slug];
+      return urlEntry(fixed ? fixed.url : `${BASE}/page/${encodeURIComponent(p.slug)}`, {
+        lastmod:    p.updated_at?.slice(0, 10) ?? today,
+        priority:   fixed ? fixed.priority : "0.5",
+        changefreq: "monthly",
+      });
+    }),
+  ];
+}
+
+export function urlEntry(
   loc: string,
   opts: { priority?: string; changefreq?: string; lastmod?: string }
 ): string {

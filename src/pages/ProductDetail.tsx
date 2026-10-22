@@ -25,6 +25,7 @@ import {
   type AddonSelectionState,
 } from "../lib/addonGroups";
 import { SiteMeta } from "../components/SiteMeta";
+import NotFound from "./NotFound";
 
 function LightboxModal({ images, startIndex, onClose }: { images: string[]; startIndex: number; onClose: () => void }) {
   const [idx, setIdx] = useState(startIndex);
@@ -262,14 +263,7 @@ function ProductDetailContent() {
   }
 
   if (notFound || !product) {
-    return (
-      <div className="max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-32 text-center">
-        <p className="text-navy/50 mb-6">{tr("product_not_found")}</p>
-        <button onClick={() => navigate("/")} className="text-sm font-semibold text-navy underline underline-offset-4">
-          {tr("product_back")}
-        </button>
-      </div>
-    );
+    return <NotFound />;
   }
 
   const name = localName(product, lang);
