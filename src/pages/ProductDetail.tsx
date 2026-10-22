@@ -2,7 +2,7 @@ import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { ShoppingCart, ArrowLeft, CheckCircle, XCircle, Share2, Upload, X as XIcon, ChevronRight, ChevronLeft, Box, ZoomIn } from "lucide-react";
-import { supabase, type Product, type Category, type CustomField, type PriceOption, type AddonGroup, localName, localDesc } from "../lib/supabase";
+import { supabase, type Product, type Category, type CustomField, type PriceOption, type AddonGroup, type ProductTag, localName, localDesc } from "../lib/supabase";
 import { uploadCustomerPhoto } from "../lib/customerUpload";
 import { useSignedImage } from "../hooks/useSignedImage";
 import { RichDescription } from "../components/RichDescription";
@@ -133,6 +133,7 @@ function ProductDetailContent() {
 
   const [product, setProduct] = useState<Product | null>(null);
   const [category, setCategory] = useState<Category | null>(null);
+  const [productTags, setProductTags] = useState<ProductTag[]>([]);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
   const [activeImage, setActiveImage] = useState<string | null>(null);
@@ -216,6 +217,20 @@ function ProductDetailContent() {
             .maybeSingle();
           setCategory(cat ?? null);
         }
+        supabase
+          .from("product_tag_assignments")
+          .select("product_tags(id, name_en, name_bs, created_at)")
+          .eq("product_id", data.id)
+          .then(({ data: tagData }) => {
+            // Supabase returns nested FK as array even for to-one relations
+            const tags = (tagData ?? []).flatMap(
+              (a: { product_tags: ProductTag | ProductTag[] | null }) => {
+                if (!a.product_tags) return [];
+                return Array.isArray(a.product_tags) ? a.product_tags : [a.product_tags];
+              }
+            );
+            setProductTags(tags);
+          });
         if (data.similar_products && data.similar_products.length > 0) {
           const { data: simData } = await supabase
             .from("products")
@@ -400,6 +415,21 @@ function ProductDetailContent() {
               <span className="text-xs font-semibold text-copper uppercase tracking-widest">
                 {category ? localName(category, lang) : product.category}
               </span>
+            )}
+
+            {/* Tags */}
+            {productTags.length > 0 && (
+              <div className="flex flex-wrap gap-1.5 -mt-2">
+                {productTags.map((tag) => (
+                  <Link
+                    key={tag.id}
+                    to={`/shop?tag=${tag.id}`}
+                    className="text-xs px-2.5 py-1 rounded-full bg-navy/5 text-navy/60 hover:bg-navy/10 hover:text-navy transition-colors"
+                  >
+                    {lang === "bs" ? tag.name_bs : tag.name_en}
+                  </Link>
+                ))}
+              </div>
             )}
 
             {/* Name */}

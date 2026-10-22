@@ -1,6 +1,6 @@
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import { Suspense, useEffect, useState } from "react";
-import { LayoutDashboard, Package, Tag, LogOut, Store, ImagePlay, ShoppingBag, Settings, MessageSquare, Layers, Scissors, FileText, Images, FolderOpen, Paintbrush } from "lucide-react";
+import { LayoutDashboard, Package, Tag, Tags, LogOut, Store, ImagePlay, ShoppingBag, Settings, MessageSquare, Layers, Scissors, FileText, Images, FolderOpen, Paintbrush } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
 import { supabase } from "../../lib/supabase";
 
@@ -9,6 +9,7 @@ const navItems = [
   { to: "/admin/orders", label: "Orders", icon: ShoppingBag, end: false },
   { to: "/admin/products", label: "Products", icon: Package, end: false },
   { to: "/admin/categories", label: "Categories", icon: Tag, end: false },
+  { to: "/admin/tags", label: "Tags", icon: Tags, end: false },
   { to: "/admin/field-groups", label: "Field Groups", icon: Layers, end: false },
   { to: "/admin/reviews", label: "Reviews", icon: MessageSquare, end: false },
   { to: "/admin/homepage", label: "Homepage", icon: ImagePlay, end: false },

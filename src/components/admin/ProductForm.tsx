@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { X, Upload, Trash2, Plus, Search, Box } from "lucide-react";
 import { MeshPickerCanvas } from "./MeshPickerCanvas";
-import { supabase, type Product, type Category, type CustomField, type FieldGroup, type PriceOption, type AddonGroup, localName } from "../../lib/supabase";
+import { supabase, type Product, type Category, type CustomField, type FieldGroup, type PriceOption, type AddonGroup, type ProductTag, localName } from "../../lib/supabase";
 import { type AddonGroupDraft, validateAddonGroupsDraft, buildAddonGroupsPayload, addonGroupDraftFromDb, newAddonGroup } from "../../lib/addonGroups";
 import { CustomFieldsList, newField } from "./CustomFieldsEditor";
 import { AddonGroupsEditor } from "./AddonGroupsEditor";
@@ -58,6 +58,8 @@ export function ProductForm({ product, onClose, onSaved }: Props) {
   const [priceOptions, setPriceOptions] = useState<PriceOptionDraft[]>([]);
   const [addonGroupsEnabled, setAddonGroupsEnabled] = useState(false);
   const [addonGroups, setAddonGroups] = useState<AddonGroupDraft[]>([]);
+  const [allTags, setAllTags] = useState<ProductTag[]>([]);
+  const [selectedTagIds, setSelectedTagIds] = useState<number[]>([]);
 
   const mainFileRef = useRef<HTMLInputElement>(null);
   const galleryFileRef = useRef<HTMLInputElement>(null);
@@ -70,10 +72,12 @@ export function ProductForm({ product, onClose, onSaved }: Props) {
       supabase.from("categories").select("*").order("name"),
       supabase.from("field_groups").select("*").order("name"),
       supabase.from("products").select("*").order("name"),
-    ]).then(([catsRes, groupsRes, prodsRes]) => {
+      supabase.from("product_tags").select("*").order("name_en"),
+    ]).then(([catsRes, groupsRes, prodsRes, tagsRes]) => {
       setCategories(catsRes.data ?? []);
       setGroups(groupsRes.data ?? []);
       setAllProducts(prodsRes.data ?? []);
+      setAllTags(tagsRes.data ?? []);
     });
   }, []);
 
@@ -128,6 +132,14 @@ export function ProductForm({ product, onClose, onSaved }: Props) {
       setPriceOptions([]);
       setAddonGroupsEnabled(false);
       setAddonGroups([]);
+      setSelectedTagIds([]);
+    }
+    if (product) {
+      supabase
+        .from("product_tag_assignments")
+        .select("tag_id")
+        .eq("product_id", product.id)
+        .then(({ data }) => setSelectedTagIds((data ?? []).map((a) => a.tag_id)));
     }
   }, [product]);
 
@@ -351,12 +363,41 @@ export function ProductForm({ product, onClose, onSaved }: Props) {
     };
 
     setSaving(true);
-    const { error: err } = product
-      ? await supabase.from("products").update(payload).eq("id", product.id)
-      : await supabase.from("products").insert(payload);
-    setSaving(false);
 
-    if (err) { setError(err.message); return; }
+    let savedProductId: number;
+    if (product) {
+      const { error: err } = await supabase.from("products").update(payload).eq("id", product.id);
+      if (err) { setError(err.message); setSaving(false); return; }
+      savedProductId = product.id;
+    } else {
+      const { data: inserted, error: err } = await supabase
+        .from("products").insert(payload).select("id").single();
+      if (err || !inserted) { setError(err?.message ?? "Failed to create product."); setSaving(false); return; }
+      savedProductId = inserted.id;
+    }
+
+    // Sync tag assignments: replace all existing with the current selection.
+    const { error: deleteTagsErr } = await supabase
+      .from("product_tag_assignments")
+      .delete()
+      .eq("product_id", savedProductId);
+    if (deleteTagsErr) {
+      setError("Product saved but failed to update tags: " + deleteTagsErr.message);
+      setSaving(false);
+      return;
+    }
+    if (selectedTagIds.length > 0) {
+      const { error: insertTagsErr } = await supabase
+        .from("product_tag_assignments")
+        .insert(selectedTagIds.map((tid) => ({ product_id: savedProductId, tag_id: tid })));
+      if (insertTagsErr) {
+        setError("Product saved but failed to assign tags: " + insertTagsErr.message);
+        setSaving(false);
+        return;
+      }
+    }
+
+    setSaving(false);
     onSaved();
   }
 
@@ -490,6 +531,36 @@ export function ProductForm({ product, onClose, onSaved }: Props) {
               <input type="number" min="0" step="0.01" value={form.compare_price}
                 onChange={(e) => set("compare_price", e.target.value)} placeholder="Optional — original price shown as strikethrough" className={inputCls} />
             </Field>
+
+            {/* Tags */}
+            {allTags.length > 0 && (
+              <div className="flex flex-col gap-2">
+                <span className="text-xs font-semibold text-gray-500 uppercase tracking-widest">Tags</span>
+                <div className="flex flex-wrap gap-2">
+                  {allTags.map((tag) => {
+                    const selected = selectedTagIds.includes(tag.id);
+                    return (
+                      <button
+                        key={tag.id}
+                        type="button"
+                        onClick={() =>
+                          setSelectedTagIds((prev) =>
+                            selected ? prev.filter((id) => id !== tag.id) : [...prev, tag.id]
+                          )
+                        }
+                        className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-colors ${
+                          selected
+                            ? "bg-navy text-white border-navy"
+                            : "bg-transparent text-navy/60 border-navy/20 hover:border-navy/40"
+                        }`}
+                      >
+                        {tag.name_en}{tag.name_bs ? ` / ${tag.name_bs}` : ""}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
 
             {/* Purchase variants */}
             <div className="flex flex-col gap-3">

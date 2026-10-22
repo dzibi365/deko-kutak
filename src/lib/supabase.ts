@@ -94,6 +94,13 @@ export type Category = {
   created_at: string;
 };
 
+export type ProductTag = {
+  id: number;
+  name_en: string;
+  name_bs: string;
+  created_at: string;
+};
+
 export function localName(obj: { name: string; name_en?: string | null; name_bs?: string | null }, lang: Lang): string {
   if (lang === 'bs') return obj.name_bs || obj.name_en || obj.name;
   return obj.name_en || obj.name;

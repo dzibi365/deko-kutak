@@ -45,6 +45,7 @@ const AdminPages     = lazy(() => import("./pages/admin/Pages"));
 const AdminGallery   = lazy(() => import("./pages/admin/Gallery"));
 const AdminGalleryCats   = lazy(() => import("./pages/admin/GalleryCategories"));
 const CreationRequests   = lazy(() => import("./pages/admin/CreationRequests"));
+const ProductTags        = lazy(() => import("./pages/admin/ProductTags"));
 const GalleryList        = lazy(() => import("./pages/GalleryList"));
 const GalleryDetail     = lazy(() => import("./pages/GalleryDetail"));
 const CustomCreation    = lazy(() => import("./pages/CustomCreation"));
@@ -282,6 +283,7 @@ export default function App() {
             <Route path="gallery" element={<AdminGallery />} />
             <Route path="gallery-categories" element={<AdminGalleryCats />} />
             <Route path="creation-requests" element={<CreationRequests />} />
+            <Route path="tags" element={<ProductTags />} />
           </Route>
 
           <Route path="*" element={<NotFoundWrapper />} />

@@ -2,6 +2,8 @@ import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { ShoppingBag } from "lucide-react";
 import { supabase, type Product, type Category, localName, localDesc } from "../lib/supabase";
+
+type ProductRow = Product & { product_tag_assignments?: Array<{ tag_id: number }> };
 import { useLang } from "../context/LanguageContext";
 import { useCart } from "../context/CartContext";
 import { PersonalizationModal } from "./PersonalizationModal";
@@ -12,15 +14,17 @@ type SortKey = "newest" | "price_asc" | "price_desc" | "name_az";
 
 type ProductGridProps = {
   category?: string | null;
+  tagId?: number | null;
+  tagLabel?: string | null;
   searchQuery?: string;
   onClearSearch?: () => void;
 };
 
-export function ProductGrid({ category, searchQuery = "", onClearSearch }: ProductGridProps) {
+export function ProductGrid({ category, tagId, tagLabel, searchQuery = "", onClearSearch }: ProductGridProps) {
   const { tr, lang } = useLang();
   const navigate = useNavigate();
   const { addItem } = useCart();
-  const [products, setProducts] = useState<Product[]>([]);
+  const [products, setProducts] = useState<ProductRow[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -28,10 +32,10 @@ export function ProductGrid({ category, searchQuery = "", onClearSearch }: Produ
   const [sortKey, setSortKey] = useState<SortKey>("newest");
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
 
-  // Reset visible count when category or search changes
+  // Reset visible count when filters or search changes
   useEffect(() => {
     setVisibleCount(PAGE_SIZE);
-  }, [category, searchQuery]);
+  }, [category, tagId, searchQuery]);
 
   useEffect(() => {
     supabase.from("categories").select("*").then(({ data }) => {
@@ -45,7 +49,7 @@ export function ProductGrid({ category, searchQuery = "", onClearSearch }: Produ
       try {
         let query = supabase
           .from("products")
-          .select("*")
+          .select("*, product_tag_assignments(tag_id)")
           .eq("in_stock", true)
           .order("created_at", { ascending: false });
 
@@ -56,7 +60,7 @@ export function ProductGrid({ category, searchQuery = "", onClearSearch }: Produ
         if (error) {
           setError(error.message);
         } else {
-          setProducts(data ?? []);
+          setProducts((data ?? []) as ProductRow[]);
         }
       } catch (err) {
         setError(err instanceof Error ? err.message : "Could not reach the server.");
@@ -68,17 +72,23 @@ export function ProductGrid({ category, searchQuery = "", onClearSearch }: Produ
     fetchProducts();
   }, [category]);
 
-  // Pipeline: products (category-filtered by server) → search → sort → slice
+  // Pipeline: products (category-filtered by server) → tag → search → sort → slice
   const { visibleProducts, filteredCount } = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
 
+    const tagFiltered = tagId
+      ? products.filter((p) =>
+          p.product_tag_assignments?.some((a) => a.tag_id === tagId) ?? false
+        )
+      : products;
+
     const filtered = q
-      ? products.filter((p) => {
+      ? tagFiltered.filter((p) => {
           const name = localName(p, lang).toLowerCase();
           const desc = (localDesc(p, lang) ?? "").toLowerCase();
           return name.includes(q) || desc.includes(q);
         })
-      : products;
+      : tagFiltered;
 
     const locale = lang === "bs" ? "bs" : "en";
     const sorted = [...filtered];
@@ -96,12 +106,13 @@ export function ProductGrid({ category, searchQuery = "", onClearSearch }: Produ
       visibleProducts: sorted.slice(0, visibleCount),
       filteredCount: filtered.length,
     };
-  }, [products, sortKey, lang, searchQuery, visibleCount]);
+  }, [products, tagId, sortKey, lang, searchQuery, visibleCount]);
 
   const selectedCat = categories.find(c => (c.name_en ?? c.name) === category);
-  const headingName = category
-    ? (selectedCat ? localName(selectedCat, lang) : category)
-    : tr("cat_all");
+  const headingName = tagLabel
+    ?? (category
+      ? (selectedCat ? localName(selectedCat, lang) : category)
+      : tr("cat_all"));
   const countLabel = !loading
     ? (lang === "bs"
         ? `${filteredCount} ${filteredCount === 1 ? "proizvod" : "proizvoda"}`

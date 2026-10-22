@@ -8,6 +8,7 @@ import { CategoryStrip } from "../components/HomeSections";
 import { ProductGrid } from "../components/ProductGrid";
 import { SiteMeta } from "../components/SiteMeta";
 import { useLang } from "../context/LanguageContext";
+import { supabase, type ProductTag } from "../lib/supabase";
 
 function ShopContent() {
   const { lang, tr } = useLang();
@@ -15,8 +16,18 @@ function ShopContent() {
   const [selectedCategory, setSelectedCategory] = useState<string | null>(
     searchParams.get("category")
   );
+  const [selectedTagId, setSelectedTagId] = useState<number | null>(
+    searchParams.get("tag") ? Number(searchParams.get("tag")) : null
+  );
+  const [allTags, setAllTags] = useState<ProductTag[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const searchInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    supabase.from("product_tags").select("*").order("name_en").then(({ data }) => {
+      setAllTags(data ?? []);
+    });
+  }, []);
 
   useEffect(() => {
     if (searchParams.get("focus") === "search") {
@@ -31,17 +42,35 @@ function ShopContent() {
 
   useEffect(() => {
     const cat = searchParams.get("category");
+    const tag = searchParams.get("tag");
     setSelectedCategory(cat);
+    setSelectedTagId(tag ? Number(tag) : null);
   }, [searchParams]);
 
-  function handleSelect(cat: string | null) {
+  function handleSelectCategory(cat: string | null) {
     setSelectedCategory(cat);
+    setSelectedTagId(null);
     if (cat) {
       setSearchParams({ category: cat });
     } else {
       setSearchParams({});
     }
   }
+
+  function handleSelectTag(id: number | null) {
+    setSelectedTagId(id);
+    setSelectedCategory(null);
+    if (id) {
+      setSearchParams({ tag: String(id) });
+    } else {
+      setSearchParams({});
+    }
+  }
+
+  const selectedTag = allTags.find((t) => t.id === selectedTagId) ?? null;
+  const tagLabel = selectedTag
+    ? (lang === "bs" ? selectedTag.name_bs : selectedTag.name_en)
+    : null;
 
   return (
     <>
@@ -52,12 +81,12 @@ function ShopContent() {
             <h1 className="text-3xl font-semibold tracking-tight text-navy mb-1">
               {lang === "bs" ? "Prodavnica" : "Shop"}
             </h1>
-            {selectedCategory && (
-              <p className="text-navy/50 text-sm">{selectedCategory}</p>
+            {(selectedCategory || tagLabel) && (
+              <p className="text-navy/50 text-sm">{tagLabel ?? selectedCategory}</p>
             )}
           </div>
 
-          {/* Search field */}
+          {/* Search */}
           <div className="relative w-full max-w-[450px]">
             <Search
               className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-navy/30 pointer-events-none"
@@ -85,10 +114,39 @@ function ShopContent() {
             )}
           </div>
 
-          <CategoryStrip selected={selectedCategory} onSelect={handleSelect} />
+          <CategoryStrip selected={selectedCategory} onSelect={handleSelectCategory} />
+
+          {/* Tag filter chips — only rendered when tags exist in the DB */}
+          {allTags.length > 0 && (
+            <div className="flex flex-wrap gap-2">
+              {allTags.map((tag) => {
+                const label = lang === "bs" ? tag.name_bs : tag.name_en;
+                const active = selectedTagId === tag.id;
+                return (
+                  <button
+                    key={tag.id}
+                    onClick={() => handleSelectTag(active ? null : tag.id)}
+                    className={`px-4 py-1.5 rounded-full text-sm font-medium border transition-colors ${
+                      active
+                        ? "bg-copper text-white border-copper"
+                        : "bg-transparent text-navy/60 border-navy/20 hover:border-navy/40 hover:text-navy"
+                    }`}
+                  >
+                    {label}
+                  </button>
+                );
+              })}
+            </div>
+          )}
         </div>
 
-        <ProductGrid category={selectedCategory} searchQuery={searchQuery} onClearSearch={() => setSearchQuery("")} />
+        <ProductGrid
+          category={selectedCategory}
+          tagId={selectedTagId}
+          tagLabel={tagLabel}
+          searchQuery={searchQuery}
+          onClearSearch={() => setSearchQuery("")}
+        />
       </div>
     </>
   );
