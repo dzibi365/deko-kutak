@@ -26,6 +26,7 @@ import {
 } from "../lib/addonGroups";
 import { SiteMeta } from "../components/SiteMeta";
 import NotFound from "./NotFound";
+import { trackViewItem } from "../lib/analytics";
 
 function LightboxModal({ images, startIndex, onClose }: { images: string[]; startIndex: number; onClose: () => void }) {
   const [idx, setIdx] = useState(startIndex);
@@ -204,6 +205,7 @@ function ProductDetailContent() {
         setNotFound(true);
       } else {
         setProduct(data);
+        trackViewItem(data);
         setSelectedOption(null);
         setVariantError(null);
         setPageAddonSelections({});

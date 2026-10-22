@@ -4,6 +4,7 @@ import { CheckCircle, Truck, Building2, Copy, Check } from "lucide-react";
 import { supabase } from "../lib/supabase";
 import { useLang } from "../context/LanguageContext";
 import { formatAccountDisplay } from "../lib/bankAccount";
+import { trackPurchase, type OrderAnalyticsPayload } from "../lib/analytics";
 
 type BankSettings = {
   bank_name: string | null;
@@ -12,12 +13,6 @@ type BankSettings = {
   bank_note: string | null;
   bank_transfer_note_bs: string | null;
   bank_transfer_note_en: string | null;
-};
-
-type OrderAmounts = {
-  subtotal: number;
-  shippingCost: number;
-  orderTotal: number;
 };
 
 export default function OrderConfirmation() {
@@ -29,10 +24,10 @@ export default function OrderConfirmation() {
 
   // Tier 1: amounts passed directly from Checkout.tsx via router state.
   // Cleared by React Router on page refresh — tiers 2 and 3 cover that case.
-  const stateAmounts = (location.state as OrderAmounts | null);
+  const stateAmounts = (location.state as OrderAnalyticsPayload | null);
 
   // Tier 2 + 3: recovered after refresh
-  const [fetchedAmounts, setFetchedAmounts] = useState<OrderAmounts | null>(null);
+  const [fetchedAmounts, setFetchedAmounts] = useState<OrderAnalyticsPayload | null>(null);
 
   const displayAmounts = stateAmounts ?? fetchedAmounts;
   const fmtKm = (n: number) => lang === "bs" ? n.toFixed(2).replace(".", ",") : n.toFixed(2);
@@ -51,7 +46,7 @@ export default function OrderConfirmation() {
     try {
       const raw = sessionStorage.getItem(`dk-order-${orderNumber}`);
       if (raw) {
-        const parsed = JSON.parse(raw) as OrderAmounts;
+        const parsed = JSON.parse(raw) as OrderAnalyticsPayload;
         if (typeof parsed.subtotal === "number" && typeof parsed.orderTotal === "number") {
           setFetchedAmounts(parsed);
           return;
@@ -94,6 +89,18 @@ export default function OrderConfirmation() {
         });
     }
   }, [payment]);
+
+  // Fire purchase event once per order. trackPurchase guards against duplicate
+  // calls via sessionStorage, so re-renders and StrictMode double-effects are safe.
+  useEffect(() => {
+    if (!orderNumber || !displayAmounts) return;
+    trackPurchase(
+      orderNumber,
+      displayAmounts.orderTotal,
+      displayAmounts.shippingCost,
+      displayAmounts.analyticsItems ?? [],
+    );
+  }, [orderNumber, displayAmounts]);
 
   function copyAccount() {
     if (!bank?.bank_iban) return;

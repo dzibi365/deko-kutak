@@ -16,6 +16,7 @@ import { SiteMeta } from "./components/SiteMeta";
 import { AdminLayout } from "./components/admin/AdminLayout";
 import { RequireAuth } from "./components/admin/RequireAuth";
 import CookieBanner from "./components/CookieBanner";
+import { AnalyticsLoader } from "./components/AnalyticsLoader";
 import Login from "./pages/admin/Login";
 const ProductDetail = lazy(() => import("./pages/ProductDetail"));
 const Shop          = lazy(() => import("./pages/Shop"));
@@ -226,6 +227,7 @@ export default function App() {
       <LanguageProvider>
       <BrowserRouter>
         <ScrollToTop />
+        <AnalyticsLoader />
         <CookieBanner />
         <Routes>
           <Route path="/" element={<StoreFront />} />

@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from "react";
+import { useState, useEffect, useRef, type FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft, Truck, Building2, ChevronDown } from "lucide-react";
 import { supabase } from "../lib/supabase";
@@ -11,6 +11,7 @@ import { localName } from "../lib/supabase";
 import { CustomerImageDisplay } from "../components/CustomerImageDisplay";
 import { classifyImageValue } from "../lib/customerUpload";
 import { buildOrderItems } from "../lib/checkoutUtils";
+import { trackBeginCheckout, type GA4Item, type OrderAnalyticsPayload } from "../lib/analytics";
 
 type PaymentMethod = "cod" | "bank_transfer";
 
@@ -43,6 +44,27 @@ export default function Checkout() {
   } | null>(null);
   const [priceAcknowledged, setPriceAcknowledged] = useState(false);
   const [placeRetries, setPlaceRetries] = useState(0);
+
+  // Fire begin_checkout once per checkout visit.
+  // beginCheckoutFiredRef prevents StrictMode double-invocation: React 18 reuses
+  // the same component fiber (and its refs) for StrictMode's fake unmount+remount,
+  // so the ref stays true on the second effect run. On real navigation away and
+  // back, a new component instance creates a fresh ref starting at false.
+  const beginCheckoutFiredRef = useRef(false);
+  const checkoutItemsRef = useRef(items);
+  const checkoutValueRef = useRef(centsToKm(shipping.totalCents));
+  useEffect(() => {
+    if (beginCheckoutFiredRef.current || checkoutItemsRef.current.length === 0) return;
+    beginCheckoutFiredRef.current = true;
+    const gaItems: GA4Item[] = checkoutItemsRef.current.map((item) => ({
+      item_id: String(item.id),
+      item_name: item.name_en ?? item.name,
+      item_category: item.category,
+      price: item.price,
+      quantity: item.quantity,
+    }));
+    trackBeginCheckout(gaItems, checkoutValueRef.current);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   function set(key: string, value: string) {
     setForm((f) => ({ ...f, [key]: value }));
@@ -85,18 +107,29 @@ export default function Checkout() {
       body: { emailToken, lang },
     }).catch(() => {});
 
+    // Build GA4 items from cart BEFORE clearCart() removes them.
+    const analyticsItems: GA4Item[] = items.map((item) => ({
+      item_id: String(item.id),
+      item_name: item.name_en ?? item.name,
+      item_category: item.category,
+      price: item.price,
+      quantity: item.quantity,
+    }));
+
     // Use server-confirmed amounts when available (price-changed flow); otherwise
     // fall back to client-computed totals (normal flow where they match server).
-    const confirmedAmounts = serverAmounts
+    const confirmedAmounts: OrderAnalyticsPayload = serverAmounts
       ? {
           subtotal: serverAmounts.subtotal,
           shippingCost: serverAmounts.shippingCost,
           orderTotal: serverAmounts.total,
+          analyticsItems,
         }
       : {
           subtotal: total,
           shippingCost: centsToKm(shipping.shippingCents),
           orderTotal: centsToKm(shipping.totalCents),
+          analyticsItems,
         };
 
     // Persist amounts in sessionStorage so the confirmation page can restore

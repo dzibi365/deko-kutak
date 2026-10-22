@@ -5,6 +5,7 @@ import {
   type AddonSelection,
   type AddonSelectionDisplay,
 } from "../lib/addonGroups";
+import { trackAddToCart } from "../lib/analytics";
 
 export type CartItem = {
   cartKey: string;
@@ -79,6 +80,18 @@ export function CartProvider({ children }: { children: ReactNode }) {
     variantOption?: PriceOption,
     addonContext?: { selections: AddonSelection[]; display: AddonSelectionDisplay[] },
   ) {
+    // Compute addon surcharge for analytics (mirrors the price logic in the updater).
+    const addonSurchargeForTracking = addonContext
+      ? addonContext.display.reduce((s, d) => s + d.price_adjustment, 0)
+      : 0;
+    trackAddToCart({
+      id: product.id,
+      name: product.name,
+      name_en: product.name_en,
+      category: product.category,
+      price: (variantOption?.price ?? product.price) + addonSurchargeForTracking,
+    });
+
     setItems((prev) => {
       const hasCustom = customizations && Object.keys(customizations).some((k) => customizations[k]);
 

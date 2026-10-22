@@ -11,26 +11,34 @@ const allowIndexing = process.env.VITE_ALLOW_INDEXING === "true";
 const SUPABASE     = "https://smlaoqjushalotduuhcx.supabase.co";
 const SUPABASE_WSS = "wss://smlaoqjushalotduuhcx.supabase.co";
 const TURNSTILE    = "https://challenges.cloudflare.com";
+// GA4 domains — script is only injected after analytics consent is granted.
+// script-src:  googletagmanager.com serves the gtag/js loader script.
+// connect-src: google-analytics.com + analytics.google.com receive event hits;
+//              googletagmanager.com is also contacted for tag config lookups.
+// img-src:     google-analytics.com sends 1×1 beacon pixels for measurement.
+const GA4_SCRIPT  = "https://www.googletagmanager.com";
+const GA4_CONNECT = "https://www.google-analytics.com https://analytics.google.com https://www.googletagmanager.com";
+const GA4_IMG     = "https://www.google-analytics.com";
 
 // Content-Security-Policy
-// script-src:   bundled app (self) + Cloudflare Turnstile widget
+// script-src:   bundled app (self) + Cloudflare Turnstile widget + GA4 loader
 // style-src:    unsafe-inline required — React style={{}} props compile to
 //               HTML style="" attributes which CSP treats as inline styles
 // img-src:      self (built assets) + data: (placeholder images in HomeSections)
-//               + blob: (admin image-tool previews) + Supabase storage
+//               + blob: (admin image-tool previews) + Supabase storage + GA4 beacon
 // font-src:     self-hosted Inter via /fonts/
 // connect-src:  Supabase REST/auth/storage/functions + Supabase Realtime (wss)
-//               + Turnstile verification calls
+//               + Turnstile verification calls + GA4 event collection
 // media-src:    Supabase storage (workshop and gallery videos)
 // frame-src:    Turnstile iframe + YouTube embeds in admin rich-text editor
 // frame-ancestors 'none': disallow embedding this site in any frame
 const csp = [
   "default-src 'self'",
-  `script-src 'self' ${TURNSTILE}`,
+  `script-src 'self' ${TURNSTILE} ${GA4_SCRIPT}`,
   "style-src 'self' 'unsafe-inline'",
-  `img-src 'self' data: blob: ${SUPABASE}`,
+  `img-src 'self' data: blob: ${SUPABASE} ${GA4_IMG}`,
   "font-src 'self'",
-  `connect-src 'self' ${SUPABASE} ${SUPABASE_WSS} ${TURNSTILE}`,
+  `connect-src 'self' ${SUPABASE} ${SUPABASE_WSS} ${TURNSTILE} ${GA4_CONNECT}`,
   `media-src 'self' ${SUPABASE}`,
   `frame-src ${TURNSTILE} https://www.youtube.com https://www.youtube-nocookie.com`,
   "frame-ancestors 'none'",
