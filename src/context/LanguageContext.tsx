@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, type ReactNode } from "react";
+import { createContext, useContext, useState, useEffect, type ReactNode } from "react";
 import { t, type Lang } from "../i18n/translations";
 
 type LanguageContextType = {
@@ -13,6 +13,10 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
   const [lang, setLang] = useState<Lang>(() => {
     return (localStorage.getItem("lang") as Lang) ?? "bs";
   });
+
+  useEffect(() => {
+    document.documentElement.lang = lang;
+  }, [lang]);
 
   function toggleLang() {
     const next: Lang = lang === "en" ? "bs" : "en";

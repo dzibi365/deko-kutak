@@ -15,6 +15,8 @@ type Props = {
   canonicalUrl?: string;
   /** Schema.org JSON-LD object — safely serialized and injected as a script tag. */
   jsonLd?: Record<string, unknown>;
+  /** og:type value. Defaults to "website". Pass "product" on product pages. */
+  ogType?: string;
 };
 
 const PROD_BASE = "https://dekokutak.ba";
@@ -25,7 +27,7 @@ const ROBOTS = import.meta.env.VITE_ALLOW_INDEXING === "true"
   ? "index,follow"
   : "noindex,nofollow";
 
-export function SiteMeta({ title, description, canonicalUrl, jsonLd }: Props) {
+export function SiteMeta({ title, description, canonicalUrl, jsonLd, ogType = "website" }: Props) {
   const { store_name, seo_title, seo_description_en, seo_description_bs, og_image, logo_url } = useSiteSettings();
   const { lang } = useLang();
   const { pathname } = useLocation();
@@ -56,9 +58,11 @@ export function SiteMeta({ title, description, canonicalUrl, jsonLd }: Props) {
       {seoDesc && <meta name="description" content={seoDesc} />}
 
       {/* Open Graph */}
+      <meta property="og:url" content={canonical} />
+      <meta property="og:type" content={ogType} />
+      <meta property="og:locale" content={lang === "bs" ? "bs_BA" : "en_US"} />
       <meta property="og:title" content={pageTitle} />
       {seoDesc && <meta property="og:description" content={seoDesc} />}
-      <meta property="og:type" content="website" />
       {ogImg && <meta property="og:image" content={ogImg} />}
 
       {/* Twitter card */}

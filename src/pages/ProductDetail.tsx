@@ -298,7 +298,7 @@ function ProductDetailContent() {
 
   return (
     <div className="max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 pt-4 pb-12">
-      <SiteMeta title={name} description={desc || undefined} jsonLd={productJsonLd} />
+      <SiteMeta title={name} description={desc || undefined} jsonLd={productJsonLd} ogType="product" />
       {/* Back link */}
       <button
         onClick={() => navigate(-1)}
