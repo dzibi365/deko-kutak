@@ -15,10 +15,11 @@ const TURNSTILE    = "https://challenges.cloudflare.com";
 // script-src:  googletagmanager.com serves the gtag/js loader script.
 // connect-src: google-analytics.com + analytics.google.com receive event hits;
 //              googletagmanager.com is also contacted for tag config lookups.
-// img-src:     google-analytics.com sends 1×1 beacon pixels for measurement.
+// img-src:     google-analytics.com sends 1×1 beacon pixels for measurement;
+//              googletagmanager.com sends /td? conversion pixels via GTM.
 const GA4_SCRIPT  = "https://www.googletagmanager.com";
 const GA4_CONNECT = "https://www.google-analytics.com https://analytics.google.com https://www.googletagmanager.com";
-const GA4_IMG     = "https://www.google-analytics.com";
+const GA4_IMG     = "https://www.google-analytics.com https://www.googletagmanager.com";
 
 // Content-Security-Policy
 // script-src:   bundled app (self) + Cloudflare Turnstile widget + GA4 loader
