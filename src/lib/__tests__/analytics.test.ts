@@ -7,6 +7,7 @@ import {
   trackViewItem,
   trackAddToCart,
   trackBeginCheckout,
+  trackSearchResults,
   setAnalyticsConsent,
   _resetAnalyticsForTests,
   _isSafeToTrack,
@@ -286,6 +287,74 @@ describe("trackBeginCheckout", () => {
     trackBeginCheckout(items, 44.99);
     const fired = gtagCalls.filter(([, name]) => name === "begin_checkout");
     expect(fired).toHaveLength(2);
+  });
+});
+
+// ─── trackSearchResults ───────────────────────────────────────────────────────
+
+describe("trackSearchResults", () => {
+  beforeEach(() => { setAnalyticsConsent(true, "G-TESTTEST1"); gtagCalls.length = 0; });
+
+  it("fires view_search_results event", () => {
+    trackSearchResults("wedding album");
+    expect(gtagCalls.some(([, name]) => name === "view_search_results")).toBe(true);
+  });
+
+  it("includes search_term in params", () => {
+    trackSearchResults("drvena kutija");
+    const call = gtagCalls.find(([, name]) => name === "view_search_results");
+    const params = call?.[2] as Record<string, unknown>;
+    expect(params?.search_term).toBe("drvena kutija");
+  });
+
+  it("does NOT fire when analytics is disabled", () => {
+    setAnalyticsConsent(false, "G-TESTTEST1");
+    gtagCalls.length = 0;
+    trackSearchResults("poklon");
+    expect(gtagCalls.some(([, name]) => name === "view_search_results")).toBe(false);
+  });
+
+  it("fires on every call — debounce and dedup are the caller's responsibility", () => {
+    trackSearchResults("album");
+    trackSearchResults("album");
+    expect(gtagCalls.filter(([, name]) => name === "view_search_results")).toHaveLength(2);
+  });
+
+  // ── Minimum length ──────────────────────────────────────────────────────────
+  it("does NOT fire for empty string", () => {
+    trackSearchResults("");
+    expect(gtagCalls.some(([, name]) => name === "view_search_results")).toBe(false);
+  });
+
+  it("does NOT fire for single character", () => {
+    trackSearchResults("a");
+    expect(gtagCalls.some(([, name]) => name === "view_search_results")).toBe(false);
+  });
+
+  it("fires for two or more characters", () => {
+    trackSearchResults("al");
+    expect(gtagCalls.some(([, name]) => name === "view_search_results")).toBe(true);
+  });
+
+  // ── PII guard ───────────────────────────────────────────────────────────────
+  it("does NOT fire when term looks like an email address", () => {
+    trackSearchResults("user@example.com");
+    expect(gtagCalls.some(([, name]) => name === "view_search_results")).toBe(false);
+  });
+
+  it("does NOT fire when term contains 7 or more digits (phone heuristic)", () => {
+    trackSearchResults("+387 61 123 456");
+    expect(gtagCalls.some(([, name]) => name === "view_search_results")).toBe(false);
+  });
+
+  it("fires normally for a term with fewer than 7 digits", () => {
+    trackSearchResults("poklon za 30. rodendan");
+    expect(gtagCalls.some(([, name]) => name === "view_search_results")).toBe(true);
+  });
+
+  it("fires normally for a year-like number in a search phrase", () => {
+    trackSearchResults("vjenčanje 2025");
+    expect(gtagCalls.some(([, name]) => name === "view_search_results")).toBe(true);
   });
 });
 

@@ -9,6 +9,7 @@ import { ProductGrid } from "../components/ProductGrid";
 import { SiteMeta } from "../components/SiteMeta";
 import { useLang } from "../context/LanguageContext";
 import { supabase, type ProductTag } from "../lib/supabase";
+import { trackSearchResults } from "../lib/analytics";
 
 function ShopContent() {
   const { lang, tr } = useLang();
@@ -22,6 +23,7 @@ function ShopContent() {
   const [allTags, setAllTags] = useState<ProductTag[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const searchInputRef = useRef<HTMLInputElement>(null);
+  const lastSearchRef = useRef("");
 
   useEffect(() => {
     supabase.from("product_tags").select("*").order("name_en").then(({ data }) => {
@@ -46,6 +48,22 @@ function ShopContent() {
     setSelectedCategory(cat);
     setSelectedTagId(tag ? Number(tag) : null);
   }, [searchParams]);
+
+  // Fire view_search_results 500 ms after the user stops typing.
+  // lastSearchRef prevents duplicate events when the same term is typed again
+  // without clearing first; it resets to "" when the input is cleared so a
+  // repeated search after clearing does fire.
+  useEffect(() => {
+    const trimmed = searchQuery.trim();
+    if (!trimmed) { lastSearchRef.current = ""; return; }
+    if (trimmed.length < 2) return; // too short — no timer, no reset
+    if (trimmed === lastSearchRef.current) return;
+    const timer = setTimeout(() => {
+      lastSearchRef.current = trimmed;
+      trackSearchResults(trimmed);
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
 
   function handleSelectCategory(cat: string | null) {
     setSelectedCategory(cat);

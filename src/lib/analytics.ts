@@ -173,6 +173,19 @@ export function trackBeginCheckout(items: GA4Item[], value: number): void {
   safeGtag("begin_checkout", { currency: "BAM", value, items });
 }
 
+// Returns true when the term looks like an email or phone number.
+// Email: anything@anything.anything; Phone: 7+ digit characters anywhere in the string.
+function looksLikePII(term: string): boolean {
+  if (/[^\s@]+@[^\s@]+\.[^\s@]+/.test(term)) return true;
+  if ((term.match(/\d/g) ?? []).length >= 7) return true;
+  return false;
+}
+
+export function trackSearchResults(term: string): void {
+  if (term.length < 2 || looksLikePII(term)) return;
+  safeGtag("view_search_results", { search_term: term });
+}
+
 export function trackPurchase(
   orderNumber: string,
   value: number,
