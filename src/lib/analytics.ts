@@ -77,9 +77,10 @@ function injectScript(measurementId: string): void {
   window.dataLayer = window.dataLayer ?? [];
   // Do not overwrite an existing gtag (e.g. a test stub set beforehand).
   if (typeof window.gtag !== "function") {
-    window.gtag = function (...args: unknown[]) {
-      window.dataLayer.push(args);
-    };
+    // GA4's queue processor checks !(entry instanceof Array) and skips plain
+    // Arrays. The standard Google pattern pushes the native arguments object.
+    // eslint-disable-next-line prefer-rest-params
+    window.gtag = function () { window.dataLayer.push(arguments); };
   }
   window.gtag("js", new Date());
   window.gtag("config", measurementId);

@@ -182,6 +182,27 @@ describe("setAnalyticsConsent — cookie cleanup on withdrawal", () => {
   });
 });
 
+// ─── injectScript stub — IArguments, not plain Array ─────────────────────────
+
+describe("injectScript stub — dataLayer entry type", () => {
+  it("queued commands are not plain Arrays so GA4 processes them", () => {
+    // GA4's initialization loop skips entries where Array.isArray(entry) === true.
+    // Temporarily clear window.gtag so injectScript installs its production stub.
+    const savedGtag = window.gtag;
+    (window as unknown as Record<string, unknown>).gtag = undefined;
+    window.dataLayer = [];
+
+    setAnalyticsConsent(true, "G-IARGS1");
+
+    expect(window.dataLayer.length).toBeGreaterThanOrEqual(2); // "js" + "config"
+    for (const entry of window.dataLayer) {
+      expect(Array.isArray(entry)).toBe(false);
+    }
+
+    (window as unknown as Record<string, unknown>).gtag = savedGtag;
+  });
+});
+
 // ─── trackViewItem payload ────────────────────────────────────────────────────
 
 describe("trackViewItem", () => {
